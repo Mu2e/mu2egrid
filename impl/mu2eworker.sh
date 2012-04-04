@@ -100,10 +100,12 @@ export outstagebase=${MU2EGRID_OUTSTAGE:?"Error: MU2EGRID_OUTSTAGE not set"}
 #================================================================
 # Establish environment.
 
-#source /grid/fermiapp/products/mu2e/setupmu2e-art.sh
-#source /grid/fermiapp/mu2e/personal/gandr/extmon/Offline/setup.sh
-if ! source "${MU2EGRID_SETUPSCRIPT:?Error: MU2EGRID_SETUPSCRIPT not defined}"; then
-    echo "Error sourcing setup script ${MU2EGRID_SETUPSCRIPT}: status code $?"
+if ! source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
+    echo "Error sourcing setup script ${MU2EGRID_MU2ESETUP}: status code $?"
+    exit 1
+fi
+if ! source "${MU2EGRID_USERSETUP:?Error: MU2EGRID_USERSETUP: not defined}"; then
+    echo "Error sourcing setup script ${MU2EGRID_USERSETUP}: status code $?"
     exit 1
 fi
 

@@ -22,12 +22,14 @@ Usage:
 	      --fcl=<file> --jobname=<name> \\
 	      --outstage=<dir> \\
 	      --numjobs=<M> \\
-	  {--inputs=<filelist>|--events-per-job=<N> [--run-number=<R>]}
+	  {--inputs=<filelist>|--events-per-job=<N> [--run-number=<R>]} \
+	  [--mu2e-setup=<setupmu2e-art.sh>]
 
 Notes:
 
-    - Sourcing the setup script must completely define a mu2e
-      environment.
+    - The --setup argument must point to the setup.sh script in a user
+      Offline area.  The --mu2e-setup arg is optional, by default
+      the current official mu2e release is used.
 
     - the jobname argument defines the name of the top level output directory.
 
@@ -62,11 +64,13 @@ sub assert_known_outstage($) {
 
 #================================================================
 my %opt;
+$opt{'mu2e-setup'} = '/grid/fermiapp/products/mu2e/setupmu2e-art.sh';
 
 # Process command line opts.
 GetOptions(\%opt, 
 	   "help",
 	   "setup=s",
+	   "mu2e-setup=s",
 	   "fcl=s",
 	   "jobname=s",
 	   "outstage=s",
@@ -83,21 +87,23 @@ if($opt{'help'}) {
 }
 
 # Check that all of the required args are present:
-foreach my $k ('setup', 'fcl', 'jobname', 'outstage', 'njobs') {
+foreach my $k ('setup', 'mu2e-setup', 'fcl', 'jobname', 'outstage', 'njobs') {
     defined $opt{$k} or die "Error: --$k must be specified.  Try the --help option.\n";
 }
 
 # All file args are to be passed using full path names.
 my $setup = abs_path($opt{'setup'});
+my $mu2esetup = abs_path($opt{'mu2e-setup'});
 my $fcl = abs_path($opt{'fcl'});
 my $outstage = abs_path($opt{'outstage'});
 
-assert_files_exist($setup, $fcl, $outstage);
+assert_files_exist($setup, $mu2esetup, $fcl, $outstage);
 assert_known_outstage($outstage);
 
 my $njobs = $opt{'njobs'};
 
-$ENV{'MU2EGRID_SETUPSCRIPT'} = $setup;
+$ENV{'MU2EGRID_USERSETUP'} = $setup;
+$ENV{'MU2EGRID_MU2ESETUP'} = $mu2esetup;
 $ENV{'MU2EGRID_MASTERFHICL'} = $fcl;
 $ENV{'MU2EGRID_JOBNAME'} = $opt{'jobname'};
 $ENV{'MU2EGRID_OUTSTAGE'} = $outstage;
