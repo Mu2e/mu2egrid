@@ -1,0 +1,158 @@
+#!/usr/bin/perl -w
+#
+# A frontend script to submit mu2e framework jobs to Fermilab grid.
+#
+# A.Gaponenko, 2012
+#
+use File::Basename;
+use Getopt::Long;
+use Cwd 'abs_path';
+
+my $jobsub = 'jobsub';
+#my $jobsub = 'jobsub-andr';
+my $workerscript = abs_path(dirname($0) . '/impl/mu2eworker.sh');
+my @knownOutstage = ('/mu2e/data/outstage', '/grid/data/mu2e/outstage');
+
+#================================================================
+sub usage() {
+    my $self = basename($0);
+    return <<EOF
+Usage: 
+	$self --setup=<script-to-source.sh> \\
+	      --fcl=<file> --jobname=<name> \\
+	      --outstage=<dir> \\
+	      --numjobs=<M> \\
+	  {--inputs=<filelist>|--events-per-job=<N> [--run-number=<R>]}
+
+Notes:
+
+    - Sourcing the setup script must completely define a mu2e
+      environment.
+
+    - the jobname argument defines the name of the top level output directory.
+
+    - outstage should be one of the following registered locations: 
+
+           @knownOutstage
+
+    - Once grid jobs are sumbitted the software libraries pointed to
+      by the setup script, all configuration files, and the input
+      filelist must be left intact until all jobs finish.  
+
+EOF
+;
+}
+
+#================================================================
+sub assert_files_exist {
+    foreach my $f (@_) {
+	die "Error: file \"$f\" does not exist\n"
+	    unless -r $f;
+    }
+}
+
+#================================================================
+sub assert_known_outstage($) {
+    my $d = shift;
+    foreach my $o (@knownOutstage) {
+	$o eq $d and return 1;
+    }
+    die "The specified outstage \"$d\" is not recongized - is this a typo?  Known location: @knownOutstage\n";
+}
+
+#================================================================
+my %opt;
+
+# Process command line opts.
+GetOptions(\%opt, 
+	   "help",
+	   "setup=s",
+	   "fcl=s",
+	   "jobname=s",
+	   "outstage=s",
+	   "njobs=i",
+	   "inputs=s",
+	   "events-per-job=i",
+	   "run-number=i",
+	   ) 
+    or die "\nError processing command line options.\n";
+
+if($opt{'help'}) {
+    print usage();
+    exit 0;
+}
+
+# Check that all of the required args are present:
+foreach my $k ('setup', 'fcl', 'jobname', 'outstage', 'njobs') {
+    defined $opt{$k} or die "Error: --$k must be specified.  Try the --help option.\n";
+}
+
+# All file args are to be passed using full path names.
+my $setup = abs_path($opt{'setup'});
+my $fcl = abs_path($opt{'fcl'});
+my $outstage = abs_path($opt{'outstage'});
+
+assert_files_exist($setup, $fcl, $outstage);
+assert_known_outstage($outstage);
+
+my $njobs = $opt{'njobs'};
+
+$ENV{'MU2EGRID_SETUPSCRIPT'} = $setup;
+$ENV{'MU2EGRID_MASTERFHICL'} = $fcl;
+$ENV{'MU2EGRID_JOBNAME'} = $opt{'jobname'};
+$ENV{'MU2EGRID_OUTSTAGE'} = $outstage;
+
+my $whoami = `whoami`;
+chomp($whoami);
+$ENV{'MU2EGRID_SUBMITTER'} = $whoami;
+
+# Either --inputs or --events-per-job is required.   The --run-number option is only combinable with the latter.
+if(defined $opt{'inputs'}) {
+    if(defined($opt{'events-per-job'})) {
+	die "Arguments --inputs and --events-per-job are mutually exclusive.";
+    }
+
+    if(defined($opt{'run-number'})) {
+	die "Arguments --inputs and --run-number are mutually exclusive.";
+    }
+
+    my $inputs = abs_path($opt{'inputs'});
+    assert_files_exist($inputs);
+
+    $ENV{'MU2EGRID_INPUTLIST'} = $inputs;
+    my $nlines =  `cat $inputs | wc -l`;
+    chomp($nlines);
+    print "Got nlines = $nlines\n";
+
+    if($nlines < $njobs) {
+	die "Error too many requested jobs = $njobs.  The input file list has only $nlines lines: $inputs\n";
+    }
+    $ENV{'MU2EGRID_CHUNKSIZE'} = 1+int($nlines/$njobs)
+
+}
+else {
+    if(!defined($opt{'events-per-job'})) {
+	die "Either --inputs or --events-per-job must be specified.";
+    }
+
+    $ENV{'MU2EGRID_EVENTS_PER_JOB'} = $opt{'events-per-job'};
+
+    if(defined($opt{'run-number'})) {
+	$ENV{'MU2EGRID_RUN_NUMBER'} = $opt{'run-number'};
+    }
+}
+
+my @args = ('-g', '-Q', '-opportunistic', '-N', $njobs );
+while( (my $key, my $value) = each(%ENV) ) {
+    if($key =~ m/^MU2EGRID_\w+$/) {
+	#print "Using env $key => $value\n";
+	push @args,  ('-e', $key);
+    }
+}
+
+push @args, $workerscript;
+
+exec { $jobsub } $jobsub, @args
+    or die "Error executing $jobsub: $!";
+
+#================================================================

@@ -13,12 +13,13 @@ SeedServiceMaxEngines=20
 #================================================================
 createOutStage() {
     # Copy arguments into meaningful names.
-    jobname=${1:?createOutStage: arg1 missing}
-    process=${2:?createOutStage: arg2 missing}
-    user=${3:?createOutStage: arg3 missing}
-    outstagebase=${4:?createOutStage: arg4 missing}
+    outstagebase=${1:?createOutStage: outstagebase missing}
+    user=${2:?createOutStage: user missing}
+    jobname=${3:?createOutStage: jobname missing}
+    cluster=${4:?createOutStage: cluster missing}
+    process=${5:?createOutStage: process missing}
 
-    outtop="${outstagebase}/$user/${jobname}"
+    outtop="${outstagebase}/$user/${jobname}.${cluster}"
     outstage="${outtop}/$(printf '%05d' $process)"
 
     mode=0775
@@ -162,7 +163,7 @@ echo "Running the command: mu2e ${args[@]}" >> testlog.log 2>&1
 /usr/bin/time mu2e "${args[@]}" >> testlog.log 2>&1
 
 # Transfer results
-OUTDIR="$(createOutStage ${jobname} ${process} ${user} ${outstagebase})"
+OUTDIR="$(createOutStage ${outstagebase} ${user} ${jobname} ${cluster} ${process})"
 
 /grid/fermiapp/minos/scripts/lock 
 for f in *; do
