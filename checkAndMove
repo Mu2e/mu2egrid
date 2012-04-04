@@ -1,0 +1,216 @@
+#!/usr/bin/perl -w
+#
+# Checks grid job outputs and moves the to one of good/failed/dupseed dst directories.
+#
+# A.Gaponenko, 2012
+#
+
+use strict;
+use File::Basename;
+use File::Path;
+use Getopt::Long;
+
+use Data::Dumper;
+
+my %opt = (help=>0, add=>0, verbose=>0, 'dry-run'=>0, debug=>0);
+
+#================================================================
+sub usage() {
+    my $self = basename($0);
+    return <<EOF
+Usage: 
+	$self [--dry-run] [--verbose] --dsttop=dir-to-create src-outstage-jobdir1 [src-outstage-jobdir2 ...]
+EOF
+;
+}
+
+#================================================================
+sub logfile($) {
+    (my $jobdir, ) = @_;
+    return $jobdir . '/testlog.log';
+}
+
+#================================================================
+sub parseLogFile($$) {
+    (my $jobStats, my $filename,) = @_;
+    
+    # Assume failed unless can verify otherwise
+    $$jobStats{'status'} = 1;
+
+    open(my $fh, $filename) or die "Can't open file \"$filename\": $!\n";
+
+    while(my $line = <$fh>) {
+
+	if($line =~ m/^Art has completed and will exit with status 0\.$/) {
+	    $$jobStats{'status'} = 0;
+	}
+
+	if($line =~ m/^Instantiated G4Engine engine "g4run:" with seed (\d+)\.$/) {
+	    $$jobStats{'g4seed'} = $1;
+
+	}
+    }
+}
+
+#================================================================
+sub loadDataProcess($$) {
+    (my $jobStats, my $srcdir) = @_;    
+    my $res = {};
+    parseLogFile($res, logfile($srcdir));
+    $$jobStats{$srcdir} = $res;
+}
+
+#================================================================
+sub loadDataCluster($$) {
+    (my $jobStats, my $srctop) = @_;
+
+    my $SRCDD;
+    opendir(SRCDD, $srctop) or die "Can't opendir($srctop): $!\n";
+    while(my $d = readdir(SRCDD)) {
+	next if $d =~ /^\./;
+	loadDataProcess($jobStats, $srctop . '/' . $d);
+    }
+    closedir(SRCDD);
+}
+#================================================================
+sub resolveDuplicates($) {
+    (my $duplist) = @_;
+
+    my $best = $$duplist[0];
+    foreach my $dir (@$duplist) {
+	next if $dir eq $best;
+
+	# Need to decide between the current $best and the candidate $dir
+	# Use the modification time of the log file and prefer the earlier job
+	
+
+	if(-M logfile($best) < -M logfile($dir))  {
+	    $best = $dir;
+	}	
+    }
+    return $best;
+}
+
+#================================================================
+sub classifyJobs($$) {
+    (my $jobStats, my $seeds) = @_;
+
+    while((my $jobdir, my $stats) = each(%$jobStats)) {
+	if($$stats{'status'} != 0) {
+	    $$stats{'decision'} = 'failed';
+	}
+	else {
+	    my $g4seed = $$stats{'g4seed'};
+	    if( resolveDuplicates($$seeds{$g4seed}) eq $jobdir) {
+		$$stats{'decision'} = 'good';
+	    }
+	    else {
+		$$stats{'decision'} = 'dupseed';
+	    }
+	}
+    }
+}
+
+#================================================================
+sub moveDir($$) {
+    (my $srcdir, my $dst) = @_;
+    my $dstdir = $dst . '/' . basename($srcdir);
+
+    if($opt{'verbose'}) {
+	print "Moving: $srcdir ====> $dstdir\n";
+    }
+
+    # We create new dir instead of renaming existing one to fix the ownership
+    if(!$opt{'dry-run'} ) {
+	mkpath($dstdir) or die "Can't create output directory $dstdir: $!\n";
+
+	my $DIR;
+	opendir(DIR, $srcdir) or die "Can't opendir($srcdir): $!\n";
+	while(my $d = readdir(DIR)) {
+	    next if $d =~ /^\./;
+	    rename($srcdir . '/' . $d, $dstdir . '/' . $d) unless $opt{'dry-run'};
+	}
+	closedir(DIR);
+
+	rmdir($srcdir) or warn "Can't remove $srcdir: $!";
+    }
+}
+
+#================================================================
+sub preloadSeeds($) {
+    # FIXME: need to make sure existing jobs already in gooddir 
+    # take precedence over new ones in case of duplicated seeds.
+    die "Not implemented";
+}
+
+#================================================================
+# Process command line opts.
+GetOptions(\%opt, 
+	   "help",
+	   "add",
+	   "verbose",
+	   "dry-run",
+	   "dsttop=s",
+	   "debug",
+	   ) 
+    or die "\nError processing command line options.\n";
+
+if($opt{'help'}) {
+    print usage();
+    exit 0;
+}
+
+die "--dsttop argument must be provided.  Try the --help option\n" unless defined($opt{'dsttop'});
+my $dsttop = $opt{'dsttop'};
+if($opt{'dry-run'}) {
+    $opt{'verbose'} = 1;
+}
+
+die usage() unless $#ARGV >= 0;
+
+# processdir => (status, seed, logfiletimestamp)
+if($opt{'add'}) {
+    preloadSeeds($dsttop);
+}
+else {
+    #die "Destination directory $dsttop already exists - did you want to --add to it?"
+    die "Error: Destination directory $dsttop already exists."
+	if -d $dsttop;
+    
+    if(!$opt{'dry-run'}) {
+	mkdir($dsttop) or die "Error creating dsttop \"$dsttop\": $!\n";
+    }
+}
+
+# jobdir => { infos }
+my %jobStats;
+foreach my $srctop (@ARGV) {
+    if($opt{'verbose'}) {
+	print "Loading job summary data from $srctop\n";
+    }
+    loadDataCluster(\%jobStats, $srctop);
+}
+print "Jobs stats are:\n", Dumper(%jobStats), "\n" if $opt{'debug'};
+
+# Log files have been parsed. Prepare struct for detecting duplicated seeds
+my %seeds;
+while((my $jobdir, my $stats) = each(%jobStats)) {
+    my $g4seed = $$stats{'g4seed'};
+    push @{$seeds{$g4seed}}, $jobdir;
+}
+print "Seed structure:\n", Dumper(%seeds), "\n" if $opt{'debug'};
+
+# Make the final decision on where each file goes
+# This adds decision information to jobStats
+classifyJobs(\%jobStats, \%seeds);
+print "Final decision:\n", Dumper(%jobStats), "\n" if $opt{'debug'};
+
+# Do the actual move of the contents;
+while((my $jobdir, my $stats) = each(%jobStats)) {
+    my $dst = $dsttop . '/' . $$stats{'decision'};
+    moveDir($jobdir, $dst);
+}
+
+exit 0;
+
+#================================================================
