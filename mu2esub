@@ -59,7 +59,7 @@ sub assert_known_outstage($) {
     foreach my $o (@knownOutstage) {
 	$o eq $d and return 1;
     }
-    die "The specified outstage \"$d\" is not recongized - is this a typo?  Known location: @knownOutstage\n";
+    die "The specified outstage \"$d\" is not recognized - is this a typo?  Known location: @knownOutstage\n";
 }
 
 #================================================================
