@@ -95,20 +95,31 @@ sub resolveDuplicates($) {
 sub classifyJobs($$) {
     (my $jobStats, my $seeds) = @_;
 
+    use constant GOOD => 'good';
+    use constant FAILED => 'failed';
+    use constant DUPSEED => 'dupseed';
+
+    my $summary = {GOOD=>0, FAILED=>0, DUPSEED=>0};
+
     while((my $jobdir, my $stats) = each(%$jobStats)) {
 	if($$stats{'status'} != 0) {
-	    $$stats{'decision'} = 'failed';
+	    $$stats{'decision'} = FAILED;
+	    ++$$summary{FAILED};
 	}
 	else {
 	    my $g4seed = $$stats{'g4seed'};
 	    if( resolveDuplicates($$seeds{$g4seed}) eq $jobdir) {
-		$$stats{'decision'} = 'good';
+		$$stats{'decision'} = GOOD;
+		++$$summary{GOOD};
 	    }
 	    else {
-		$$stats{'decision'} = 'dupseed';
+		$$stats{'decision'} = DUPSEED;
+		++$$summary{DUPSEED};
 	    }
 	}
     }
+
+    return $summary;
 }
 
 #================================================================
@@ -162,9 +173,7 @@ if($opt{'help'}) {
 
 die "--dsttop argument must be provided.  Try the --help option\n" unless defined($opt{'dsttop'});
 my $dsttop = $opt{'dsttop'};
-if($opt{'dry-run'}) {
-    $opt{'verbose'} = 1;
-}
+#if($opt{'dry-run'}) { $opt{'verbose'} = 1;}
 
 die usage() unless $#ARGV >= 0;
 
@@ -202,7 +211,7 @@ print "Seed structure:\n", Dumper(%seeds), "\n" if $opt{'debug'};
 
 # Make the final decision on where each file goes
 # This adds decision information to jobStats
-classifyJobs(\%jobStats, \%seeds);
+my $summary = classifyJobs(\%jobStats, \%seeds);
 print "Final decision:\n", Dumper(%jobStats), "\n" if $opt{'debug'};
 
 # Do the actual move of the contents;
@@ -210,6 +219,9 @@ while((my $jobdir, my $stats) = each(%jobStats)) {
     my $dst = $dsttop . '/' . $$stats{'decision'};
     moveDir($jobdir, $dst);
 }
+
+# Conclude with the summary
+print "Summary: ", join(', ', (map { " $_: $$summary{$_}" } keys %$summary )), " for $dsttop\n";
 
 exit 0;
 
