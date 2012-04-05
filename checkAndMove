@@ -74,7 +74,7 @@ sub loadDataCluster($$) {
 }
 #================================================================
 sub resolveDuplicates($) {
-    (my $duplist) = @_;
+    (my $duplist,) = @_;
 
     my $best = $$duplist[0];
     foreach my $dir (@$duplist) {
@@ -107,14 +107,13 @@ sub classifyJobs($$) {
 	    ++$$summary{FAILED};
 	}
 	else {
-	    my $g4seed = $$stats{'g4seed'};
-	    if( resolveDuplicates($$seeds{$g4seed}) eq $jobdir) {
-		$$stats{'decision'} = GOOD;
-		++$$summary{GOOD};
-	    }
-	    else {
+	    if(scalar(%$seeds) and (resolveDuplicates($$seeds{${$$jobStats{$jobdir}}{'g4seed'}}) ne $jobdir)) {
 		$$stats{'decision'} = DUPSEED;
 		++$$summary{DUPSEED};
+	    }
+	    else {
+		$$stats{'decision'} = GOOD;
+		++$$summary{GOOD};
 	    }
 	}
     }
@@ -203,10 +202,21 @@ print "Jobs stats are:\n", Dumper(%jobStats), "\n" if $opt{'debug'};
 
 # Log files have been parsed. Prepare struct for detecting duplicated seeds
 my %seeds;
+my $seen_seeds = 0;
+my $seen_noseeds = 0;
 while((my $jobdir, my $stats) = each(%jobStats)) {
-    my $g4seed = $$stats{'g4seed'};
-    push @{$seeds{$g4seed}}, $jobdir;
+    if(defined($$stats{'g4seed'})) {
+	my $g4seed = $$stats{'g4seed'};
+	push @{$seeds{$g4seed}}, $jobdir;
+	$seen_seeds = 1;
+    }
+    else {
+	$seen_noseeds = 1;
+    }
 }
+die "Got a mixture of log files with and without seeds!  Stop here."
+    unless ($seen_seeds + $seen_noseeds == 1);
+
 print "Seed structure:\n", Dumper(%seeds), "\n" if $opt{'debug'};
 
 # Make the final decision on where each file goes
@@ -221,7 +231,7 @@ while((my $jobdir, my $stats) = each(%jobStats)) {
 }
 
 # Conclude with the summary
-print "Summary: ", join(', ', (map { " $_: $$summary{$_}" } keys %$summary )), " for $dsttop\n";
+print "Summary ", ($seen_seeds ? "(G4 seeds checked)":"(no G4 seeds)"), ": ", join(', ', (map { " $_: $$summary{$_}" } keys %$summary )), " for $dsttop\n";
 
 exit 0;
 
