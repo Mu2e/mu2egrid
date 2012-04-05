@@ -7,6 +7,7 @@
 use File::Basename;
 use Getopt::Long;
 use Cwd 'abs_path';
+use POSIX qw(ceil);
 
 my $jobsub = 'jobsub';
 #my $jobsub = 'jobsub-andr';
@@ -23,7 +24,8 @@ Usage:
 	      --outstage=<dir> \\
 	      --numjobs=<M> \\
 	  {--inputs=<filelist>|--events-per-job=<N> [--run-number=<R>]} \
-	  [--mu2e-setup=<setupmu2e-art.sh>]
+	  [--mu2e-setup=<setupmu2e-art.sh>] \
+	  [--dry-run]
 
 Notes:
 
@@ -63,12 +65,14 @@ sub assert_known_outstage($) {
 }
 
 #================================================================
-my %opt;
-$opt{'mu2e-setup'} = '/grid/fermiapp/products/mu2e/setupmu2e-art.sh';
+my %opt = ('mu2e-setup' => '/grid/fermiapp/products/mu2e/setupmu2e-art.sh',
+	   help => 0, verbose => 0, 'dry-run' => 0);
+
 
 # Process command line opts.
 GetOptions(\%opt, 
 	   "help",
+	   "verbose",
 	   "setup=s",
 	   "mu2e-setup=s",
 	   "fcl=s",
@@ -78,6 +82,7 @@ GetOptions(\%opt,
 	   "inputs=s",
 	   "events-per-job=i",
 	   "run-number=i",
+	   "dry-run",
 	   ) 
     or die "\nError processing command line options.\n";
 
@@ -128,12 +133,12 @@ if(defined $opt{'inputs'}) {
     $ENV{'MU2EGRID_INPUTLIST'} = $inputs;
     my $nlines =  `cat $inputs | wc -l`;
     chomp($nlines);
-    print "Got nlines = $nlines\n";
+    print "nlines = $nlines in file $inputs\n" if $opt{'verbose'};
 
     if($nlines < $njobs) {
 	die "Error too many requested jobs = $njobs.  The input file list has only $nlines lines: $inputs\n";
     }
-    $ENV{'MU2EGRID_CHUNKSIZE'} = 1+int($nlines/$njobs)
+    $ENV{'MU2EGRID_CHUNKSIZE'} = ceil($nlines/$njobs);
 
 }
 else {
@@ -153,12 +158,17 @@ while( (my $key, my $value) = each(%ENV) ) {
     if($key =~ m/^MU2EGRID_\w+$/) {
 	#print "Using env $key => $value\n";
 	push @args,  ('-e', $key);
+	print "Using: $key => $ENV{$key}\n" if $opt{'verbose'};
     }
 }
 
 push @args, $workerscript;
 
-exec { $jobsub } $jobsub, @args
-    or die "Error executing $jobsub: $!";
+print "Command:  $jobsub @args\n";
+if(!$opt{'dry-run'}) {
+    print "Submitting....\n";
+    exec { $jobsub } $jobsub, @args
+	or die "Error executing $jobsub: $!";
+}
 
 #================================================================

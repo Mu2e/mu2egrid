@@ -52,8 +52,9 @@ createJobFCL() {
 
 addSeeds() {
     fcl=${1:?addSeeds: arg1 missing}
-    echo "services.user.SeedService.baseSeed         :  ${2:?addSeeds: arg2 missing}" >> "$fcl"
+    echo "services.user.SeedService.policy           :  autoIncrement"                >> "$fcl"
     echo "services.user.SeedService.maxUniqueEngines :  $SeedServiceMaxEngines"       >> "$fcl"
+    echo "services.user.SeedService.baseSeed         :  ${2:?addSeeds: arg2 missing}" >> "$fcl"
 }
 
 addEventID() {
@@ -63,6 +64,18 @@ addEventID() {
     echo "source.firstEvent   : ${4:-1}" >> "$fcl"
 }
 
+#================================================================
+createInputFileList() {
+    masterlist=${1:?createInputFileList: masterlist arg missing}
+    chunksize=${2:?createInputFileList: chunksize arg missing}
+    process=${3:?createInputFileList: process arg missing}
+
+    firstline=$((1 + $chunksize * $process))
+    
+    mylist="thislist.txt"
+    tail --lines=+"$firstline" "$masterlist" | head --lines="$chunksize" > "$mylist"
+    echo "$mylist"
+}
 
 #================================================================
 printinfo() {
@@ -152,7 +165,7 @@ if [ -z "${MU2EGRID_INPUTLIST}" ]; then
     args+=(-n ${MU2EGRID_EVENTS_PER_JOB:?Error: both MU2EGRID_EVENTS_PER_JOB and MU2EGRID_INPUTLIST not set})
 else
     # There are input files specified.
-    mylist=$(createInputFileList ${MU2EGRID_INPUTLIST} ${MU2EGRID_CHUNKSIZE:?"Error: MU2EGRID_CHUNKSIZE not set"}) ${process}
+    mylist=$(createInputFileList ${MU2EGRID_INPUTLIST} ${MU2EGRID_CHUNKSIZE:?"Error: MU2EGRID_CHUNKSIZE not set"} ${process})
     args+=(-S "$mylist")
 fi
 
