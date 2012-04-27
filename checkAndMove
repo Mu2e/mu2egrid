@@ -20,8 +20,24 @@ sub usage() {
     return <<EOF
 Usage: 
 	$self [--dry-run] [--verbose] --dsttop=dir-to-create src-outstage-jobdir1 [src-outstage-jobdir2 ...]
+OR
+	$self [--dry-run] [--verbose] --dstarea=dir src-outstage-jobdir1 [src-outstage-jobdir2 ...]
+
+The use of --dstarea causes dsttop to be inferred from the src dir names so that
+dstarea/the-inferred-name is used as dsttop.
 EOF
 ;
+}
+
+#================================================================
+sub inferDirName($) {
+    (my $srcdir, ) = @_;
+    $srcdir = basename($srcdir);
+
+    die "Error: inferDirName(): input dir name '$srcdir' does not have a numeric suffix, do not know what to do!\n"
+	unless $srcdir =~ m/^(.+)\.(\d+)$/;
+
+    return $1;
 }
 
 #================================================================
@@ -161,6 +177,7 @@ GetOptions(\%opt,
 	   "verbose",
 	   "dry-run",
 	   "dsttop=s",
+	   "dstarea=s",
 	   "debug",
 	   ) 
     or die "\nError processing command line options.\n";
@@ -170,11 +187,37 @@ if($opt{'help'}) {
     exit 0;
 }
 
-die "--dsttop argument must be provided.  Try the --help option\n" unless defined($opt{'dsttop'});
-my $dsttop = $opt{'dsttop'};
+
+die "Exactly one of --dsttop and --dstarea arguments must be provided. Try the --help option.\n"
+    unless (int(defined($opt{'dsttop'})) + int(defined($opt{'dstarea'})) == 1);
+
 #if($opt{'dry-run'}) { $opt{'verbose'} = 1;}
 
 die usage() unless $#ARGV >= 0;
+
+my $dsttop = "";
+if(defined($opt{'dsttop'})) {
+    $dsttop = $opt{'dsttop'};
+}
+else {
+    my $inferred;
+    foreach my $srctop (@ARGV) {
+	my $tmp = inferDirName($srctop);
+	if(defined($inferred)) {
+	    die "Error: can not determine dsttop: got inconsistent suggestions '$inferred' and '$tmp'\n"
+		unless $tmp eq $inferred;
+	}
+	else {
+	    $inferred = $tmp;
+	}
+    }
+    $dsttop = $opt{'dstarea'} . '/' . $inferred;
+
+    if($opt{'verbose'}) {
+	print "Inferred dsttop = $dsttop\n";
+    }
+}
+
 
 # processdir => (status, seed, logfiletimestamp)
 if($opt{'add'}) {
