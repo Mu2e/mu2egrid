@@ -22,7 +22,7 @@ Usage:
 	$self --setup=<script-to-source.sh> \\
 	      --fcl=<file> --jobname=<name> \\
 	      --outstage=<dir> \\
-	      --numjobs=<M> \\
+	      --njobs=<M> \\
 	  {--inputs=<filelist>|--events-per-job=<N> [--run-number=<R>]} \
 	  [--mu2e-setup=<setupmu2e-art.sh>] \
 	  [--dry-run]
