@@ -123,11 +123,23 @@ sub classifyJobs($$) {
 	    ++$$summary{FAILED};
 	}
 	else {
-	    if(scalar(%$seeds) and (resolveDuplicates($$seeds{${$$jobStats{$jobdir}}{'g4seed'}}) ne $jobdir)) {
-		$$stats{'decision'} = DUPSEED;
-		++$$summary{DUPSEED};
+	    if(scalar(%$seeds)) { # each job in this dataset should have a seed
+		if(defined(${$$jobStats{$jobdir}}{'g4seed'})) {
+		    if (resolveDuplicates($$seeds{${$$jobStats{$jobdir}}{'g4seed'}}) ne $jobdir) {
+			$$stats{'decision'} = DUPSEED;
+			++$$summary{DUPSEED};
+		    }
+		    else {
+			$$stats{'decision'} = GOOD;
+			++$$summary{GOOD};
+		    }
+		}
+		else { # no seed was seen in the log file, but one is required
+		    $$stats{'decision'} = FAILED;
+		    ++$$summary{FAILED};
+		}
 	    }
-	    else {
+	    else { # No seeds for this dataset, and we've checked the status already
 		$$stats{'decision'} = GOOD;
 		++$$summary{GOOD};
 	    }
@@ -257,8 +269,9 @@ while((my $jobdir, my $stats) = each(%jobStats)) {
 	$seen_noseeds = 1;
     }
 }
-die "Got a mixture of log files with and without seeds!  Stop here."
-    unless ($seen_seeds + $seen_noseeds == 1);
+
+# die "Got a mixture of log files with and without seeds!  Stop here."
+#     unless ($seen_seeds + $seen_noseeds == 1);
 
 print "Seed structure:\n", Dumper(%seeds), "\n" if $opt{'debug'};
 
