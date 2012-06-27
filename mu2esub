@@ -41,7 +41,7 @@ Notes:
 
     - Once grid jobs are sumbitted the software libraries pointed to
       by the setup script, all configuration files, and the input
-      filelist must be left intact until all jobs finish.  
+      filelist must be left intact until all the jobs finish.  
 
 EOF
 ;
