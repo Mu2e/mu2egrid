@@ -104,6 +104,7 @@ export cluster=${CLUSTER:-1}
 export process=${PROCESS:-0}
 export user=${MU2EGRID_SUBMITTER:?"Error: MU2EGRID_SUBMITTER not set"}
 export masterfhicl=${MU2EGRID_MASTERFHICL:?"Error: MU2EGRID_MASTERFHICL not set"}
+export fcledit=${MU2EGRID_FCLEDIT:-''}
 export jobname=${MU2EGRID_JOBNAME:?"Error: MU2EGRID_JOBNAME not set"}
 
 #outstagebase="/mu2e/data/outstage"
@@ -169,13 +170,29 @@ else
     args+=(-S "$mylist")
 fi
 
+# Run the optional fcledit user script
+JOBSTATUS=0
+if [ -n "$fcledit" ]; then
+    "$fcledit" "$JOBCONFIG" "$process"
+    JOBSTATUS=$?
+fi
+
 # NB: can stage large input files here to local disk
 # Is this useful/needed?
 
 # Run the Offline job.
-echo "Starting on host $(uname -a) on $(date)" >> testlog.log 2>&1
-echo "Running the command: mu2e ${args[@]}" >> testlog.log 2>&1
-/usr/bin/time mu2e "${args[@]}" >> testlog.log 2>&1
+if [ "$JOBSTATUS" -eq 0 ]; then
+    echo "Starting on host $(uname -a) on $(date)" >> testlog.log 2>&1
+    echo "Running the command: mu2e ${args[@]}" >> testlog.log 2>&1
+    /usr/bin/time mu2e "${args[@]}" >> testlog.log 2>&1
+    JOBSTATUS=$?
+else
+    echo "Aborting the job because the user --fcledit script failed.  The command line was:" >> testlog.log 2>&1
+    echo ""  >> testlog.log 2>&1
+    echo "$fcledit" "$JOBCONFIG" "$process" >> testlog.log 2>&1
+    echo ""  >> testlog.log 2>&1
+    echo "Got exit status: $JOBSTATUS" >> testlog.log 2>&1
+fi
 
 # Transfer results
 OUTDIR="$(createOutStage ${outstagebase} ${user} ${jobname} ${cluster} ${process})"
@@ -194,4 +211,4 @@ for f in *; do
 done
 /grid/fermiapp/minos/scripts/lock free
 
-exit 0
+exit $JOBSTATUS

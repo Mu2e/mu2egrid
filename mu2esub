@@ -25,6 +25,7 @@ Usage:
 	      --njobs=<M> \\
 	  {--inputs=<filelist>|--events-per-job=<N> [--run-number=<R>]} \
 	  [--mu2e-setup=<setupmu2e-art.sh>] \
+	  [--fcledit=<script>] \
 	  [--dry-run]
 
 Notes:
@@ -32,6 +33,12 @@ Notes:
     - The --setup argument must point to the setup.sh script in a user
       Offline area.  The --mu2e-setup arg is optional, by default
       the current official mu2e release is used.
+
+    - The optional --fcledit script receives the name of the generated
+      fhicl file as the first command line argument and the sequential
+      process number (0 to njobs-1) as the second argument.  It may
+      modify the fhicl file.  The process is aborted unless the script
+      exits with zero status code.
 
     - the jobname argument defines the name of the top level output directory.
 
@@ -50,7 +57,7 @@ EOF
 #================================================================
 sub assert_files_exist {
     foreach my $f (@_) {
-	die "Error: file \"$f\" does not exist\n"
+	die "Error: file \"$f\" does not exist or not readable\n"
 	    unless -r $f;
     }
 }
@@ -76,6 +83,7 @@ GetOptions(\%opt,
 	   "setup=s",
 	   "mu2e-setup=s",
 	   "fcl=s",
+	   "fcledit=s",
 	   "jobname=s",
 	   "outstage=s",
 	   "njobs=i",
@@ -152,6 +160,20 @@ else {
 	$ENV{'MU2EGRID_RUN_NUMBER'} = $opt{'run-number'};
     }
 }
+
+#----------------
+# Handle the --fcledit options
+my $fcledit = '';
+if(defined($opt{'fcledit'})) {
+    $fcledit = abs_path($opt{'fcledit'});
+    assert_files_exist($fcledit);
+    die "Error: file \"$fcledit\" is not executable\n"
+	unless -x $fcledit;
+
+}
+$ENV{'MU2EGRID_FCLEDIT'} = $fcledit;
+
+#----------------
 
 my @args = ('-g', '-Q', '-opportunistic', '-N', $njobs );
 while( (my $key, my $value) = each(%ENV) ) {
