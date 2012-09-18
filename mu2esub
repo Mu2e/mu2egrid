@@ -25,7 +25,8 @@ Usage:
 	      --njobs=<M> \\
 	  {--inputs=<filelist>|--events-per-job=<N> [--run-number=<R>]} \
 	  [--mu2e-setup=<setupmu2e-art.sh>] \
-	  [--dry-run]
+	  [--dry-run] \
+	  [--verbose]
 
 Notes:
 
