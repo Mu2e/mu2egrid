@@ -47,12 +47,22 @@ EOF
 ;
 }
 
+
 #================================================================
 sub assert_files_exist {
     foreach my $f (@_) {
 	die "Error: file \"$f\" does not exist\n"
 	    unless -r $f;
     }
+}
+
+
+#================================================================
+sub find_file($) {
+    my $fn = shift;
+    my $res = abs_path($fn);
+    die "Error: file \"$fn\" does not exist\n" unless defined $res;
+    return $res;
 }
 
 #================================================================
@@ -97,12 +107,11 @@ foreach my $k ('setup', 'mu2e-setup', 'fcl', 'jobname', 'outstage', 'njobs') {
 }
 
 # All file args are to be passed using full path names.
-my $setup = abs_path($opt{'setup'});
-my $mu2esetup = abs_path($opt{'mu2e-setup'});
-my $fcl = abs_path($opt{'fcl'});
-my $outstage = abs_path($opt{'outstage'});
+my $setup = find_file($opt{'setup'});
+my $mu2esetup = find_file($opt{'mu2e-setup'});
+my $fcl = find_file($opt{'fcl'});
+my $outstage = find_file($opt{'outstage'});
 
-assert_files_exist($setup, $mu2esetup, $fcl, $outstage);
 assert_known_outstage($outstage);
 
 my $njobs = $opt{'njobs'};
@@ -127,8 +136,7 @@ if(defined $opt{'inputs'}) {
 	die "Arguments --inputs and --run-number are mutually exclusive.";
     }
 
-    my $inputs = abs_path($opt{'inputs'});
-    assert_files_exist($inputs);
+    my $inputs = find_file($opt{'inputs'});
 
     $ENV{'MU2EGRID_INPUTLIST'} = $inputs;
     my $nlines =  `cat $inputs | wc -l`;
