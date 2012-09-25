@@ -44,7 +44,7 @@ generateSeed() {
 
 #================================================================
 createJobFCL() {
-    fcl="./thisjob.fcl"    
+    fcl="./mu2e.fcl"    
     /bin/cp "${1:?createJobFCL: arg1 missing}" "$fcl"
     echo "services.scheduler.defaultExceptions : false"             >> "$fcl"
     echo "$fcl"
@@ -72,7 +72,7 @@ createInputFileList() {
 
     firstline=$((1 + $chunksize * $process))
     
-    mylist="thislist.txt"
+    mylist="mu2eInputFiles.txt"
     tail --lines=+"$firstline" "$masterlist" | head --lines="$chunksize" > "$mylist"
     echo "$mylist"
 }
@@ -173,9 +173,9 @@ fi
 # Is this useful/needed?
 
 # Run the Offline job.
-echo "Starting on host $(uname -a) on $(date)" >> testlog.log 2>&1
-echo "Running the command: mu2e ${args[@]}" >> testlog.log 2>&1
-/usr/bin/time mu2e "${args[@]}" >> testlog.log 2>&1
+echo "Starting on host $(uname -a) on $(date)" >> mu2e.log 2>&1
+echo "Running the command: mu2e ${args[@]}" >> mu2e.log 2>&1
+/usr/bin/time mu2e "${args[@]}" >> mu2e.log 2>&1
 
 # Transfer results
 OUTDIR="$(createOutStage ${outstagebase} ${user} ${jobname} ${cluster} ${process})"
