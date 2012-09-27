@@ -20,23 +20,29 @@ sub usage() {
     return <<EOF
 Usage: 
 	$self --setup=<script-to-source.sh> \\
-	      --fcl=<file> --jobname=<name> \\
+	      --fcl=<file> \\
 	      --outstage=<dir> \\
 	      --njobs=<M> \\
-	  {--inputs=<filelist>|--events-per-job=<N> [--run-number=<R>]} \
-	  [--mu2e-setup=<setupmu2e-art.sh>] \
-	  [--dry-run] \
+	  {--inputs=<filelist>|--events-per-job=<N> [--run-number=<R>]} \\
+	  [--jobname=<name>] \\
+	  [--mu2e-setup=<setupmu2e-art.sh>] \\
+	  [--dry-run] \\
 	  [--verbose]
 
-Notes:
+Where [] denote optional settings, and {alternative1|alternative2}
+constructs denote mutually exclusive alternatives.
 
+Notes:
+    
     - The --setup argument must point to the setup.sh script in a user
       Offline area.  The --mu2e-setup arg is optional, by default
       the current official mu2e release is used.
 
-    - the jobname argument defines the name of the top level output directory.
+    - The jobname argument defines the name of the top level output
+      directory.  If this parameter is not specified, a name will be
+      derived from the fcl file name.
 
-    - outstage should be one of the following registered locations: 
+    - Outstage should be one of the following registered locations: 
 
            @knownOutstage
 
@@ -103,7 +109,7 @@ if($opt{'help'}) {
 }
 
 # Check that all of the required args are present:
-foreach my $k ('setup', 'mu2e-setup', 'fcl', 'jobname', 'outstage', 'njobs') {
+foreach my $k ('setup', 'mu2e-setup', 'fcl', 'outstage', 'njobs') {
     defined $opt{$k} or die "Error: --$k must be specified.  Try the --help option.\n";
 }
 
@@ -117,10 +123,18 @@ assert_known_outstage($outstage);
 
 my $njobs = $opt{'njobs'};
 
+my $jobname;
+if(defined $opt{'jobname'}) {
+    $jobname = $opt{'jobname'};
+}
+else {
+    $jobname = basename($fcl, ('.fcl',) );
+}
+
 $ENV{'MU2EGRID_USERSETUP'} = $setup;
 $ENV{'MU2EGRID_MU2ESETUP'} = $mu2esetup;
 $ENV{'MU2EGRID_MASTERFHICL'} = $fcl;
-$ENV{'MU2EGRID_JOBNAME'} = $opt{'jobname'};
+$ENV{'MU2EGRID_JOBNAME'} = $jobname;
 $ENV{'MU2EGRID_OUTSTAGE'} = $outstage;
 
 my $whoami = `whoami`;
