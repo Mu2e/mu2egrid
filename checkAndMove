@@ -21,7 +21,7 @@ sub usage() {
 Usage: 
 	$self [--dry-run] [--verbose] --dsttop=dir-to-create src-outstage-jobdir1 [src-outstage-jobdir2 ...]
 OR
-	$self [--dry-run] [--verbose] --dstarea=dir src-outstage-jobdir1 [src-outstage-jobdir2 ...]
+	$self [--dry-run] [--verbose] --dstarea=existing-dir src-outstage-jobdir1 [src-outstage-jobdir2 ...]
 
 The use of --dstarea causes dsttop to be inferred from the src dir names so that
 dstarea/the-inferred-name is used as dsttop.
@@ -43,7 +43,7 @@ sub inferDirName($) {
 #================================================================
 sub logfile($) {
     (my $jobdir, ) = @_;
-    return $jobdir . '/testlog.log';
+    return $jobdir . '/mu2e.log';
 }
 
 #================================================================
