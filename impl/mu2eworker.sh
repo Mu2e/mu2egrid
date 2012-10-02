@@ -87,8 +87,8 @@ printinfo() {
     echo "The environment is:"
     /usr/bin/printenv
     echo "================================================================"
-    echo "Local disk space:"
-    df -l -P
+    echo "Visible disk space:"
+    df -P
     echo "================================================================"
     echo "TMPDIR: ls -al"
     ls -al "$TMPDIR"
