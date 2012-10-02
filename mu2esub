@@ -176,7 +176,7 @@ else {
     }
 }
 
-my @args = ('-g', '-Q', '-opportunistic', '-N', $njobs );
+my @args = ('--grid', '--mail_never', '--opportunistic', '-N', $njobs);
 while( (my $key, my $value) = each(%ENV) ) {
     if($key =~ m/^MU2EGRID_\w+$/) {
 	#print "Using env $key => $value\n";
@@ -193,5 +193,7 @@ if(!$opt{'dry-run'}) {
     exec { $jobsub } $jobsub, @args
 	or die "Error executing $jobsub: $!";
 }
-
+else {
+    print "Not submitting because --dry-run was requested.\n";
+}
 #================================================================
