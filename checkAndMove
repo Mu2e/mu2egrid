@@ -53,17 +53,17 @@ sub parseLogFile($$) {
     # Assume failed unless can verify otherwise
     $$jobStats{'status'} = 1;
 
-    open(my $fh, $filename) or die "Can't open file \"$filename\": $!\n";
+    if(open(my $fh, $filename)) {
 
-    while(my $line = <$fh>) {
+	while(my $line = <$fh>) {
 
-	if($line =~ m/^Art has completed and will exit with status 0\.$/) {
-	    $$jobStats{'status'} = 0;
-	}
+	    if($line =~ m/^Art has completed and will exit with status 0\.$/) {
+		$$jobStats{'status'} = 0;
+	    }
 
-	if($line =~ m/^Instantiated G4Engine engine "g4run:" with seed (\d+)\.$/) {
-	    $$jobStats{'g4seed'} = $1;
-
+	    if($line =~ m/^Instantiated G4Engine engine "g4run:" with seed (\d+)\.$/) {
+		$$jobStats{'g4seed'} = $1;
+	    }
 	}
     }
 }
