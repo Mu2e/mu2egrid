@@ -286,6 +286,13 @@ while((my $jobdir, my $stats) = each(%jobStats)) {
     moveDir($jobdir, $dst);
 }
 
+# Remove empty top level srcdirs
+if(!$opt{'dry-run'}) {
+    foreach my $srctop (@ARGV) {
+	rmdir $srctop or warn "Could not delete $srctop: $!\n";
+    }
+}
+
 # Conclude with the summary
 print "Summary ", ($seen_seeds ? "(G4 seeds checked)":"(no G4 seeds)"), ": ", join(', ', (map { " $_: $$summary{$_}" } keys %$summary )), " for $dsttop\n";
 
