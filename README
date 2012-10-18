@@ -1,0 +1,14 @@
+How to make a ups product from this package
+The process requires cmake and cetbuildtools v2_03_06 as ups products.
+
+1. check out the code 
+   We will refer to this directory as source_code_dir
+2. create a working build directory somewhere
+   We refer to the build directory as build_dir
+3. cd build_dir
+4. source source_code_dir/ups/setup_for_development
+5. cmake $CETPKG_SOURCE
+6. make package
+   This creates a tarball in build_dir 
+   The tarball is your ups product, 
+   ready to be copied and unwound in artexternals

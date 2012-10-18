@@ -1,0 +1,17 @@
+# The parent line must be the first non-comment line in the file
+# This line defines the product name and version
+parent mu2egrid v1_00_00
+
+# install directory locations
+# this product has no include or lib directories
+incdir      -
+libdir      -
+bindir      product_dir	bin
+# The no_fq_dir keyword indicates that this product is NULL flavored
+no_fq_dir
+
+#
+product version
+none	none
+
+only_for_build cetbuildtools    v2_03_06
