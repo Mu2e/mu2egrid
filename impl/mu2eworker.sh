@@ -158,7 +158,13 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
             # Case (a): no input file list
             # Define new event IDs
             addEventID "$JOBCONFIG" ${MU2EGRID_RUN_NUMBER:-$cluster} ${process}
-            args+=(-n ${MU2EGRID_EVENTS_PER_JOB:?Error: both MU2EGRID_EVENTS_PER_JOB and MU2EGRID_INPUTLIST not set})
+
+	    nevents=${MU2EGRID_EVENTS_PER_JOB:?Error: both MU2EGRID_EVENTS_PER_JOB and MU2EGRID_INPUTLIST not set}
+	    # treat --events-per-job=0 as a special case.
+	    if [ $nevents -ne 0 ]; then
+		args+=(-n ${nevents})
+	    fi
+
         else
             # There are input files specified.
             mylist=$(createInputFileList ${MU2EGRID_INPUTLIST} ${MU2EGRID_CHUNKSIZE:?"Error: MU2EGRID_CHUNKSIZE not set"} ${process})
