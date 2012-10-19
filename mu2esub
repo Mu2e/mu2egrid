@@ -27,6 +27,7 @@ Usage:
 	      [--jobname=<name>] \\
 	      [--fcledit=<script>] \\
 	      [--mu2e-setup=<setupmu2e-art.sh>] \\
+	      [--test-queue] \\
 	      [--dry-run] \\
 	      [--verbose]
 
@@ -34,6 +35,9 @@ Where [] denote optional settings, and {alternative1|alternative2}
 constructs denote mutually exclusive alternatives.
 
 Notes:
+
+    - All option names may be abbreviates as long as this is unambiguous.
+      (For example, '--in' and '--inputs' mean the same.)
     
     - The --setup argument must point to the setup.sh script in a user
       Offline area.  The --mu2e-setup arg is optional, by default
@@ -49,6 +53,10 @@ Notes:
       total number of jobs in this cluster as the third.  It may
       modify the fhicl file.  The process is aborted unless the script
       exits with zero status code.
+
+    - The --test-queue option submits a test job.  The job will run
+      with highest possible priority, but you can only have one such
+      job in the queue at a time.
 
     - Outstage should be one of the following registered locations: 
 
@@ -92,7 +100,7 @@ sub assert_known_outstage($) {
 
 #================================================================
 my %opt = ('mu2e-setup' => '/grid/fermiapp/products/mu2e/setupmu2e-art.sh',
-	   help => 0, verbose => 0, 'dry-run' => 0);
+	   help => 0, verbose => 0, 'test-queue' => 0, 'dry-run' => 0);
 
 
 # Process command line opts.
@@ -109,6 +117,7 @@ GetOptions(\%opt,
 	   "inputs=s",
 	   "events-per-job=i",
 	   "run-number=i",
+	   "test-queue",
 	   "dry-run",
 	   ) 
     or die "\nError processing command line options.\n";
@@ -132,6 +141,10 @@ my $outstage = find_file($opt{'outstage'});
 assert_known_outstage($outstage);
 
 my $njobs = $opt{'njobs'};
+my $test_queue = $opt{'test-queue'};
+if($test_queue && ($njobs > 1)) {
+    print "WARNING: trying to run more than one job while requesting --test-queue\n";
+}
 
 my $jobname;
 if(defined $opt{'jobname'}) {
@@ -199,6 +212,9 @@ $ENV{'MU2EGRID_FCLEDIT'} = $fcledit;
 
 #----------------
 my @args = ('--grid', '--mail_never', '--opportunistic', '-N', $njobs);
+if($test_queue) {
+    push @args, '--test_queue';
+}
 
 while( (my $key, my $value) = each(%ENV) ) {
     if($key =~ m/^MU2EGRID_\w+$/) {
