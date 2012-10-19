@@ -184,7 +184,7 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
         # Run the Offline job.
 	if [ "$ret" -eq 0 ]; then
 	    echo "Starting on host $(uname -a) on $(date)" >> mu2e.log 2>&1
-	    echo "Running the command: mu2e ${args[@]}" >> mu2elog 2>&1
+	    echo "Running the command: mu2e ${args[@]}" >> mu2e.log 2>&1
 	    /usr/bin/time mu2e "${args[@]}" >> mu2e.log 2>&1
 	    ret=$?
 	else
