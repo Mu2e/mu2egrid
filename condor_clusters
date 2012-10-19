@@ -12,7 +12,7 @@ sub usage() {
     return <<EOF
 Usage: 
 
-	condor_clusters [--brief] username
+	condor_clusters [--brief] [username]
 
 will display a list of all active condor clusters for the user and job
 count in each cluster.  If the '--brief' options is given, just cluster
@@ -48,13 +48,22 @@ sub getUserClusters($) {
 my %opt = (help => 0, brief => 0);
 GetOptions(\%opt, "help", "brief") or die "\nError processing command line options.\n";
 
-if($opt{'help'} or ($#ARGV != 0)) {
+if($opt{'help'} or ($#ARGV > 0)) {
     print usage();
 }
 else {
     my $brief = $opt{'brief'};
 
-    my $clusters = getUserClusters($ARGV[0]);
+    my $user;
+    if($#ARGV == 0) {
+	$user = $ARGV[0];
+    }
+    else {
+	$user = `whoami`;
+	chomp($user);
+    }
+
+    my $clusters = getUserClusters($user);
 
     if(!$brief) {
 	print "Cluster\tnjobs\n";
