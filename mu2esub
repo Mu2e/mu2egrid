@@ -44,8 +44,9 @@ Notes:
       derived from the fcl file name.
 
     - The optional --fcledit script receives the name of the generated
-      fhicl file as the first command line argument and the sequential
-      process number (0 to njobs-1) as the second argument.  It may
+      fhicl file as the first command line argument, the sequential
+      process number (0 to njobs-1) as the second argument, and the
+      total number of jobs in this cluster as the third.  It may
       modify the fhicl file.  The process is aborted unless the script
       exits with zero status code.
 
@@ -145,6 +146,7 @@ $ENV{'MU2EGRID_MU2ESETUP'} = $mu2esetup;
 $ENV{'MU2EGRID_MASTERFHICL'} = $fcl;
 $ENV{'MU2EGRID_JOBNAME'} = $jobname;
 $ENV{'MU2EGRID_OUTSTAGE'} = $outstage;
+$ENV{'MU2EGRID_NCLUSTERJOBS'} = $njobs;
 
 my $whoami = `whoami`;
 chomp($whoami);

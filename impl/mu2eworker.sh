@@ -171,7 +171,7 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
         # Run the optional fcledit user script
 	ret=0
 	if [ -n "$fcledit" ]; then
-	    "$fcledit" "$JOBCONFIG" "$process"
+	    "$fcledit" "$JOBCONFIG" "$process" "$MU2EGRID_NCLUSTERJOBS"
 	    ret=$?
 	fi
 
