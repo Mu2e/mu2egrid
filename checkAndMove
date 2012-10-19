@@ -21,7 +21,7 @@ sub usage() {
 Usage: 
 	$self [--dry-run] [--verbose] --dsttop=dir-to-create src-outstage-jobdir1 [src-outstage-jobdir2 ...]
 OR
-	$self [--dry-run] [--verbose] --dstarea=dir src-outstage-jobdir1 [src-outstage-jobdir2 ...]
+	$self [--dry-run] [--verbose] --dstarea=existing-dir src-outstage-jobdir1 [src-outstage-jobdir2 ...]
 
 The use of --dstarea causes dsttop to be inferred from the src dir names so that
 dstarea/the-inferred-name is used as dsttop.
@@ -43,7 +43,7 @@ sub inferDirName($) {
 #================================================================
 sub logfile($) {
     (my $jobdir, ) = @_;
-    return $jobdir . '/testlog.log';
+    return $jobdir . '/mu2e.log';
 }
 
 #================================================================
@@ -53,17 +53,17 @@ sub parseLogFile($$) {
     # Assume failed unless can verify otherwise
     $$jobStats{'status'} = 1;
 
-    open(my $fh, $filename) or die "Can't open file \"$filename\": $!\n";
+    if(open(my $fh, $filename)) {
 
-    while(my $line = <$fh>) {
+	while(my $line = <$fh>) {
 
-	if($line =~ m/^Art has completed and will exit with status 0\.$/) {
-	    $$jobStats{'status'} = 0;
-	}
+	    if($line =~ m/^Art has completed and will exit with status 0\.$/) {
+		$$jobStats{'status'} = 0;
+	    }
 
-	if($line =~ m/^Instantiated G4Engine engine "g4run:" with seed (\d+)\.$/) {
-	    $$jobStats{'g4seed'} = $1;
-
+	    if($line =~ m/^Instantiated G4Engine engine "g4run:" with seed (\d+)\.$/) {
+		$$jobStats{'g4seed'} = $1;
+	    }
 	}
     }
 }
@@ -284,6 +284,13 @@ print "Final decision:\n", Dumper(%jobStats), "\n" if $opt{'debug'};
 while((my $jobdir, my $stats) = each(%jobStats)) {
     my $dst = $dsttop . '/' . $$stats{'decision'};
     moveDir($jobdir, $dst);
+}
+
+# Remove empty top level srcdirs
+if(!$opt{'dry-run'}) {
+    foreach my $srctop (@ARGV) {
+	rmdir $srctop or warn "Could not delete $srctop: $!\n";
+    }
 }
 
 # Conclude with the summary

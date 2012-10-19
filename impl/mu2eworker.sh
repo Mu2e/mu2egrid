@@ -44,7 +44,7 @@ generateSeed() {
 
 #================================================================
 createJobFCL() {
-    fcl="./thisjob.fcl"    
+    fcl="./mu2e.fcl"    
     /bin/cp "${1:?createJobFCL: arg1 missing}" "$fcl"
     echo "services.scheduler.defaultExceptions : false"             >> "$fcl"
     echo "$fcl"
@@ -72,7 +72,7 @@ createInputFileList() {
 
     firstline=$((1 + $chunksize * $process))
     
-    mylist="thislist.txt"
+    mylist="mu2eInputFiles.txt"
     tail --lines=+"$firstline" "$masterlist" | head --lines="$chunksize" > "$mylist"
     echo "$mylist"
 }
@@ -87,8 +87,8 @@ printinfo() {
     echo "The environment is:"
     /usr/bin/printenv
     echo "================================================================"
-    echo "Local disk space:"
-    df -l -P
+    echo "Visible disk space:"
+    df -P
     echo "================================================================"
     echo "TMPDIR: ls -al"
     ls -al "$TMPDIR"
@@ -111,23 +111,12 @@ export jobname=${MU2EGRID_JOBNAME:?"Error: MU2EGRID_JOBNAME not set"}
 #outstagebase="/grid/data/mu2e/outstage"
 export outstagebase=${MU2EGRID_OUTSTAGE:?"Error: MU2EGRID_OUTSTAGE not set"}
 
-#================================================================
-# Establish environment.
-
-if ! source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
-    echo "Error sourcing setup script ${MU2EGRID_MU2ESETUP}: status code $?"
-    exit 1
-fi
-if ! source "${MU2EGRID_USERSETUP:?Error: MU2EGRID_USERSETUP: not defined}"; then
-    echo "Error sourcing setup script ${MU2EGRID_USERSETUP}: status code $?"
-    exit 1
-fi
 
 #================================================================
 # TMPDIR is defined and created by Condor.
 WORKDIR="$TMPDIR"
 { [[ -n "$WORKDIR" ]] && mkdir -p "$WORKDIR"; } || \
-  { echo "ERROR: unable to create temporary directory!" 1>&2; exit 1; }
+    { echo "ERROR: unable to create temporary directory!" 1>&2; exit 1; }
 # Condor will get rid of any files we leave anyway, but we
 # can also clean up our own files
 trap "[[ -n \"$WORKDIR\" ]] && { cd /; rm -rf \"$WORKDIR\"; }" 0
@@ -138,63 +127,80 @@ cd $WORKDIR
 printinfo > sysinfo.log 2>&1 
 
 #================================================================
-# There are different typs of jobbs:
-#
-# a) initial G4 generation+simulation.  Does not require input 
-#    data files, but must specify run/subrun number in fcl and seeds.
-#
-# b) A "continuation" G4 job.  Needs input data file and seeds.
-#    Must NOT specify run numbers.
-#
-# c) An analysis job.  Like (b), except it does not require seeds.
-#    There should be no harm in specifying seeds for such jobs, other
-#    then causing unnecessary load of seed svc.  On the other hand
-#    a non-G4 job might use random numbers, so it is safer to always
-#    define random seeds.  Therefore we don't introduce a special 
-#    case for (c) and treat it in this script exactly as (b).
+# Establish environment.
 
-JOBCONFIG=$(createJobFCL "$masterfhicl")
-addSeeds "$JOBCONFIG" "${MU2EGRID_BASE_SEED:-$(generateSeed)}"
+if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
+    if source "${MU2EGRID_USERSETUP:?Error: MU2EGRID_USERSETUP: not defined}"; then
 
-# mu2e job args: this is the common part of cmdline
-declare -a args=(-c "$JOBCONFIG")
+        #================================================================
+        # There are different typs of jobbs:
+        #
+        # a) initial G4 generation+simulation.  Does not require input 
+        #    data files, but must specify run/subrun number in fcl and seeds.
+        #
+        # b) A "continuation" G4 job.  Needs input data file and seeds.
+        #    Must NOT specify run numbers.
+        #
+        # c) An analysis job.  Like (b), except it does not require seeds.
+        #    There should be no harm in specifying seeds for such jobs, other
+        #    then causing unnecessary load of seed svc.  On the other hand
+        #    a non-G4 job might use random numbers, so it is safer to always
+        #    define random seeds.  Therefore we don't introduce a special 
+        #    case for (c) and treat it in this script exactly as (b).
+        
+        JOBCONFIG=$(createJobFCL "$masterfhicl")
+        addSeeds "$JOBCONFIG" "${MU2EGRID_BASE_SEED:-$(generateSeed)}"
+        
+        # mu2e job args: this is the common part of cmdline
+        declare -a args=(-c "$JOBCONFIG")
+        
+        if [ -z "${MU2EGRID_INPUTLIST}" ]; then
+            # Case (a): no input file list
+            # Define new event IDs
+            addEventID "$JOBCONFIG" ${MU2EGRID_RUN_NUMBER:-$cluster} ${process}
+            args+=(-n ${MU2EGRID_EVENTS_PER_JOB:?Error: both MU2EGRID_EVENTS_PER_JOB and MU2EGRID_INPUTLIST not set})
+        else
+            # There are input files specified.
+            mylist=$(createInputFileList ${MU2EGRID_INPUTLIST} ${MU2EGRID_CHUNKSIZE:?"Error: MU2EGRID_CHUNKSIZE not set"} ${process})
+            args+=(-S "$mylist")
+        fi
+        
+        # NB: can stage large input files here to local disk
+        # Is this useful/needed?
 
-if [ -z "${MU2EGRID_INPUTLIST}" ]; then
-    # Case (a): no input file list
-    # Define new event IDs
-    addEventID "$JOBCONFIG" ${MU2EGRID_RUN_NUMBER:-$cluster} ${process}
-    args+=(-n ${MU2EGRID_EVENTS_PER_JOB:?Error: both MU2EGRID_EVENTS_PER_JOB and MU2EGRID_INPUTLIST not set})
+        # Run the optional fcledit user script
+	ret=0
+	if [ -n "$fcledit" ]; then
+	    "$fcledit" "$JOBCONFIG" "$process"
+	    ret=$?
+	fi
+
+        # Run the Offline job.
+	if [ "$ret" -eq 0 ]; then
+	    echo "Starting on host $(uname -a) on $(date)" >> mu2e.log 2>&1
+	    echo "Running the command: mu2e ${args[@]}" >> mu2elog 2>&1
+	    /usr/bin/time mu2e "${args[@]}" >> mu2e.log 2>&1
+	    ret=$?
+	else
+	    echo "Aborting the job because the user --fcledit script failed.  The command line was:" >> testlog.log 2>&1
+	    echo ""  >> testlog.log 2>&1
+	    echo "$fcledit" "$JOBCONFIG" "$process" >> testlog.log 2>&1
+	    echo ""  >> testlog.log 2>&1
+	    echo "Got exit status: $ret" >> testlog.log 2>&1
+	fi
+
+    else
+	echo "Error sourcing setup script ${MU2EGRID_USERSETUP}: status code $?"
+	ret=1
+    fi
 else
-    # There are input files specified.
-    mylist=$(createInputFileList ${MU2EGRID_INPUTLIST} ${MU2EGRID_CHUNKSIZE:?"Error: MU2EGRID_CHUNKSIZE not set"} ${process})
-    args+=(-S "$mylist")
+    echo "Error sourcing setup script ${MU2EGRID_MU2ESETUP}: status code $?"
+    ret=1
 fi
 
-# Run the optional fcledit user script
-JOBSTATUS=0
-if [ -n "$fcledit" ]; then
-    "$fcledit" "$JOBCONFIG" "$process"
-    JOBSTATUS=$?
-fi
+#================================================================
+# Transfer results (or system info in case of environment problems)
 
-# NB: can stage large input files here to local disk
-# Is this useful/needed?
-
-# Run the Offline job.
-if [ "$JOBSTATUS" -eq 0 ]; then
-    echo "Starting on host $(uname -a) on $(date)" >> testlog.log 2>&1
-    echo "Running the command: mu2e ${args[@]}" >> testlog.log 2>&1
-    /usr/bin/time mu2e "${args[@]}" >> testlog.log 2>&1
-    JOBSTATUS=$?
-else
-    echo "Aborting the job because the user --fcledit script failed.  The command line was:" >> testlog.log 2>&1
-    echo ""  >> testlog.log 2>&1
-    echo "$fcledit" "$JOBCONFIG" "$process" >> testlog.log 2>&1
-    echo ""  >> testlog.log 2>&1
-    echo "Got exit status: $JOBSTATUS" >> testlog.log 2>&1
-fi
-
-# Transfer results
 OUTDIR="$(createOutStage ${outstagebase} ${user} ${jobname} ${cluster} ${process})"
 
 /grid/fermiapp/minos/scripts/lock 
@@ -211,4 +217,4 @@ for f in *; do
 done
 /grid/fermiapp/minos/scripts/lock free
 
-exit $JOBSTATUS
+exit $ret

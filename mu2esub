@@ -20,19 +20,28 @@ sub usage() {
     return <<EOF
 Usage: 
 	$self --setup=<script-to-source.sh> \\
-	      --fcl=<file> --jobname=<name> \\
+	      --fcl=<file> \\
 	      --outstage=<dir> \\
 	      --njobs=<M> \\
-	  {--inputs=<filelist>|--events-per-job=<N> [--run-number=<R>]} \
-	  [--mu2e-setup=<setupmu2e-art.sh>] \
-	  [--fcledit=<script>] \
-	  [--dry-run]
+	      {--inputs=<filelist>|--events-per-job=<N> [--run-number=<R>]} \\
+	      [--jobname=<name>] \\
+	      [--fcledit=<script>] \\
+	      [--mu2e-setup=<setupmu2e-art.sh>] \\
+	      [--dry-run] \\
+	      [--verbose]
+
+Where [] denote optional settings, and {alternative1|alternative2}
+constructs denote mutually exclusive alternatives.
 
 Notes:
-
+    
     - The --setup argument must point to the setup.sh script in a user
       Offline area.  The --mu2e-setup arg is optional, by default
       the current official mu2e release is used.
+
+    - The jobname argument defines the name of the top level output
+      directory.  If this parameter is not specified, a name will be
+      derived from the fcl file name.
 
     - The optional --fcledit script receives the name of the generated
       fhicl file as the first command line argument and the sequential
@@ -40,9 +49,7 @@ Notes:
       modify the fhicl file.  The process is aborted unless the script
       exits with zero status code.
 
-    - the jobname argument defines the name of the top level output directory.
-
-    - outstage should be one of the following registered locations: 
+    - Outstage should be one of the following registered locations: 
 
            @knownOutstage
 
@@ -54,12 +61,23 @@ EOF
 ;
 }
 
+
 #================================================================
 sub assert_files_exist {
     foreach my $f (@_) {
 	die "Error: file \"$f\" does not exist or not readable\n"
 	    unless -r $f;
     }
+}
+
+
+#================================================================
+sub find_file($) {
+    my $fn = shift;
+    my $res = abs_path($fn);
+    die "Error: file \"$fn\" does not exist\n" unless defined $res;
+    die "Error: file \"$fn\" does not exist\n" unless -r $res;
+    return $res;
 }
 
 #================================================================
@@ -100,25 +118,32 @@ if($opt{'help'}) {
 }
 
 # Check that all of the required args are present:
-foreach my $k ('setup', 'mu2e-setup', 'fcl', 'jobname', 'outstage', 'njobs') {
+foreach my $k ('setup', 'mu2e-setup', 'fcl', 'outstage', 'njobs') {
     defined $opt{$k} or die "Error: --$k must be specified.  Try the --help option.\n";
 }
 
 # All file args are to be passed using full path names.
-my $setup = abs_path($opt{'setup'});
-my $mu2esetup = abs_path($opt{'mu2e-setup'});
-my $fcl = abs_path($opt{'fcl'});
-my $outstage = abs_path($opt{'outstage'});
+my $setup = find_file($opt{'setup'});
+my $mu2esetup = find_file($opt{'mu2e-setup'});
+my $fcl = find_file($opt{'fcl'});
+my $outstage = find_file($opt{'outstage'});
 
-assert_files_exist($setup, $mu2esetup, $fcl, $outstage);
 assert_known_outstage($outstage);
 
 my $njobs = $opt{'njobs'};
 
+my $jobname;
+if(defined $opt{'jobname'}) {
+    $jobname = $opt{'jobname'};
+}
+else {
+    $jobname = basename($fcl, ('.fcl',) );
+}
+
 $ENV{'MU2EGRID_USERSETUP'} = $setup;
 $ENV{'MU2EGRID_MU2ESETUP'} = $mu2esetup;
 $ENV{'MU2EGRID_MASTERFHICL'} = $fcl;
-$ENV{'MU2EGRID_JOBNAME'} = $opt{'jobname'};
+$ENV{'MU2EGRID_JOBNAME'} = $jobname;
 $ENV{'MU2EGRID_OUTSTAGE'} = $outstage;
 
 my $whoami = `whoami`;
@@ -135,8 +160,7 @@ if(defined $opt{'inputs'}) {
 	die "Arguments --inputs and --run-number are mutually exclusive.";
     }
 
-    my $inputs = abs_path($opt{'inputs'});
-    assert_files_exist($inputs);
+    my $inputs = find_file($opt{'inputs'});
 
     $ENV{'MU2EGRID_INPUTLIST'} = $inputs;
     my $nlines =  `cat $inputs | wc -l`;
@@ -165,17 +189,15 @@ else {
 # Handle the --fcledit options
 my $fcledit = '';
 if(defined($opt{'fcledit'})) {
-    $fcledit = abs_path($opt{'fcledit'});
-    assert_files_exist($fcledit);
+    $fcledit = find_file($opt{'fcledit'});
     die "Error: file \"$fcledit\" is not executable\n"
 	unless -x $fcledit;
-
 }
 $ENV{'MU2EGRID_FCLEDIT'} = $fcledit;
 
 #----------------
+my @args = ('--grid', '--mail_never', '--opportunistic', '-N', $njobs);
 
-my @args = ('-g', '-Q', '-opportunistic', '-N', $njobs );
 while( (my $key, my $value) = each(%ENV) ) {
     if($key =~ m/^MU2EGRID_\w+$/) {
 	#print "Using env $key => $value\n";
@@ -192,5 +214,7 @@ if(!$opt{'dry-run'}) {
     exec { $jobsub } $jobsub, @args
 	or die "Error executing $jobsub: $!";
 }
-
+else {
+    print "Not submitting because --dry-run was requested.\n";
+}
 #================================================================

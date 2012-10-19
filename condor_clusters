@@ -1,0 +1,75 @@
+#!/usr/bin/perl -w
+#
+# A simple wrapper for condor_q to figure out what job clusters are still in the queue.
+#
+# A.Gaponenko, 2012
+#
+use strict;
+use Getopt::Long;
+
+#================================================================
+sub usage() {
+    return <<EOF
+Usage: 
+
+	condor_clusters [--brief] username
+
+will display a list of all active condor clusters for the user and job
+count in each cluster.  If the '--brief' options is given, just cluster
+numbers are printed.
+
+EOF
+;
+}
+
+#================================================================
+sub getUserClusters($) {
+    my $username = shift;
+
+    open(CQ, '-|', 'condor_q', $username)
+	or die "Can not read condor_q output: $!\n";
+
+    my %clusters;
+
+    while(my $line = <CQ>) {
+	chomp($line);
+	if($line =~ /^\d.*$username/) {
+	    $line =~ s/\..*$//;
+	    ++$clusters{$line} ;
+	}
+    }
+
+    close CQ;
+
+    return \%clusters;
+}
+
+#================================================================
+my %opt = (help => 0, brief => 0);
+GetOptions(\%opt, "help", "brief") or die "\nError processing command line options.\n";
+
+if($opt{'help'} or ($#ARGV != 0)) {
+    print usage();
+}
+else {
+    my $brief = $opt{'brief'};
+
+    my $clusters = getUserClusters($ARGV[0]);
+
+    if(!$brief) {
+	print "Cluster\tnjobs\n";
+    }
+
+    foreach my $cn (sort(keys %$clusters)) {
+	if($brief) {
+	    print "$cn\n";
+	}
+	else {
+	    print "$cn\t$$clusters{$cn}\n";
+	}
+    }
+}
+
+exit 0;
+
+#================================================================
