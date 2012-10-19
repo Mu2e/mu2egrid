@@ -14,7 +14,7 @@ no_fq_dir
 product		version
 jobsub_tools	-
 
-only_for_build cetbuildtools    v2_03_06
+only_for_build cetbuildtools    v2_04_00
 
 qualifier	jobsub_tools
 -nq-		-nq-

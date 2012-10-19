@@ -26,7 +26,7 @@ include(CetCMakeEnv)
 # mu2egrid has no architecture dependence
 cet_cmake_env( noarch )
 
-find_ups_product(cetbuildtools v2_03_06)
+find_ups_product(cetbuildtools v2_04_00)
 
 # source code
 add_subdirectory(bin)
