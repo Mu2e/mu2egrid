@@ -23,16 +23,21 @@ Usage:
 	      --fcl=<file> \\
 	      --outstage=<dir> \\
 	      --njobs=<M> \\
-	  {--inputs=<filelist>|--events-per-job=<N> [--run-number=<R>]} \\
-	  [--jobname=<name>] \\
-	  [--mu2e-setup=<setupmu2e-art.sh>] \\
-	  [--dry-run] \\
-	  [--verbose]
+	      {--inputs=<filelist>|--events-per-job=<N> [--run-number=<R>]} \\
+	      [--jobname=<name>] \\
+	      [--fcledit=<script>] \\
+	      [--mu2e-setup=<setupmu2e-art.sh>] \\
+	      [--test-queue] \\
+	      [--dry-run] \\
+	      [--verbose]
 
 Where [] denote optional settings, and {alternative1|alternative2}
 constructs denote mutually exclusive alternatives.
 
 Notes:
+
+    - All option names may be abbreviates as long as this is unambiguous.
+      (For example, '--in' and '--inputs' mean the same.)
     
     - The --setup argument must point to the setup.sh script in a user
       Offline area.  The --mu2e-setup arg is optional, by default
@@ -41,6 +46,17 @@ Notes:
     - The jobname argument defines the name of the top level output
       directory.  If this parameter is not specified, a name will be
       derived from the fcl file name.
+
+    - The optional --fcledit script receives the name of the generated
+      fhicl file as the first command line argument, the sequential
+      process number (0 to njobs-1) as the second argument, and the
+      total number of jobs in this cluster as the third.  It may
+      modify the fhicl file.  The process is aborted unless the script
+      exits with zero status code.
+
+    - The --test-queue option submits a test job.  The job will run
+      with highest possible priority, but you can only have one such
+      job in the queue at a time.
 
     - Outstage should be one of the following registered locations: 
 
@@ -58,7 +74,7 @@ EOF
 #================================================================
 sub assert_files_exist {
     foreach my $f (@_) {
-	die "Error: file \"$f\" does not exist\n"
+	die "Error: file \"$f\" does not exist or not readable\n"
 	    unless -r $f;
     }
 }
@@ -84,7 +100,7 @@ sub assert_known_outstage($) {
 
 #================================================================
 my %opt = ('mu2e-setup' => '/grid/fermiapp/products/mu2e/setupmu2e-art.sh',
-	   help => 0, verbose => 0, 'dry-run' => 0);
+	   help => 0, verbose => 0, 'test-queue' => 0, 'dry-run' => 0);
 
 
 # Process command line opts.
@@ -94,12 +110,14 @@ GetOptions(\%opt,
 	   "setup=s",
 	   "mu2e-setup=s",
 	   "fcl=s",
+	   "fcledit=s",
 	   "jobname=s",
 	   "outstage=s",
 	   "njobs=i",
 	   "inputs=s",
 	   "events-per-job=i",
 	   "run-number=i",
+	   "test-queue",
 	   "dry-run",
 	   ) 
     or die "\nError processing command line options.\n";
@@ -123,6 +141,10 @@ my $outstage = find_file($opt{'outstage'});
 assert_known_outstage($outstage);
 
 my $njobs = $opt{'njobs'};
+my $test_queue = $opt{'test-queue'};
+if($test_queue && ($njobs > 1)) {
+    print "WARNING: trying to run more than one job while requesting --test-queue\n";
+}
 
 my $jobname;
 if(defined $opt{'jobname'}) {
@@ -137,6 +159,7 @@ $ENV{'MU2EGRID_MU2ESETUP'} = $mu2esetup;
 $ENV{'MU2EGRID_MASTERFHICL'} = $fcl;
 $ENV{'MU2EGRID_JOBNAME'} = $jobname;
 $ENV{'MU2EGRID_OUTSTAGE'} = $outstage;
+$ENV{'MU2EGRID_NCLUSTERJOBS'} = $njobs;
 
 my $whoami = `whoami`;
 chomp($whoami);
@@ -177,7 +200,22 @@ else {
     }
 }
 
+#----------------
+# Handle the --fcledit options
+my $fcledit = '';
+if(defined($opt{'fcledit'})) {
+    $fcledit = find_file($opt{'fcledit'});
+    die "Error: file \"$fcledit\" is not executable\n"
+	unless -x $fcledit;
+}
+$ENV{'MU2EGRID_FCLEDIT'} = $fcledit;
+
+#----------------
 my @args = ('--grid', '--mail_never', '--opportunistic', '-N', $njobs);
+if($test_queue) {
+    push @args, '--test_queue';
+}
+
 while( (my $key, my $value) = each(%ENV) ) {
     if($key =~ m/^MU2EGRID_\w+$/) {
 	#print "Using env $key => $value\n";

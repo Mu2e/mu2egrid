@@ -104,6 +104,7 @@ export cluster=${CLUSTER:-1}
 export process=${PROCESS:-0}
 export user=${MU2EGRID_SUBMITTER:?"Error: MU2EGRID_SUBMITTER not set"}
 export masterfhicl=${MU2EGRID_MASTERFHICL:?"Error: MU2EGRID_MASTERFHICL not set"}
+export fcledit=${MU2EGRID_FCLEDIT:-''}
 export jobname=${MU2EGRID_JOBNAME:?"Error: MU2EGRID_JOBNAME not set"}
 
 #outstagebase="/mu2e/data/outstage"
@@ -157,7 +158,13 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
             # Case (a): no input file list
             # Define new event IDs
             addEventID "$JOBCONFIG" ${MU2EGRID_RUN_NUMBER:-$cluster} ${process}
-            args+=(-n ${MU2EGRID_EVENTS_PER_JOB:?Error: both MU2EGRID_EVENTS_PER_JOB and MU2EGRID_INPUTLIST not set})
+
+	    nevents=${MU2EGRID_EVENTS_PER_JOB:?Error: both MU2EGRID_EVENTS_PER_JOB and MU2EGRID_INPUTLIST not set}
+	    # treat --events-per-job=0 as a special case.
+	    if [ $nevents -ne 0 ]; then
+		args+=(-n ${nevents})
+	    fi
+
         else
             # There are input files specified.
             mylist=$(createInputFileList ${MU2EGRID_INPUTLIST} ${MU2EGRID_CHUNKSIZE:?"Error: MU2EGRID_CHUNKSIZE not set"} ${process})
@@ -166,12 +173,28 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
         
         # NB: can stage large input files here to local disk
         # Is this useful/needed?
-        
+
+        # Run the optional fcledit user script
+	ret=0
+	if [ -n "$fcledit" ]; then
+	    "$fcledit" "$JOBCONFIG" "$process" "$MU2EGRID_NCLUSTERJOBS"
+	    ret=$?
+	fi
+
         # Run the Offline job.
-        echo "Starting on host $(uname -a) on $(date)" >> mu2e.log 2>&1
-        echo "Running the command: mu2e ${args[@]}" >> mu2e.log 2>&1
-        /usr/bin/time mu2e "${args[@]}" >> mu2e.log 2>&1
-        ret=$?
+	if [ "$ret" -eq 0 ]; then
+	    echo "Starting on host $(uname -a) on $(date)" >> mu2e.log 2>&1
+	    echo "Running the command: mu2e ${args[@]}" >> mu2e.log 2>&1
+	    /usr/bin/time mu2e "${args[@]}" >> mu2e.log 2>&1
+	    ret=$?
+	else
+	    echo "Aborting the job because the user --fcledit script failed.  The command line was:" >> testlog.log 2>&1
+	    echo ""  >> testlog.log 2>&1
+	    echo "$fcledit" "$JOBCONFIG" "$process" >> testlog.log 2>&1
+	    echo ""  >> testlog.log 2>&1
+	    echo "Got exit status: $ret" >> testlog.log 2>&1
+	fi
+
     else
 	echo "Error sourcing setup script ${MU2EGRID_USERSETUP}: status code $?"
 	ret=1
@@ -183,6 +206,7 @@ fi
 
 #================================================================
 # Transfer results (or system info in case of environment problems)
+
 OUTDIR="$(createOutStage ${outstagebase} ${user} ${jobname} ${cluster} ${process})"
 
 /grid/fermiapp/minos/scripts/lock 
