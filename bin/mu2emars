@@ -1,0 +1,116 @@
+#!/usr/bin/perl -w
+#
+# A frontend script to submit mu2e MARS jobs to Fermilab grid.
+#
+# A.Gaponenko, 2012
+#
+use File::Basename;
+use Getopt::Long;
+use Cwd 'abs_path';
+use POSIX qw(ceil);
+
+use lib dirname($0);
+use mu2egrid;
+
+my $workerscript = $mu2egrid::impldir . '/mu2emars.sh';
+
+#================================================================
+sub usage() {
+    my $self = basename($0);
+    return <<EOF
+Usage: 
+	$self --executable program \
+	--input MARSBASE.INP \
+	--njobs=<M> \
+	[--jobname=name] \
+	[--outstage=dir] \
+	[--dry-run] \
+	[--verbose] \
+	[--help]
+
+Notes:
+
+    - The jobname argument defines the name of the top level output directory.
+      If not given, the name of the input file is used.
+
+    - Once grid jobs are sumbitted the software libraries pointed to
+      by the setup script, all configuration files, and the input
+      filelist must be left intact until all the jobs finish.  
+
+EOF
+;
+}
+
+#================================================================
+my %opt = ('outstage' => '/grid/data/marsmu2e/outstage',
+	   help => 0, verbose => 0, 'dry-run' => 0);
+
+# Process command line opts.
+GetOptions(\%opt, 
+	   "help",
+	   "verbose",
+	   "executable=s",
+	   "input=s",
+	   "jobname=s",
+	   "outstage=s",
+	   "njobs=i",
+	   "dry-run",
+	   ) 
+    or die "\nError processing command line options.\n";
+
+if($opt{'help'}) {
+    print usage();
+    exit 0;
+}
+
+# Check that all of the required args are present:
+foreach my $k ('executable', 'input', 'outstage', 'njobs') {
+    defined $opt{$k} or die "Error: --$k must be specified.  Try the --help option.\n";
+}
+
+# All file args are to be passed using full path names.
+my $executable = find_file($opt{'executable'});
+my $input = find_file($opt{'input'});
+my $outstage = find_file($opt{'outstage'});
+assert_known_outstage($outstage);
+
+my $njobs = $opt{'njobs'};
+
+my $jobname;
+if(defined $opt{'jobname'}) {
+    $jobname = $opt{'jobname'};
+}
+else {
+    $jobname = basename($input, ('.INP', '.inp') );
+}
+
+$ENV{'MU2EGRID_EXECUTABLE'} = $executable;
+$ENV{'MU2EGRID_MASTERINPUT'} = $input;
+$ENV{'MU2EGRID_TOPDIR'} = abs_path('.');
+$ENV{'MU2EGRID_JOBNAME'} = $jobname;
+$ENV{'MU2EGRID_OUTSTAGE'} = $outstage;
+
+my $whoami = `whoami`;
+chomp($whoami);
+$ENV{'MU2EGRID_SUBMITTER'} = $whoami;
+
+##my @args = ('--grid', '--mail_never', '--opportunistic', '-N', $njobs, '-T', '-L', '/mu2e/data/marsmu2e/users/condor-tmp/vspron/ccc.log');
+my @args = ('--grid', '--mail_never', '--opportunistic', '-N', $njobs);
+while( (my $key, my $value) = each(%ENV) ) {
+    if($key =~ m/^MU2EGRID_\w+$/) {
+	#print "Using env $key => $value\n";
+	push @args,  ('-e', $key);
+	print "Using: $key => $ENV{$key}\n" if $opt{'verbose'};
+    }
+}
+
+push @args, $workerscript;
+
+print "Command:  $mu2egrid::jobsub @args\n";
+if(!$opt{'dry-run'}) {
+    print "Submitting....\n";
+    exec { $mu2egrid::jobsub } $mu2egrid::jobsub, @args
+	or die "Error executing $mu2egrid::jobsub: $!";
+}
+
+#================================================================
