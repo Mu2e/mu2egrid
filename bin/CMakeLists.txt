@@ -1,7 +1,7 @@
 
 INSTALL ( PROGRAMS checkAndMove
  		   condor_clusters
-		   mu2esub
+		   mu2eart
           DESTINATION ${product}/${version}/bin )
 
 add_subdirectory(impl)

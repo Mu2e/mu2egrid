@@ -11,7 +11,7 @@ use POSIX qw(ceil);
 
 my $jobsub = 'jobsub';
 #my $jobsub = 'jobsub-andr';
-my $workerscript = abs_path(dirname($0) . '/impl/mu2eworker.sh');
+my $workerscript = abs_path(dirname($0) . '/impl/mu2eart.sh');
 my @knownOutstage = ('/mu2e/data/outstage', '/grid/data/mu2e/outstage');
 
 #================================================================

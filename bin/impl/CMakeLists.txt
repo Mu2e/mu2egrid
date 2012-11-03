@@ -1,3 +1,3 @@
 
-INSTALL ( PROGRAMS mu2eworker.sh
+INSTALL ( PROGRAMS mu2eart.sh
           DESTINATION ${product}/${version}/bin/impl )
