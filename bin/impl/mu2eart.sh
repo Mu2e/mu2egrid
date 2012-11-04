@@ -7,40 +7,10 @@
 # Andrei Gaponenko, 2012
 #
 
+source "$(dirname $0)/funcs"
+
 # static config:
 SeedServiceMaxEngines=20
-
-#================================================================
-createOutStage() {
-    # Copy arguments into meaningful names.
-    outstagebase=${1:?createOutStage: outstagebase missing}
-    user=${2:?createOutStage: user missing}
-    jobname=${3:?createOutStage: jobname missing}
-    cluster=${4:?createOutStage: cluster missing}
-    process=${5:?createOutStage: process missing}
-
-    outtop="${outstagebase}/$user/${jobname}.${cluster}"
-    outstage="${outtop}/$(printf '%05d' $process)"
-
-    mode=0775
-
-    mkdir -p --mode "$mode" "${outtop}" \
-	&& mkdir --mode "$mode" "${outstage}" \
-	&& echo "${outstage}"
-}
-#================================================================
-generateSeed() {
-    # art's RandomNumberGenerator_service restrict seeds to
-    # not exceed 900000000.   Not clear if zero seed is OK
-    # so we'll use a non-negative number up to the max.
-    # Should leave space for SeedService to increment, thus -20.
-    seed=0
-    maxseed=$((900000001 - $SeedServiceMaxEngines))
-    while [ "$seed" -le 0 ]; do 
-	seed=$(( $(od --format u4 --read-bytes 4 /dev/urandom | head -1| awk '{print $2}') % maxseed ))
-    done
-    echo $seed
-}
 
 #================================================================
 createJobFCL() {
@@ -62,38 +32,6 @@ addEventID() {
     echo "source.firstRun     : ${2:?addEventID: arg2 missing}" >> "$fcl"
     echo "source.firstSubRun  : ${3:?addEventID: arg3 missing}" >> "$fcl"
     echo "source.firstEvent   : ${4:-1}" >> "$fcl"
-}
-
-#================================================================
-createInputFileList() {
-    masterlist=${1:?createInputFileList: masterlist arg missing}
-    chunksize=${2:?createInputFileList: chunksize arg missing}
-    process=${3:?createInputFileList: process arg missing}
-
-    firstline=$((1 + $chunksize * $process))
-    
-    mylist="mu2eInputFiles.txt"
-    tail --lines=+"$firstline" "$masterlist" | head --lines="$chunksize" > "$mylist"
-    echo "$mylist"
-}
-
-#================================================================
-printinfo() {
-    echo Starting on host `uname -a` on `date`
-    echo running as user `whoami`
-    echo "current work dir is $(/bin/pwd)"
-    echo OS version `cat /etc/redhat-release`
-    echo "job arguments: $@"
-    echo "The environment is:"
-    /usr/bin/printenv
-    echo "================================================================"
-    echo "Visible disk space:"
-    df -P
-    echo "================================================================"
-    echo "TMPDIR: ls -al"
-    ls -al "$TMPDIR"
-    echo "TMPDIR: df -h"
-    df -h "$TMPDIR"
 }
 
 #================================================================
@@ -207,20 +145,7 @@ fi
 #================================================================
 # Transfer results (or system info in case of environment problems)
 
-OUTDIR="$(createOutStage ${outstagebase} ${user} ${jobname} ${cluster} ${process})"
-
-/grid/fermiapp/minos/scripts/lock 
-for f in *; do
-    case "$f" in
-	*.proxy)
-            # Don't expose security sensitive info
-	    echo Skipping proxy file $f;;
-	*) 
-	    CMD="${GLOBUS_LOCATION}/bin/globus-url-copy -dbg -vb  file://${WORKDIR}/$f gsiftp://if-gridftp-mu2e.fnal.gov//${OUTDIR}/"
-	    echo "about to do gridftp, the command is $CMD"
-	    $CMD ;;
-    esac
-done
-/grid/fermiapp/minos/scripts/lock free
+outdir="$(createOutStage ${outstagebase} ${user} ${jobname} ${cluster} ${process})"
+transferOutFiles "$outdir" $(filterOutProxy *)
 
 exit $ret

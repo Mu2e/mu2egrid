@@ -9,10 +9,10 @@ use Getopt::Long;
 use Cwd 'abs_path';
 use POSIX qw(ceil);
 
-my $jobsub = 'jobsub';
-#my $jobsub = 'jobsub-andr';
+use lib dirname($0);
+use mu2egrid;
+
 my $workerscript = abs_path(dirname($0) . '/impl/mu2eart.sh');
-my @knownOutstage = ('/mu2e/data/outstage', '/grid/data/mu2e/outstage');
 
 #================================================================
 sub usage() {
@@ -60,42 +60,13 @@ Notes:
 
     - Outstage should be one of the following registered locations: 
 
-           @knownOutstage
+           @mu2egrid::knownOutstage
 
     - Once grid jobs are sumbitted the software libraries pointed to
       by the setup script, all configuration files, and the input
       filelist must be left intact until all the jobs finish.  
-
 EOF
 ;
-}
-
-
-#================================================================
-sub assert_files_exist {
-    foreach my $f (@_) {
-	die "Error: file \"$f\" does not exist or not readable\n"
-	    unless -r $f;
-    }
-}
-
-
-#================================================================
-sub find_file($) {
-    my $fn = shift;
-    my $res = abs_path($fn);
-    die "Error: file \"$fn\" does not exist\n" unless defined $res;
-    die "Error: file \"$fn\" does not exist\n" unless -r $res;
-    return $res;
-}
-
-#================================================================
-sub assert_known_outstage($) {
-    my $d = shift;
-    foreach my $o (@knownOutstage) {
-	$o eq $d and return 1;
-    }
-    die "The specified outstage \"$d\" is not recognized - is this a typo?  Known location: @knownOutstage\n";
 }
 
 #================================================================
@@ -132,7 +103,7 @@ foreach my $k ('setup', 'mu2e-setup', 'fcl', 'outstage', 'njobs') {
     defined $opt{$k} or die "Error: --$k must be specified.  Try the --help option.\n";
 }
 
-# All file args are to be passed using full path names.
+# All file args are to be passed to the worker node script using full path names.
 my $setup = find_file($opt{'setup'});
 my $mu2esetup = find_file($opt{'mu2e-setup'});
 my $fcl = find_file($opt{'fcl'});
@@ -226,11 +197,11 @@ while( (my $key, my $value) = each(%ENV) ) {
 
 push @args, $workerscript;
 
-print "Command:  $jobsub @args\n";
+print "Command:  $mu2egrid::jobsub @args\n";
 if(!$opt{'dry-run'}) {
     print "Submitting....\n";
-    exec { $jobsub } $jobsub, @args
-	or die "Error executing $jobsub: $!";
+    exec { $mu2egrid::jobsub } $mu2egrid::jobsub, @args
+	or die "Error executing $mu2egrid::jobsub: $!";
 }
 else {
     print "Not submitting because --dry-run was requested.\n";

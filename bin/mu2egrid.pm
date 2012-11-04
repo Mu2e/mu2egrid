@@ -43,10 +43,10 @@ BEGIN {
     $VERSION = '1.01';
 
     @ISA         = qw(Exporter);
-    @EXPORT      = qw(&assert_files_exist &find_file &assert_known_outstage $impldir
+    @EXPORT      = qw( &find_file &assert_known_outstage $impldir
                       );
 
-    %EXPORT_TAGS = ( all => [qw( &assert_files_exist &find_file &assert_known_outstage
+    %EXPORT_TAGS = ( all => [qw( &find_file &assert_known_outstage
 				 $jobsub $impldir @knownOutstage
                                  )] 
                      );

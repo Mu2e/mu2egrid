@@ -68,7 +68,7 @@ foreach my $k ('executable', 'input', 'outstage', 'njobs') {
     defined $opt{$k} or die "Error: --$k must be specified.  Try the --help option.\n";
 }
 
-# All file args are to be passed using full path names.
+# All file args are to be passed to the worker node script using full path names.
 my $executable = find_file($opt{'executable'});
 my $input = find_file($opt{'input'});
 my $outstage = find_file($opt{'outstage'});
@@ -98,7 +98,6 @@ $ENV{'MU2EGRID_SUBMITTER'} = $whoami;
 my @args = ('--grid', '--mail_never', '--opportunistic', '-N', $njobs);
 while( (my $key, my $value) = each(%ENV) ) {
     if($key =~ m/^MU2EGRID_\w+$/) {
-	#print "Using env $key => $value\n";
 	push @args,  ('-e', $key);
 	print "Using: $key => $ENV{$key}\n" if $opt{'verbose'};
     }
@@ -111,6 +110,9 @@ if(!$opt{'dry-run'}) {
     print "Submitting....\n";
     exec { $mu2egrid::jobsub } $mu2egrid::jobsub, @args
 	or die "Error executing $mu2egrid::jobsub: $!";
+}
+else {
+    print "Not submitting because --dry-run was requested.\n";
 }
 
 #================================================================
