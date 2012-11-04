@@ -44,11 +44,7 @@ export user=${MU2EGRID_SUBMITTER:?"Error: MU2EGRID_SUBMITTER not set"}
 export masterfhicl=${MU2EGRID_MASTERFHICL:?"Error: MU2EGRID_MASTERFHICL not set"}
 export fcledit=${MU2EGRID_FCLEDIT:-''}
 export jobname=${MU2EGRID_JOBNAME:?"Error: MU2EGRID_JOBNAME not set"}
-
-#outstagebase="/mu2e/data/outstage"
-#outstagebase="/grid/data/mu2e/outstage"
 export outstagebase=${MU2EGRID_OUTSTAGE:?"Error: MU2EGRID_OUTSTAGE not set"}
-
 
 #================================================================
 # TMPDIR is defined and created by Condor.
@@ -87,7 +83,8 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
         #    case for (c) and treat it in this script exactly as (b).
         
         JOBCONFIG=$(createJobFCL "$masterfhicl")
-        addSeeds "$JOBCONFIG" "${MU2EGRID_BASE_SEED:-$(generateSeed)}"
+	SEED="${MU2EGRID_BASE_SEED:-$(generateSeed)}"
+        addSeeds "$JOBCONFIG" "$SEED"
         
         # mu2e job args: this is the common part of cmdline
         declare -a args=(-c "$JOBCONFIG")
@@ -123,14 +120,16 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
 	if [ "$ret" -eq 0 ]; then
 	    echo "Starting on host $(uname -a) on $(date)" >> mu2e.log 2>&1
 	    echo "Running the command: mu2e ${args[@]}" >> mu2e.log 2>&1
+	    echo "mu2egrid random seed $SEED" >> mu2e.log 2>&1
 	    /usr/bin/time mu2e "${args[@]}" >> mu2e.log 2>&1
 	    ret=$?
+	    echo "mu2egrid exit status $ret" >> mu2e.log 2>&1
 	else
-	    echo "Aborting the job because the user --fcledit script failed.  The command line was:" >> testlog.log 2>&1
-	    echo ""  >> testlog.log 2>&1
-	    echo "$fcledit" "$JOBCONFIG" "$process" >> testlog.log 2>&1
-	    echo ""  >> testlog.log 2>&1
-	    echo "Got exit status: $ret" >> testlog.log 2>&1
+	    echo "Aborting the job because the user --fcledit script failed.  The command line was:" >> mu2e.log 2>&1
+	    echo ""  >> mu2e.log 2>&1
+	    echo "$fcledit" "$JOBCONFIG" "$process" >> mu2e.log 2>&1
+	    echo ""  >> mu2e.log 2>&1
+	    echo "Got exit status: $ret" >> mu2e.log 2>&1
 	fi
 
     else

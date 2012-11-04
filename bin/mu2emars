@@ -89,6 +89,7 @@ $ENV{'MU2EGRID_MASTERINPUT'} = $input;
 $ENV{'MU2EGRID_TOPDIR'} = abs_path('.');
 $ENV{'MU2EGRID_JOBNAME'} = $jobname;
 $ENV{'MU2EGRID_OUTSTAGE'} = $outstage;
+$ENV{'MU2EGRID_GFTPSERVER'} = "gsiftp://if-gridftp-marsmu2e.fnal.gov";
 
 my $whoami = `whoami`;
 chomp($whoami);

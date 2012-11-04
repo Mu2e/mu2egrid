@@ -51,13 +51,16 @@ ln -s $topdir/*.INP xsdir $WORKDIR
 /bin/rm -f MARS.INP
 
 # Create job config "MARS.INP" by adding random seeds to the master
-addMARSSeeds $masterinput "${MU2EGRID_BASE_SEED:-$(generateSeed)}"
+SEED="${MU2EGRID_BASE_SEED:-$(generateSeed)}"
+addMARSSeeds $masterinput "$SEED"
 
 # Run the job
-echo "Starting on host $(uname -a) on $(date)" >> testlog.log 2>&1
-echo "Running the command: $executable" >> testlog.log 2>&1
-/usr/bin/time $executable >> testlog.log 2>&1
+echo "Starting on host $(uname -a) on $(date)" >> mu2e.log 2>&1
+echo "Running the command: $executable" >> mu2e.log 2>&1
+echo "mu2egrid random seed $SEED" >> mu2e.log 2>&1
+/usr/bin/time $executable >> mu2e.log 2>&1
 ret=$?
+echo "mu2egrid exit status $ret" >> mu2e.log 2>&1
 
 # Transfer results
 outdir="$(createOutStage ${outstagebase} ${user} ${jobname} ${cluster} ${process})"

@@ -84,10 +84,12 @@ transferOutFiles() {
     OUTDIR="${1:?transferOutFiles: OUTDIR arg missing}"
     shift
 
+    GFTPSERVER=${MU2EGRID_GFTPSERVER:-gsiftp://if-gridftp-mu2e.fnal.gov}
+
     /grid/fermiapp/minos/scripts/lock 
 
     for f in "$@"; do
-	CMD="${GLOBUS_LOCATION}/bin/globus-url-copy -dbg -vb  file://${WORKDIR}/$f gsiftp://if-gridftp-mu2e.fnal.gov//${OUTDIR}/"
+	CMD="${GLOBUS_LOCATION}/bin/globus-url-copy -dbg -vb  file://${WORKDIR}/$f ${GFTPSERVER}//${OUTDIR}/"
 	echo "about to do gridftp, the command is $CMD"
 	$CMD
     done
