@@ -9,9 +9,6 @@
 
 source "$(dirname $0)/funcs"
 
-# static config:
-SeedServiceMaxEngines=20
-
 #================================================================
 createJobFCL() {
     fcl="./mu2e.fcl"    

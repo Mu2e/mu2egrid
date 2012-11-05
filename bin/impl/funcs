@@ -5,6 +5,7 @@
 # Andrei Gaponenko, 2012
 #
 #================================================================
+SeedServiceMaxEngines=20
 generateSeed() {
     # art's RandomNumberGenerator_service restrict seeds to
     # not exceed 900000000.   Not clear if zero seed is OK
