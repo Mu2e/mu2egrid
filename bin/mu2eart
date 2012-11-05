@@ -21,10 +21,10 @@ sub usage() {
 Usage: 
 	$self --setup=<script-to-source.sh> \\
 	      --fcl=<file> \\
-	      --outstage=<dir> \\
 	      --njobs=<M> \\
 	      {--inputs=<filelist>|--events-per-job=<N> [--run-number=<R>]} \\
 	      [--jobname=<name>] \\
+	      [--outstage=<dir>] \\
 	      [--fcledit=<script>] \\
 	      [--mu2e-setup=<setupmu2e-art.sh>] \\
 	      [--test-queue] \\
@@ -62,6 +62,8 @@ Notes:
 
            @mu2egrid::knownOutstage
 
+      by default $mu2egrid::mu2eDefaultOutstage  is used.
+
     - Once grid jobs are sumbitted the software libraries pointed to
       by the setup script, all configuration files, and the input
       filelist must be left intact until all the jobs finish.  
@@ -71,6 +73,7 @@ EOF
 
 #================================================================
 my %opt = ('mu2e-setup' => '/grid/fermiapp/products/mu2e/setupmu2e-art.sh',
+	   'outstage' => $mu2egrid::mu2eDefaultOutstage,
 	   help => 0, verbose => 0, 'test-queue' => 0, 'dry-run' => 0);
 
 

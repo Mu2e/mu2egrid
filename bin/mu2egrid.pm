@@ -14,6 +14,8 @@ use File::Basename;
 our $jobsub = 'jobsub';
 our @knownOutstage = ('/mu2e/data/outstage', '/grid/data/mu2e/outstage', '/grid/data/marsmu2e/outstage');
 
+our $mu2eDefaultOutstage = $knownOutstage[0];
+
 our $impldir;
 $impldir = abs_path(dirname($0) . '/impl');
 
@@ -47,13 +49,13 @@ BEGIN {
                       );
 
     %EXPORT_TAGS = ( all => [qw( &find_file &assert_known_outstage
-				 $jobsub $impldir @knownOutstage
+				 $jobsub $impldir @knownOutstage $mu2eDefaultOutstage
                                  )] 
                      );
 
     # your exported package globals go here,
     # as well as any optionally exported functions
-    @EXPORT_OK   = qw( $jobsub $impldir @knownOutstage );
+    @EXPORT_OK   = qw( $jobsub $impldir @knownOutstage $mu2eDefaultOutstage );
 }
 our @EXPORT_OK;
 use vars @EXPORT_OK;
