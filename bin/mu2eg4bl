@@ -1,0 +1,206 @@
+#!/usr/bin/perl -w
+#
+# A frontend script to submit mu2e G4beamline jobs to Fermilab grid.
+#
+# A.Gaponenko, 2012
+#
+use File::Basename;
+use Getopt::Long;
+use Cwd 'abs_path';
+use POSIX qw(ceil);
+
+use lib dirname($0);
+use mu2egrid;
+
+my $workerscript = abs_path(dirname($0) . '/impl/mu2eg4bl.sh');
+
+my $defaultG4blVersion = 'v2_12';
+
+#================================================================
+sub usage() {
+    my $self = basename($0);
+    return <<EOF
+Usage: 
+	$self --in=<file> \\
+	      [--tar=<tarfile>] \\
+	      --njobs=<M> \\
+	      {--datafiles=<filelist>|--events-per-job=<N>} \\
+	      [--jobname=<name>] \\
+	      [--outstage=<dir>] \\
+	      [--mu2e-setup=<setupmu2e-art.sh>] \\
+	      [--g4bl-version=<version>] \\
+	      [--test-queue] \\
+	      [--dry-run] \\
+	      [--verbose]
+
+Where [] denote optional settings, and {alternative1|alternative2}
+constructs denote mutually exclusive alternatives.
+
+Notes:
+
+    - All option names may be abbreviates as long as this is unambiguous.
+      (For example, '--data' and '--datafiles' mean the same.)
+
+    - The --in argument specifies the name of the main G4beamline
+      input file.
+
+    - The --tar argument is optional.  This must be a tarball of
+      all configuration files included from the --in file
+      (but should not contain the --in file).
+
+    - The jobname argument defines the name of the top level output
+      directory.  If this parameter is not specified, a name will be
+      derived from the --in file name.
+
+    - The default G4beamline version is $defaultG4blVersion
+
+    - The --test-queue option submits a test job.  The job will run
+      with highest possible priority, but you can only have one such
+      job in the queue at a time.
+
+    - Outstage should be one of the following registered locations: 
+
+           @mu2egrid::knownOutstage
+
+      by default $mu2egrid::mu2eDefaultOutstage  is used.
+
+    - All the files mentioned on the submission command line must be
+      left intact until all the jobs finish.
+
+EOF
+;
+}
+
+#================================================================
+my %opt = ('mu2e-setup' => '/grid/fermiapp/products/mu2e/setupmu2e-art.sh',
+	   'g4bl-version' => $defaultG4blVersion,
+	   'outstage' => $mu2egrid::mu2eDefaultOutstage,
+	   'tar' => '',
+	   help => 0, verbose => 0, 'test-queue' => 0, 'dry-run' => 0);
+
+
+# Process command line opts.
+GetOptions(\%opt, 
+	   "help",
+	   "verbose",
+	   "in=s",
+	   "tar=s",
+	   "mu2e-setup=s",
+	   "g4bl-version=s",
+	   "jobname=s",
+	   "outstage=s",
+	   "njobs=i",
+	   "datafiles=s",
+	   "events-per-job=i",
+	   "test-queue",
+	   "dry-run",
+	   ) 
+    or die "\nError processing command line options.\n";
+
+if($opt{'help'}) {
+    print usage();
+    exit 0;
+}
+
+# Check that all of the required args are present:
+foreach my $k ('in', 'njobs') {
+    defined $opt{$k} or die "Error: --$k must be specified.  Try the --help option.\n";
+}
+
+# All file args are to be passed to the worker node script using full path names.
+my $in = find_file($opt{'in'});
+my $tar = $opt{'tar'};
+$tar = find_file($tar) unless $tar eq '';
+
+my $mu2esetup = find_file($opt{'mu2e-setup'});
+my $outstage = find_file($opt{'outstage'});
+
+assert_known_outstage($outstage);
+
+my $njobs = $opt{'njobs'};
+my $test_queue = $opt{'test-queue'};
+if($test_queue && ($njobs > 1)) {
+    print "WARNING: trying to run more than one job while requesting --test-queue\n";
+}
+
+my $jobname;
+if(defined $opt{'jobname'}) {
+    $jobname = $opt{'jobname'};
+}
+else {
+    $jobname = basename($in, ('.in',) );
+}
+
+$ENV{'MU2EGRID_MU2ESETUP'} = $mu2esetup;
+$ENV{'MU2EGRID_G4BLVERSION'} = $opt{'g4bl-version'};
+
+# These files are transfere
+$ENV{'MU2EGRID_MASTERIN'} = basename($in);
+$ENV{'MU2EGRID_TAR'} = '';
+if($tar) {
+    $ENV{'MU2EGRID_TAR'} = basename($tar);
+}
+
+$ENV{'MU2EGRID_JOBNAME'} = $jobname;
+$ENV{'MU2EGRID_OUTSTAGE'} = $outstage;
+$ENV{'MU2EGRID_NCLUSTERJOBS'} = $njobs;
+
+my $whoami = `whoami`;
+chomp($whoami);
+$ENV{'MU2EGRID_SUBMITTER'} = $whoami;
+
+# Either --datafiles or --events-per-job is required.
+if(defined $opt{'datafiles'}) {
+    if(defined($opt{'events-per-job'})) {
+	die "Arguments --datafiles and --events-per-job are mutually exclusive.";
+    }
+
+    my $datafiles = find_file($opt{'datafiles'});
+
+    $ENV{'MU2EGRID_INPUTLIST'} = $datafiles;
+    my $nlines =  `cat $datafiles | wc -l`;
+    chomp($nlines);
+    print "nlines = $nlines in file $datafiles\n" if $opt{'verbose'};
+
+    if($nlines < $njobs) {
+	die "Error too many requested jobs = $njobs.  The input file list has only $nlines lines: $datafiles\n";
+    }
+    $ENV{'MU2EGRID_CHUNKSIZE'} = ceil($nlines/$njobs);
+
+}
+else {
+    if(!defined($opt{'events-per-job'})) {
+	die "Either --datafiles or --events-per-job must be specified.";
+    }
+
+    $ENV{'MU2EGRID_EVENTS_PER_JOB'} = $opt{'events-per-job'};
+}
+
+#----------------
+my @args = ('--grid', '--mail_never', '--opportunistic', '-N', $njobs, '-f', $in);
+if($tar) {
+    push @args, ('-f', $tar);
+}
+if($test_queue) {
+    push @args, '--test_queue';
+}
+
+while( (my $key, my $value) = each(%ENV) ) {
+    if($key =~ m/^MU2EGRID_\w+$/) {
+	push @args,  ('-e', $key);
+	print "Using: $key => $ENV{$key}\n" if $opt{'verbose'};
+    }
+}
+
+push @args, $workerscript;
+
+print "Command:  $mu2egrid::jobsub @args\n";
+if(!$opt{'dry-run'}) {
+    print "Submitting....\n";
+    exec { $mu2egrid::jobsub } $mu2egrid::jobsub, @args
+	or die "Error executing $mu2egrid::jobsub: $!";
+}
+else {
+    print "Not submitting because --dry-run was requested.\n";
+}
+#================================================================

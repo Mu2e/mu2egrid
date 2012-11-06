@@ -2,6 +2,7 @@
 INSTALL ( PROGRAMS checkAndMove
  		   condor_clusters
 		   mu2eart
+		   mu2eg4bl
 		   mu2emars
           DESTINATION ${product}/${version}/bin )
 
