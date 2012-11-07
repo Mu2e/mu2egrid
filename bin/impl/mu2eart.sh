@@ -39,7 +39,7 @@ export cluster=${CLUSTER:-1}
 export process=${PROCESS:-0}
 export user=${MU2EGRID_SUBMITTER:?"Error: MU2EGRID_SUBMITTER not set"}
 export masterfhicl=${MU2EGRID_MASTERFHICL:?"Error: MU2EGRID_MASTERFHICL not set"}
-export fcledit=${MU2EGRID_FCLEDIT:-''}
+export userscript=${MU2EGRID_USERSCRIPT:-''}
 export jobname=${MU2EGRID_JOBNAME:?"Error: MU2EGRID_JOBNAME not set"}
 export outstagebase=${MU2EGRID_OUTSTAGE:?"Error: MU2EGRID_OUTSTAGE not set"}
 
@@ -106,10 +106,10 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
         # NB: can stage large input files here to local disk
         # Is this useful/needed?
 
-        # Run the optional fcledit user script
+        # Run the optional user script
 	ret=0
-	if [ -n "$fcledit" ]; then
-	    "$fcledit" "$JOBCONFIG" "$process" "$MU2EGRID_NCLUSTERJOBS"
+	if [ -n "$userscript" ]; then
+	    "$userscript" "$JOBCONFIG" "$process" "$MU2EGRID_NCLUSTERJOBS"
 	    ret=$?
 	fi
 
@@ -122,9 +122,9 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
 	    ret=$?
 	    echo "mu2egrid exit status $ret" >> mu2e.log 2>&1
 	else
-	    echo "Aborting the job because the user --fcledit script failed.  The command line was:" >> mu2e.log 2>&1
+	    echo "Aborting the job because the user --userscript script failed.  The command line was:" >> mu2e.log 2>&1
 	    echo ""  >> mu2e.log 2>&1
-	    echo "$fcledit" "$JOBCONFIG" "$process" >> mu2e.log 2>&1
+	    echo "$userscript" "$JOBCONFIG" "$process" >> mu2e.log 2>&1
 	    echo ""  >> mu2e.log 2>&1
 	    echo "Got exit status: $ret" >> mu2e.log 2>&1
 	fi

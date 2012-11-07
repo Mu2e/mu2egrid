@@ -25,7 +25,7 @@ Usage:
 	      {--inputs=<filelist>|--events-per-job=<N> [--run-number=<R>]} \\
 	      [--jobname=<name>] \\
 	      [--outstage=<dir>] \\
-	      [--fcledit=<script>] \\
+	      [--userscript=<script>] \\
 	      [--mu2e-setup=<setupmu2e-art.sh>] \\
 	      [--test-queue] \\
 	      [--dry-run] \\
@@ -47,7 +47,7 @@ Notes:
       directory.  If this parameter is not specified, a name will be
       derived from the fcl file name.
 
-    - The optional --fcledit script receives the name of the generated
+    - The optional --userscript script receives the name of the generated
       fhicl file as the first command line argument, the sequential
       process number (0 to njobs-1) as the second argument, and the
       total number of jobs in this cluster as the third.  It may
@@ -84,7 +84,7 @@ GetOptions(\%opt,
 	   "setup=s",
 	   "mu2e-setup=s",
 	   "fcl=s",
-	   "fcledit=s",
+	   "userscript=s",
 	   "jobname=s",
 	   "outstage=s",
 	   "njobs=i",
@@ -175,14 +175,14 @@ else {
 }
 
 #----------------
-# Handle the --fcledit options
-my $fcledit = '';
-if(defined($opt{'fcledit'})) {
-    $fcledit = find_file($opt{'fcledit'});
-    die "Error: file \"$fcledit\" is not executable\n"
-	unless -x $fcledit;
+# Handle the --userscript options
+my $userscript = '';
+if(defined($opt{'userscript'})) {
+    $userscript = find_file($opt{'userscript'});
+    die "Error: file \"$userscript\" is not executable\n"
+	unless -x $userscript;
 }
-$ENV{'MU2EGRID_FCLEDIT'} = $fcledit;
+$ENV{'MU2EGRID_USERSCRIPT'} = $userscript;
 
 #----------------
 my @args = ('--grid', '--mail_never', '--opportunistic', '-N', $njobs);
