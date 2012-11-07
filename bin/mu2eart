@@ -47,12 +47,15 @@ Notes:
       directory.  If this parameter is not specified, a name will be
       derived from the fcl file name.
 
-    - The optional --userscript script receives the name of the generated
-      fhicl file as the first command line argument, the sequential
-      process number (0 to njobs-1) as the second argument, and the
-      total number of jobs in this cluster as the third.  It may
-      modify the fhicl file.  The process is aborted unless the script
-      exits with zero status code.
+    - The optional --userscript script receives the name of the
+      generated fcl file as the first command line argument, the
+      sequential process number (0 to njobs-1) as the second argument,
+      and the total number of jobs in this cluster as the third.  The
+      script is invoked after the process-specific fcl file is
+      generated and before the mu2e command is run.  The script may
+      modify the fcl file and/or do any other adjustments to the job.
+      The process is aborted unless the script exits with zero status
+      code.
 
     - The --test-queue option submits a test job.  The job will run
       with highest possible priority, but you can only have one such
@@ -64,7 +67,7 @@ Notes:
 
       by default $mu2egrid::mu2eDefaultOutstage  is used.
 
-    - Once grid jobs are sumbitted the software libraries pointed to
+    - Once grid jobs are submitted the software libraries pointed to
       by the setup script, all configuration files, and the input
       filelist must be left intact until all the jobs finish.  
 EOF
