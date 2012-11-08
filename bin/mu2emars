@@ -22,7 +22,7 @@ Usage:
 	$self --executable program \
 	--input MARSBASE.INP \
 	--njobs=<M> \
-	[--jobname=name] \
+	[--outdirfmt="%d/run_%03d"] \
 	[--outstage=dir] \
 	[--dry-run] \
 	[--verbose] \
@@ -30,8 +30,9 @@ Usage:
 
 Notes:
 
-    - The jobname argument defines the name of the top level output directory.
-      If not given, the name of the input file is used.
+    - The outdirfmt argument defines the name of the output directory.
+      It is specified as the usual printf format string that can
+      use up to two integers: the cluster number and the process number.
 
     - Once grid jobs are sumbitted the software libraries pointed to
       by the setup script, all configuration files, and the input
@@ -43,6 +44,7 @@ EOF
 
 #================================================================
 my %opt = ('outstage' => '/grid/data/marsmu2e/outstage',
+	   'outdirfmt' => '%d/run_%03d',
 	   help => 0, verbose => 0, 'dry-run' => 0);
 
 # Process command line opts.
@@ -51,7 +53,7 @@ GetOptions(\%opt,
 	   "verbose",
 	   "executable=s",
 	   "input=s",
-	   "jobname=s",
+	   "outdirfmt=s",
 	   "outstage=s",
 	   "njobs=i",
 	   "dry-run",
@@ -76,18 +78,10 @@ assert_known_outstage($outstage);
 
 my $njobs = $opt{'njobs'};
 
-my $jobname;
-if(defined $opt{'jobname'}) {
-    $jobname = $opt{'jobname'};
-}
-else {
-    $jobname = basename($input, ('.INP', '.inp') );
-}
-
 $ENV{'MU2EGRID_EXECUTABLE'} = $executable;
 $ENV{'MU2EGRID_MASTERINPUT'} = $input;
 $ENV{'MU2EGRID_TOPDIR'} = abs_path('.');
-$ENV{'MU2EGRID_JOBNAME'} = $jobname;
+$ENV{'MU2EGRID_OUTDIRFMT'} = $opt{'outdirfmt'};
 $ENV{'MU2EGRID_OUTSTAGE'} = $outstage;
 $ENV{'MU2EGRID_GFTPSERVER'} = "gsiftp://if-gridftp-marsmu2e.fnal.gov";
 
