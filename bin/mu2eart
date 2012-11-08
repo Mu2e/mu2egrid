@@ -28,8 +28,10 @@ Usage:
 	      [--userscript=<script>] \\
 	      [--mu2e-setup=<setupmu2e-art.sh>] \\
 	      [--test-queue] \\
+	      [--no-opportunistic] \\
 	      [--dry-run] \\
-	      [--verbose]
+	      [--verbose] \\
+	      [--help]
 
 Where [] denote optional settings, and {alternative1|alternative2}
 constructs denote mutually exclusive alternatives.
@@ -43,23 +45,15 @@ Notes:
       Offline area.  The --mu2e-setup arg is optional, by default
       the current official mu2e release is used.
 
+    - The --inputs filelist is to provide a list of framework ROOT
+      files to be processed by the job.  This is mutually exclusive
+      with --events-per-job, the latter being used for jobs that
+      generate new events.  For new event generation one may specify
+      the run number, the default is the Condor cluster number.
+
     - The jobname argument defines the name of the top level output
       directory.  If this parameter is not specified, a name will be
       derived from the fcl file name.
-
-    - The optional --userscript script receives the name of the
-      generated fcl file as the first command line argument, the
-      sequential process number (0 to njobs-1) as the second argument,
-      and the total number of jobs in this cluster as the third.  The
-      script is invoked after the process-specific fcl file is
-      generated and before the mu2e command is run.  The script may
-      modify the fcl file and/or do any other adjustments to the job.
-      The process is aborted unless the script exits with zero status
-      code.
-
-    - The --test-queue option submits a test job.  The job will run
-      with highest possible priority, but you can only have one such
-      job in the queue at a time.
 
     - Outstage should be one of the following registered locations: 
 
@@ -67,9 +61,38 @@ Notes:
 
       by default $mu2egrid::mu2eDefaultOutstage  is used.
 
-    - Once grid jobs are submitted the software libraries pointed to
-      by the setup script, all configuration files, and the input
-      filelist must be left intact until all the jobs finish.  
+    - The optional --userscript program receives the name of the
+      generated fcl file as the first command line argument, the
+      sequential process number (0 to njobs-1) as the second argument,
+      and the total number of jobs in this cluster as the third.  The
+      program is invoked after the process-specific fcl file is
+      generated and before the mu2e command is run.  The program may
+      modify the fcl file and/or do any other adjustments to the job.
+      The process is aborted unless the program exits with zero status
+      code.
+
+    - The --mu2e-setup option allows to use a non-default artexternals
+      location.
+
+    - The --test-queue option submits a test job.  The job will run
+      with highest possible priority, but you can only have one such
+      job in the queue at a time.
+
+    - By default the submitted jobs will use any available job slots.
+      The --no-opportunistic options requests to run only on dedicated
+      mu2e slots.
+
+    - Use --dry-run to test the submission command without actually
+      sending the jobs.
+
+    - Add --verbose if you want to see the details of what is going on.
+
+    - The --help option prints this message.
+
+Once grid jobs are submitted the software libraries pointed to by the
+setup script, all configuration files, and the input filelist must be
+left intact until all the jobs finish.
+
 EOF
 ;
 }
@@ -77,7 +100,8 @@ EOF
 #================================================================
 my %opt = ('mu2e-setup' => '/grid/fermiapp/products/mu2e/setupmu2e-art.sh',
 	   'outstage' => $mu2egrid::mu2eDefaultOutstage,
-	   help => 0, verbose => 0, 'test-queue' => 0, 'dry-run' => 0);
+	   'help' => 0, 'test-queue' => 0, '--no-opportunistic' => 0,
+	   'dry-run' => 0, verbose => 0);
 
 
 # Process command line opts.
@@ -95,6 +119,7 @@ GetOptions(\%opt,
 	   "events-per-job=i",
 	   "run-number=i",
 	   "test-queue",
+	   "no-opportunistic",
 	   "dry-run",
 	   ) 
     or die "\nError processing command line options.\n";
@@ -188,9 +213,12 @@ if(defined($opt{'userscript'})) {
 $ENV{'MU2EGRID_USERSCRIPT'} = $userscript;
 
 #----------------
-my @args = ('--grid', '--mail_never', '--opportunistic', '-N', $njobs);
+my @args = ('--grid', '--mail_never', '-N', $njobs);
 if($test_queue) {
     push @args, '--test_queue';
+}
+if(!$opt{'no-opportunistic'}) {
+    push @args, '--opportunistic';
 }
 
 while( (my $key, my $value) = each(%ENV) ) {
