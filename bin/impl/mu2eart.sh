@@ -100,7 +100,7 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
         else
             # There are input files specified.
             mylist=$(createInputFileList ${MU2EGRID_INPUTLIST} ${MU2EGRID_CHUNKSIZE:?"Error: MU2EGRID_CHUNKSIZE not set"} ${process})
-            args+=(-S "$mylist")
+            args+=(-S "$mylist" --nevts -1)
         fi
         
         # NB: can stage large input files here to local disk
