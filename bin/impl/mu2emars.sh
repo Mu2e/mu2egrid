@@ -68,12 +68,12 @@ SEED="${MU2EGRID_BASE_SEED:-$(generateSeed)}"
 addMARSSeeds $masterinput "$SEED"
 
 # Run the job
-echo "Starting on host $(uname -a) on $(date)" >> mu2e.log 2>&1
-echo "Running the command: $executable" >> mu2e.log 2>&1
-echo "mu2egrid random seed $SEED" >> mu2e.log 2>&1
-/usr/bin/time $executable >> mu2e.log 2>&1
+echo "Starting on host $(uname -a) on $(date)" >> mars.log 2>&1
+echo "Running the command: $executable" >> mars.log 2>&1
+echo "mu2egrid random seed $SEED" >> mars.log 2>&1
+/usr/bin/time $executable >> mars.log 2>&1
 ret=$?
-echo "mu2egrid exit status $ret" >> mu2e.log 2>&1
+echo "mu2egrid exit status $ret" >> mars.log 2>&1
 
 # Transfer results
 outdir="$(createMARSOutStage ${outstagebase} ${user} ${outdirfmt} ${cluster} ${process})"
