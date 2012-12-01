@@ -26,6 +26,7 @@ Usage:
 	[--outstage=dir] \\
         [--test-queue] \\
 	[--no-opportunistic] \\
+	[--no-group-check] \\
 	[--dry-run] \\
 	[--verbose] \\
 	[--help]
@@ -44,6 +45,10 @@ Notes:
       The --no-opportunistic options requests to run only on the
       dedicated slots.
 
+    - The script check the GROUP environment variable and refuse
+      submittion if it looks wrong for MARS jobs.  The
+      --no-group-check option allows to override this test.
+
     - Once grid jobs are sumbitted the software libraries pointed to
       by the setup script, all configuration files, and the input
       filelist must be left intact until all the jobs finish.  
@@ -56,7 +61,8 @@ EOF
 my %opt = ('outstage' => '/grid/data/marsmu2e/outstage',
 	   'outdirfmt' => '%d/run_%03d',
 	   'help' => 0, 
-	   'test-queue' => 0, '--no-opportunistic' => 0,
+	   'test-queue' => 0, 'no-opportunistic' => 0,
+	   'no-group-check' => 0,
 	   'verbose' => 0, 'dry-run' => 0);
 
 # Process command line opts.
@@ -70,6 +76,7 @@ GetOptions(\%opt,
 	   "njobs=i",
 	   "test-queue",
 	   "no-opportunistic",
+	   "no-group-check",
 	   "dry-run",
 	   ) 
     or die "\nError processing command line options.\n";
@@ -126,6 +133,12 @@ while( (my $key, my $value) = each(%ENV) ) {
 push @args, $workerscript;
 
 print "Command:  $mu2egrid::jobsub @args\n";
+
+if(!$opt{'no-group-check'}) {
+    die "\nError: environment variable GROUP=$ENV{GROUP} looks wrong for MARS jobs.  Use the --no-group-check option to submit anyway.\n"
+	unless $ENV{'GROUP'} =~ m/mars/i;
+}
+
 if(!$opt{'dry-run'}) {
     print "Submitting....\n";
     exec { $mu2egrid::jobsub } $mu2egrid::jobsub, @args
