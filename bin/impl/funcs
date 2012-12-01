@@ -4,6 +4,9 @@
 #
 # Andrei Gaponenko, 2012
 #
+#
+#================================================================
+CPN_DIR=/grid/fermiapp/common/tools
 #================================================================
 SeedServiceMaxEngines=20
 generateSeed() {
@@ -87,7 +90,7 @@ transferOutFiles() {
 
     GFTPSERVER=${MU2EGRID_GFTPSERVER:-gsiftp://if-gridftp-mu2e.fnal.gov}
 
-    /grid/fermiapp/minos/scripts/lock 
+    $CPN_DIR/lock 
 
     for f in "$@"; do
 	CMD="${GLOBUS_LOCATION}/bin/globus-url-copy -dbg -vb  file://${WORKDIR}/$f ${GFTPSERVER}//${OUTDIR}/"
@@ -95,6 +98,6 @@ transferOutFiles() {
 	$CMD
     done
 
-    /grid/fermiapp/minos/scripts/lock free
+    $CPN_DIR/lock free
 }
 #================================================================
