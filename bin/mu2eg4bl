@@ -30,6 +30,7 @@ Usage:
 	      [--mu2e-setup=<setupmu2e-art.sh>] \\
 	      [--g4bl-version=<version>] \\
 	      [--test-queue] \\
+	      [--no-opportunistic] \\
 	      [--dry-run] \\
 	      [--verbose]
 
@@ -58,6 +59,10 @@ Notes:
       with highest possible priority, but you can only have one such
       job in the queue at a time.
 
+    - By default the submitted jobs will use any available job slots.
+      The --no-opportunistic options requests to run only on dedicated
+      mu2e slots.
+
     - Outstage should be one of the following registered locations: 
 
            @mu2egrid::knownOutstage
@@ -76,8 +81,9 @@ my %opt = ('mu2e-setup' => '/grid/fermiapp/products/mu2e/setupmu2e-art.sh',
 	   'g4bl-version' => $defaultG4blVersion,
 	   'outstage' => $mu2egrid::mu2eDefaultOutstage,
 	   'tar' => '',
-	   help => 0, verbose => 0, 'test-queue' => 0, 'dry-run' => 0);
-
+	   'help' => 0, 'verbose'=> 0,
+	   'test-queue' => 0,  'no-opportunistic' => 0,
+	   'dry-run' => 0);
 
 # Process command line opts.
 GetOptions(\%opt, 
@@ -93,6 +99,7 @@ GetOptions(\%opt,
 	   "datafiles=s",
 	   "events-per-job=i",
 	   "test-queue",
+	   "no-opportunistic",
 	   "dry-run",
 	   ) 
     or die "\nError processing command line options.\n";
@@ -177,12 +184,15 @@ else {
 }
 
 #----------------
-my @args = ('--grid', '--mail_never', '--opportunistic', '-N', $njobs, '-f', $in);
+my @args = ('--grid', '--mail_never', '-N', $njobs, '-f', $in);
 if($tar) {
     push @args, ('-f', $tar);
 }
 if($test_queue) {
     push @args, '--test_queue';
+}
+if(!$opt{'no-opportunistic'}) {
+    push @args, '--opportunistic';
 }
 
 while( (my $key, my $value) = each(%ENV) ) {
