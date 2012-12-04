@@ -23,6 +23,8 @@ generateSeed() {
 }
 
 #================================================================
+# This cuts a chunk of inputs for this job from the master input file list.
+# The resulting list gives "remote" files names that are to be staged in.
 createInputFileList() {
     masterlist=${1:?createInputFileList: masterlist arg missing}
     chunksize=${2:?createInputFileList: chunksize arg missing}
@@ -30,9 +32,39 @@ createInputFileList() {
 
     firstline=$((1 + $chunksize * $process))
     
-    mylist="mu2eInputFiles.txt"
+    mylist="mu2eRemoteInputFiles.txt"
     tail --lines=+"$firstline" "$masterlist" | head --lines="$chunksize" > "$mylist"
     echo "$mylist"
+}
+
+#================================================================
+# This function takes a list of remote files, stages them in,
+# prepares a list of local files, and returns the name of the local filelist.
+stageIn() {
+    remotelist=${1:?stageIn: remotelist arg missing}
+    locallist="mu2eLocalInputFiles.txt"
+
+    tstart=$(date +%s)
+
+    $CPN_DIR/lock >&2
+
+    t1=$(date +%s)
+    echo "$(date) # Time to get stage-in lock: $((t1-tstart)) seconds" >&2
+
+    mkdir data
+    cat $remotelist | while read rfn; do
+	lfn="data/$(echo $rfn|sed -e 's|/|-|g')"
+	echo $lfn >> $locallist
+	echo "$(date) # Staging in: $rfn ==> $lfn" >&2
+	cp $rfn $lfn
+    done
+
+    $CPN_DIR/lock free >&2
+    
+    t2=$(date +%s)
+    echo "$(date) # Copy time: $((t2-t1)), total stage-in time: $((t2-tstart)) seconds" >&2
+
+    echo "$locallist"
 }
 
 #================================================================
@@ -70,6 +102,13 @@ createOutStage() {
     mkdir -p --mode "$mode" "${outtop}" \
 	&& mkdir --mode "$mode" "${outstage}" \
 	&& echo "${outstage}"
+}
+#================================================================
+# Ignores directories and other non-plain files
+selectFiles() {
+    for i in "$@"; do
+	test -f "$i" && echo "$i"
+    done
 }
 #================================================================
 filterOutProxy() {

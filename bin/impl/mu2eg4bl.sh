@@ -97,6 +97,6 @@ fi
 
 outdir="$(createOutStage ${outstagebase} ${user} ${jobname} ${cluster} ${process})"
 # Ignore symlinks to the input files
-transferOutFiles "$outdir" $(filterOutProxy $(find * -type f -print -o -prune) )
+transferOutFiles "$outdir" $(filterOutProxy $(selectFiles *) )
 
 exit $ret

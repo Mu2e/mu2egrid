@@ -77,6 +77,6 @@ echo "mu2egrid exit status $ret" >> mars.log 2>&1
 
 # Transfer results
 outdir="$(createMARSOutStage ${outstagebase} ${user} ${outdirfmt} ${cluster} ${process})"
-transferOutFiles "$outdir" $(filterOutProxy *)
+transferOutFiles "$outdir" $(filterOutProxy $(selectFiles *) )
 
 exit $ret
