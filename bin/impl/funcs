@@ -97,11 +97,19 @@ createOutStage() {
     outtop="${outstagebase}/$user/${jobname}.${cluster}"
     outstage="${outtop}/$(printf '%05d' $process)"
 
-    mode=0775
+    # There are cases when a job fails after creating the outstage
+    # directory then automatically restarted by condor.  We don't want
+    # to loose the output from the restarted job.  It is also good to
+    # preserve whatever was transmitted by the first instance for a
+    # post-mortem analysis.  Just rename a pre-existing directory.
+    # There should be no race condition as the previous instance of
+    # this process should be dead before a new one is started.
 
-    mkdir -p --mode "$mode" "${outtop}" \
-	&& mkdir --mode "$mode" "${outstage}" \
-	&& echo "${outstage}"
+    if [ -d "$outstage" ]; then
+	/bin/mv "$outstage" $(mktemp -u "$outstage".XXX)
+    fi
+
+    mkdir -p --mode 0775 "${outstage}" && echo "${outstage}"
 }
 #================================================================
 # Ignores directories and other non-plain files
