@@ -37,6 +37,24 @@ sub find_file($) {
 }
 
 #================================================================
+sub validate_prestage_spec($) {
+    my $fn = shift;
+    if(open(my $fh, $fn)) {
+	while(my $line = <$fh>) {
+	    chomp($line);
+	    $line =~ s/^\s+//;
+	    if($line) { # ignore emtpy lines
+		$line =~ /^\S+\s+\S+$/ or die "Error: the following --prestage-spec line does not contain two whitespace separated strings:\n$line\n";
+		$line =~ m|^\S+\s+[^/\s]+/\S+$| or die "Error: --prestage-spec target filename must contain a slash and not start with a slash.  Bad line:\n$line\n";
+	    }
+	}
+    }
+    else {
+	die "Error: can not open  file \"$fn\": $!\n";
+    }
+}
+
+#================================================================
 BEGIN {
     use Exporter   ();
     our ($VERSION, @ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
@@ -45,10 +63,10 @@ BEGIN {
     $VERSION = '1.01';
 
     @ISA         = qw(Exporter);
-    @EXPORT      = qw( &find_file &assert_known_outstage $impldir
+    @EXPORT      = qw( &find_file &validate_prestage_spec &assert_known_outstage $impldir
                       );
 
-    %EXPORT_TAGS = ( all => [qw( &find_file &assert_known_outstage
+    %EXPORT_TAGS = ( all => [qw( &find_file &validate_prestage_spec &assert_known_outstage
 				 $jobsub $impldir @knownOutstage $mu2eDefaultOutstage
                                  )] 
                      );

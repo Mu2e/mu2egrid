@@ -38,33 +38,77 @@ createInputFileList() {
 }
 
 #================================================================
+# This function creates a "prestage specification" file from
+# a list of remote input event files.
+createPrestageSpec() {
+    remotelist=${1:?createPrestageSpec: remotelist arg missing}
+    specfile="events_prestage.spec"
+
+    cat $remotelist | while read rfn; do
+	lfn="data/$(echo $rfn|sed -e 's|/|-|g')"
+	echo $rfn $lfn >> $specfile
+    done
+
+    echo "$specfile"
+}
+
+#================================================================
+# This function creates a list of local files from a prestage
+# specification file.
+extractLocalList() {
+    specfile=${1:?extractLocalList: specfile arg missing}
+    locallist="mu2eLocalInputFiles.txt"
+    awk '{print $2}' $specfile > $locallist
+    echo "$locallist"
+}
+
+#================================================================
 # This function takes a list of remote files, stages them in,
 # prepares a list of local files, and returns the name of the local filelist.
 stageIn() {
-    remotelist=${1:?stageIn: remotelist arg missing}
-    locallist="mu2eLocalInputFiles.txt"
 
-    tstart=$(date +%s)
+    ret=0
 
-    $CPN_DIR/lock >&2
-
-    t1=$(date +%s)
-    echo "$(date) # Time to get stage-in lock: $((t1-tstart)) seconds" >&2
-
-    mkdir data
-    cat $remotelist | while read rfn; do
-	lfn="data/$(echo $rfn|sed -e 's|/|-|g')"
-	echo $lfn >> $locallist
-	echo "$(date) # Staging in: $rfn ==> $lfn" >&2
-	cp $rfn $lfn
+    declare -a specs
+    for f in "$@"; do
+	if [ -n "$f" ]; then
+	    specs=("${specs[@]}" $f)
+	fi
     done
-
-    $CPN_DIR/lock free >&2
     
-    t2=$(date +%s)
-    echo "$(date) # Copy time: $((t2-t1)), total stage-in time: $((t2-tstart)) seconds" >&2
+    if [ "${#specs[@]}" -gt 0 ]; then
 
-    echo "$locallist"
+	tstart=$(date +%s)
+
+	$CPN_DIR/lock >&2
+
+	t1=$(date +%s)
+	echo "$(date) # Time to get stage-in lock: $((t1-tstart)) seconds" >&2
+
+	for spec in "${specs[@]}"; do
+
+	    cat "$spec" | while read line; do
+		rfn=$(echo $line | awk '{print $1}')
+		lfn=$(echo $line | awk '{print $2}')
+
+		echo "$(date) # Staging in: $rfn ==> $lfn" >&2
+		
+		if ! { mkdir -p $(dirname $lfn) && cp $rfn $lfn; } ; then
+		    ret=1;
+		    break 2
+		fi
+
+	    done
+	    
+	done
+
+	$CPN_DIR/lock free >&2
+    
+	t2=$(date +%s)
+	echo "$(date) # Copy time: $((t2-t1)), total stage-in time: $((t2-tstart)) seconds" >&2
+    fi
+
+    return $ret
 }
 
 #================================================================

@@ -85,7 +85,8 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
         
         # mu2e job args: this is the common part of cmdline
         declare -a args=(-c "$JOBCONFIG")
-        
+
+        eventsPrestageSpec=''
         if [ -z "${MU2EGRID_INPUTLIST}" ]; then
             # Case (a): no input file list
             # Define new event IDs
@@ -100,34 +101,45 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
         else
             # There are input files specified.
             remoteList=$(createInputFileList ${MU2EGRID_INPUTLIST} ${MU2EGRID_CHUNKSIZE:?"Error: MU2EGRID_CHUNKSIZE not set"} ${process})
-	    localList=$(stageIn $remoteList)
+	    eventsPrestageSpec=$(createPrestageSpec $remoteList)
+	    localList=$(extractLocalList $eventsPrestageSpec)
             args+=(-S "$localList" --nevts -1)
         fi
         
-        # NB: can stage large input files here to local disk
-        # Is this useful/needed?
+        # Stage input files to the local disk
+	stageIn "$eventsPrestageSpec" "$MU2EGRID_PRESTAGE"
+	ret=$?
 
-        # Run the optional user script
-	ret=0
-	if [ -n "$userscript" ]; then
-	    "$userscript" "$JOBCONFIG" "$process" "$MU2EGRID_NCLUSTERJOBS"
-	    ret=$?
-	fi
-
-        # Run the Offline job.
 	if [ "$ret" -eq 0 ]; then
-	    echo "Starting on host $(uname -a) on $(date)" >> mu2e.log 2>&1
-	    echo "Running the command: mu2e ${args[@]}" >> mu2e.log 2>&1
-	    echo "mu2egrid random seed $SEED" >> mu2e.log 2>&1
-	    /usr/bin/time mu2e "${args[@]}" >> mu2e.log 2>&1
-	    ret=$?
-	    echo "mu2egrid exit status $ret" >> mu2e.log 2>&1
+
+            # Run the optional user script
+	    if [ -n "$userscript" ]; then
+		"$userscript" "$JOBCONFIG" "$process" "$MU2EGRID_NCLUSTERJOBS"
+		ret=$?
+	    fi
+
+	    # echo "Work dir listing before running the job: ================" >> mu2e.log 2>&1
+	    # ls -lR >> mu2e.log 2>&1
+	    # echo "================================================================" >> mu2e.log 2>&1
+
+            # Run the Offline job.
+	    if [ "$ret" -eq 0 ]; then
+		echo "Starting on host $(uname -a) on $(date)" >> mu2e.log 2>&1
+		echo "Running the command: mu2e ${args[@]}" >> mu2e.log 2>&1
+		echo "mu2egrid random seed $SEED" >> mu2e.log 2>&1
+		/usr/bin/time mu2e "${args[@]}" >> mu2e.log 2>&1
+		ret=$?
+		echo "mu2egrid exit status $ret" >> mu2e.log 2>&1
+	    else
+		echo "Aborting the job because the user --userscript script failed.  The command line was:" >> mu2e.log 2>&1
+		echo ""  >> mu2e.log 2>&1
+		echo "$userscript" "$JOBCONFIG" "$process" >> mu2e.log 2>&1
+		echo ""  >> mu2e.log 2>&1
+		echo "Got exit status: $ret" >> mu2e.log 2>&1
+	    fi
+
 	else
-	    echo "Aborting the job because the user --userscript script failed.  The command line was:" >> mu2e.log 2>&1
-	    echo ""  >> mu2e.log 2>&1
-	    echo "$userscript" "$JOBCONFIG" "$process" >> mu2e.log 2>&1
-	    echo ""  >> mu2e.log 2>&1
-	    echo "Got exit status: $ret" >> mu2e.log 2>&1
+	    echo "Aborting the job because pre-staging of input files failed: stageIn '$eventsPrestageSpec' '$MU2EGRID_PRESTAGE'" >> mu2e.log 2>&1
 	fi
 
     else

@@ -25,6 +25,7 @@ Usage:
 	      {--inputs=<filelist>|--events-per-job=<N> [--run-number=<R>]} \\
 	      [--jobname=<name>] \\
 	      [--outstage=<dir>] \\
+	      [--prestage-specs=<specfile>] \\
 	      [--userscript=<script>] \\
 	      [--mu2e-setup=<setupmu2e-art.sh>] \\
 	      [--test-queue] \\
@@ -48,8 +49,13 @@ Notes:
     - The --inputs filelist is to provide a list of framework ROOT
       files to be processed by the job.  This is mutually exclusive
       with --events-per-job, the latter being used for jobs that
-      generate new events.  For new event generation one may specify
-      the run number, the default is the Condor cluster number.
+      generate new events.  Each process pre-stages its subset of
+      input files to a local disk on the worker node.  The total
+      available local disk space for all inputs and outputs is usually
+      40 GB.
+
+    - For new event generation one may specify the run number, the
+      default is the Condor cluster number.
 
     - The jobname argument defines the name of the top level output
       directory.  If this parameter is not specified, a name will be
@@ -60,6 +66,17 @@ Notes:
            @mu2egrid::knownOutstage
 
       by default $mu2egrid::mu2eDefaultOutstage  is used.
+
+    - The --prestage-spec option allows to specify a list of extra
+      files that should be prestaged to the worker node.  Each
+      line in the specification file has the format:
+
+      /file/name/on/bluarc   relative/file/name/on/worker/node
+
+      that is, source and target file names separated by any amount of
+      white space.  The target file name is relative to the working
+      directory.  It must contain a slash '/' and must not start with
+      a slash. Leading and trailing white spaces are ignored.
 
     - The optional --userscript program receives the name of the
       generated fcl file as the first command line argument, the
@@ -100,6 +117,7 @@ EOF
 #================================================================
 my %opt = ('mu2e-setup' => '/grid/fermiapp/products/mu2e/setupmu2e-art.sh',
 	   'outstage' => $mu2egrid::mu2eDefaultOutstage,
+	   'prestage-spec' => '',
 	   'help' => 0, 'test-queue' => 0, '--no-opportunistic' => 0,
 	   'dry-run' => 0, verbose => 0);
 
@@ -114,6 +132,7 @@ GetOptions(\%opt,
 	   "userscript=s",
 	   "jobname=s",
 	   "outstage=s",
+	   "prestage-spec=s",
 	   "njobs=i",
 	   "inputs=s",
 	   "events-per-job=i",
@@ -211,6 +230,15 @@ if(defined($opt{'userscript'})) {
 	unless -x $userscript;
 }
 $ENV{'MU2EGRID_USERSCRIPT'} = $userscript;
+
+#----------------
+# Handle the --prestage-spec options
+my $prestage = '';
+if(defined($opt{'prestage-spec'})) {
+    $prestage = find_file($opt{'prestage-spec'});
+    validate_prestage_spec($prestage);
+}
+$ENV{'MU2EGRID_PRESTAGE'} = $prestage;
 
 #----------------
 my @args = ('--grid', '--mail_never', '-N', $njobs);
