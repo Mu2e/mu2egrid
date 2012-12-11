@@ -59,8 +59,8 @@ printinfo > sysinfo.log 2>&1
 #================================================================
 # Make input files accessible
 
-ln -s $topdir/xsdir
-ln -s $topdir/*.INP xsdir $WORKDIR
+ln -s $topdir/xsdir $WORKDIR
+ln -s $topdir/*.INP $WORKDIR
 /bin/rm -f MARS.INP
 
 # Create job config "MARS.INP" by adding random seeds to the master
