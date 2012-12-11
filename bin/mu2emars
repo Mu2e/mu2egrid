@@ -24,6 +24,7 @@ Usage:
 	--njobs=<M> \\
 	[--outdirfmt="%d/run_%03d"] \\
 	[--outstage=dir] \\
+        [--prestage-specs=<specfile>] \\
         [--test-queue] \\
 	[--no-opportunistic] \\
 	[--no-group-check] \\
@@ -36,6 +37,19 @@ Notes:
     - The outdirfmt argument defines the name of the output directory.
       It is specified as the usual printf format string that can
       use up to two integers: the cluster number and the process number.
+
+    - The --prestage-spec option allows to specify a list of extra
+      files that should be prestaged to the worker node.  Each
+      line in the specification file has the format:
+
+      /file/name/on/bluarc   relative/file/name/on/worker/node
+
+      that is, source and target file names separated by any amount of
+      white space.  The target file name is relative to the working
+      directory.  It must contain a slash '/' and must not start with
+      a slash. Leading and trailing white spaces are ignored. The
+      total available disk space for all inputs and outputs on a
+      worker node is usually 40 GB.
 
     - The --test-queue option submits a test job.  The job will run
       with highest possible priority, but you can only have one such
@@ -73,6 +87,7 @@ GetOptions(\%opt,
 	   "input=s",
 	   "outdirfmt=s",
 	   "outstage=s",
+	   "prestage-spec=s",
 	   "njobs=i",
 	   "test-queue",
 	   "no-opportunistic",
@@ -114,6 +129,16 @@ my $whoami = `whoami`;
 chomp($whoami);
 $ENV{'MU2EGRID_SUBMITTER'} = $whoami;
 
+#----------------
+# Handle the --prestage-spec options
+my $prestage = '';
+if(defined($opt{'prestage-spec'})) {
+    $prestage = find_file($opt{'prestage-spec'});
+    validate_prestage_spec($prestage);
+}
+$ENV{'MU2EGRID_PRESTAGE'} = $prestage;
+
+#----------------
 ##my @args = ('--grid', '--mail_never', '-N', $njobs, '-T', '-L', '/mu2e/data/marsmu2e/users/condor-tmp/vspron/ccc.log');
 my @args = ('--grid', '--mail_never', '-N', $njobs);
 if($test_queue) {

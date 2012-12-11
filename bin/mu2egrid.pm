@@ -39,6 +39,9 @@ sub find_file($) {
 #================================================================
 sub validate_prestage_spec($) {
     my $fn = shift;
+
+    die "--prestage-spec is not a regular file: $fn\n" unless (-f $fn or -l $fn);
+
     if(open(my $fh, $fn)) {
 	while(my $line = <$fh>) {
 	    chomp($line);

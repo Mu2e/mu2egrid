@@ -76,7 +76,9 @@ Notes:
       that is, source and target file names separated by any amount of
       white space.  The target file name is relative to the working
       directory.  It must contain a slash '/' and must not start with
-      a slash. Leading and trailing white spaces are ignored.
+      a slash. Leading and trailing white spaces are ignored. The
+      total available disk space for all inputs and outputs on a
+      worker node is usually 40 GB.
 
     - The optional --userscript program receives the name of the
       generated fcl file as the first command line argument, the
@@ -117,7 +119,6 @@ EOF
 #================================================================
 my %opt = ('mu2e-setup' => '/grid/fermiapp/products/mu2e/setupmu2e-art.sh',
 	   'outstage' => $mu2egrid::mu2eDefaultOutstage,
-	   'prestage-spec' => '',
 	   'help' => 0, 'test-queue' => 0, '--no-opportunistic' => 0,
 	   'dry-run' => 0, verbose => 0);
 

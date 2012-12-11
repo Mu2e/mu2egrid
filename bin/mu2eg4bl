@@ -27,6 +27,7 @@ Usage:
 	      {--datafiles=<filelist>|--events-per-job=<N>} \\
 	      [--jobname=<name>] \\
 	      [--outstage=<dir>] \\
+	      [--prestage-specs=<specfile>] \\
 	      [--mu2e-setup=<setupmu2e-art.sh>] \\
 	      [--g4bl-version=<version>] \\
 	      [--test-queue] \\
@@ -69,6 +70,19 @@ Notes:
 
       by default $mu2egrid::mu2eDefaultOutstage  is used.
 
+    - The --prestage-spec option allows to specify a list of extra
+      files that should be prestaged to the worker node.  Each
+      line in the specification file has the format:
+
+      /file/name/on/bluarc   relative/file/name/on/worker/node
+
+      that is, source and target file names separated by any amount of
+      white space.  The target file name is relative to the working
+      directory.  It must contain a slash '/' and must not start with
+      a slash. Leading and trailing white spaces are ignored.  The
+      total available disk space for all inputs and outputs on a
+      worker node is usually 40 GB.
+
     - All the files mentioned on the submission command line must be
       left intact until all the jobs finish.
 
@@ -95,6 +109,7 @@ GetOptions(\%opt,
 	   "g4bl-version=s",
 	   "jobname=s",
 	   "outstage=s",
+	   "prestage-spec=s",
 	   "njobs=i",
 	   "datafiles=s",
 	   "events-per-job=i",
@@ -155,6 +170,15 @@ $ENV{'MU2EGRID_NCLUSTERJOBS'} = $njobs;
 my $whoami = `whoami`;
 chomp($whoami);
 $ENV{'MU2EGRID_SUBMITTER'} = $whoami;
+
+#----------------
+# Handle the --prestage-spec options
+my $prestage = '';
+if(defined($opt{'prestage-spec'})) {
+    $prestage = find_file($opt{'prestage-spec'});
+    validate_prestage_spec($prestage);
+}
+$ENV{'MU2EGRID_PRESTAGE'} = $prestage;
 
 # Either --datafiles or --events-per-job is required.
 if(defined $opt{'datafiles'}) {

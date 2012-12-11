@@ -72,9 +72,10 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
 	    echo "mu2eg4bl.sh: input file support is not implemented" >> mu2e.log 2>&1
 	    ret=1
 	fi
-	
-        # NB: can stage large input files here to local disk
-        # Is this useful/needed?
+
+        # Stage input files to the local disk
+	stageIn "$MU2EGRID_PRESTAGE"
+	ret=$?
 
 	if [ "$ret" == 0 ]; then
 	    echo "Starting on host $(uname -a) on $(date)" >> mu2e.log 2>&1
@@ -82,6 +83,8 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
 	    /usr/bin/time g4bl "${args[@]}" >> mu2e.log 2>&1
 	    ret=$?
 	    echo "mu2egrid exit status $ret" >> mu2e.log 2>&1
+	else
+	    echo "Aborting the job because pre-staging of input files failed: stageIn '$MU2EGRID_PRESTAGE'" >> mu2e.log 2>&1
 	fi
 
     else
