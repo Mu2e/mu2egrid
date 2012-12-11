@@ -68,7 +68,7 @@ SEED="${MU2EGRID_BASE_SEED:-$(generateSeed)}"
 addMARSSeeds $masterinput "$SEED"
 
 # Stage input files to the local disk
-stageIn "$MU2EGRID_PRESTAGE"
+stageIn "$MU2EGRID_PRESTAGE" >> mars.log 2>&1
 ret=$?
 
 if [ "$ret" == 0 ]; then

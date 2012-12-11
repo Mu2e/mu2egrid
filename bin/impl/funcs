@@ -80,10 +80,10 @@ stageIn() {
 
 	tstart=$(date +%s)
 
-	$CPN_DIR/lock >&2
+	$CPN_DIR/lock
 
 	t1=$(date +%s)
-	echo "$(date) # Time to get stage-in lock: $((t1-tstart)) seconds" >&2
+	echo "$(date) # Time to get stage-in lock: $((t1-tstart)) seconds"
 
 	for spec in "${specs[@]}"; do
 
@@ -91,7 +91,7 @@ stageIn() {
 		rfn=$(echo $line | awk '{print $1}')
 		lfn=$(echo $line | awk '{print $2}')
 
-		echo "$(date) # Staging in: $rfn ==> $lfn" >&2
+		echo "$(date) # Staging in: $rfn ==> $lfn"
 		
 		if ! { mkdir -p $(dirname $lfn) && cp $rfn $lfn; } ; then
 		    ret=1;
@@ -102,10 +102,10 @@ stageIn() {
 	    
 	done
 
-	$CPN_DIR/lock free >&2
+	$CPN_DIR/lock free
     
 	t2=$(date +%s)
-	echo "$(date) # Copy time: $((t2-t1)), total stage-in time: $((t2-tstart)) seconds" >&2
+	echo "$(date) # Copy time: $((t2-t1)), total stage-in time: $((t2-tstart)) seconds"
     fi
 
     return $ret

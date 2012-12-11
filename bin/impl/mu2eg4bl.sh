@@ -74,7 +74,7 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
 	fi
 
         # Stage input files to the local disk
-	stageIn "$MU2EGRID_PRESTAGE"
+	stageIn "$MU2EGRID_PRESTAGE" >> mu2e.log 2>&1
 	ret=$?
 
 	if [ "$ret" == 0 ]; then
