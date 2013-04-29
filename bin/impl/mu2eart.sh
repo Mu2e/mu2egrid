@@ -57,6 +57,12 @@ cd $WORKDIR
 
 printinfo > sysinfo.log 2>&1 
 
+# Save original stdout and stderr
+exec 3>&1 4>&2
+
+# Redirect printouts from the scripts and the main job
+exec > mu2e.log 2>&1
+
 #================================================================
 # Establish environment.
 
@@ -107,7 +113,7 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
         fi
         
         # Stage input files to the local disk
-	stageIn "$eventsPrestageSpec" "$MU2EGRID_PRESTAGE" >> mu2e.log 2>&1
+	stageIn "$eventsPrestageSpec" "$MU2EGRID_PRESTAGE"
 	ret=$?
 
 	if [ "$ret" -eq 0 ]; then
@@ -118,28 +124,24 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
 		ret=$?
 	    fi
 
-	    # echo "Work dir listing before running the job: ================" >> mu2e.log 2>&1
-	    # ls -lR >> mu2e.log 2>&1
-	    # echo "================================================================" >> mu2e.log 2>&1
-
             # Run the Offline job.
 	    if [ "$ret" -eq 0 ]; then
-		echo "Starting on host $(uname -a) on $(date)" >> mu2e.log 2>&1
-		echo "Running the command: mu2e ${args[@]}" >> mu2e.log 2>&1
-		echo "mu2egrid random seed $SEED" >> mu2e.log 2>&1
-		/usr/bin/time mu2e "${args[@]}" >> mu2e.log 2>&1
+		echo "Starting on host $(uname -a) on $(date)"
+		echo "Running the command: mu2e ${args[@]}"
+		echo "mu2egrid random seed $SEED"
+		/usr/bin/time mu2e "${args[@]}"
 		ret=$?
-		echo "mu2egrid exit status $ret" >> mu2e.log 2>&1
+		echo "mu2egrid exit status $ret"
 	    else
-		echo "Aborting the job because the user --userscript script failed.  The command line was:" >> mu2e.log 2>&1
-		echo ""  >> mu2e.log 2>&1
-		echo "$userscript" "$JOBCONFIG" "$process" >> mu2e.log 2>&1
-		echo ""  >> mu2e.log 2>&1
-		echo "Got exit status: $ret" >> mu2e.log 2>&1
+		echo "Aborting the job because the user --userscript script failed.  The command line was:"
+		echo ""
+		echo "$userscript" "$JOBCONFIG" "$process"
+		echo ""
+		echo "Got exit status: $ret"
 	    fi
 
 	else
-	    echo "Aborting the job because pre-staging of input files failed: stageIn '$eventsPrestageSpec' '$MU2EGRID_PRESTAGE'" >> mu2e.log 2>&1
+	    echo "Aborting the job because pre-staging of input files failed: stageIn '$eventsPrestageSpec' '$MU2EGRID_PRESTAGE'"
 	fi
 
     else
@@ -152,9 +154,12 @@ else
 fi
 
 #================================================================
-# Transfer results (or system info in case of environment problems)
-
 outdir="$(createOutStage ${outstagebase} ${user} ${jobname} ${cluster} ${process})"
+
+# Restore original stdout and stderr
+exec 1>&3 2>&4
+
+# Transfer results (or system info in case of environment problems)
 transferOutFiles "$outdir" $(filterOutProxy $(selectFiles *) )
 
 exit $ret

@@ -34,6 +34,12 @@ cd $WORKDIR
 
 printinfo > sysinfo.log 2>&1 
 
+# Save original stdout and stderr
+exec 3>&1 4>&2
+
+# Redirect printouts from the scripts and the main job
+exec > mu2e.log 2>&1
+
 #================================================================
 # Establish environment.
 
@@ -69,22 +75,22 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
 	    # to the .in file.  Need to decide whether the inputs are
 	    # ROOT or ASCII.  More important, the .in file should be
 	    # written in a way that supports this.
-	    echo "mu2eg4bl.sh: input file support is not implemented" >> mu2e.log 2>&1
+	    echo "mu2eg4bl.sh: input file support is not implemented"
 	    ret=1
 	fi
 
         # Stage input files to the local disk
-	stageIn "$MU2EGRID_PRESTAGE" >> mu2e.log 2>&1
+	stageIn "$MU2EGRID_PRESTAGE"
 	ret=$?
 
 	if [ "$ret" == 0 ]; then
-	    echo "Starting on host $(uname -a) on $(date)" >> mu2e.log 2>&1
-	    echo "Running the command: g4bl ${args[@]}" >> mu2e.log 2>&1
-	    /usr/bin/time g4bl "${args[@]}" >> mu2e.log 2>&1
+	    echo "Starting on host $(uname -a) on $(date)"
+	    echo "Running the command: g4bl ${args[@]}"
+	    /usr/bin/time g4bl "${args[@]}"
 	    ret=$?
-	    echo "mu2egrid exit status $ret" >> mu2e.log 2>&1
+	    echo "mu2egrid exit status $ret"
 	else
-	    echo "Aborting the job because pre-staging of input files failed: stageIn '$MU2EGRID_PRESTAGE'" >> mu2e.log 2>&1
+	    echo "Aborting the job because pre-staging of input files failed: stageIn '$MU2EGRID_PRESTAGE'"
 	fi
 
     else
@@ -99,6 +105,10 @@ fi
 # Transfer results (or system info in case of environment problems)
 
 outdir="$(createOutStage ${outstagebase} ${user} ${jobname} ${cluster} ${process})"
+
+# Restore original stdout and stderr
+exec 1>&3 2>&4
+
 # Ignore symlinks to the input files
 transferOutFiles "$outdir" $(filterOutProxy $(selectFiles *) )
 

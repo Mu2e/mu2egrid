@@ -56,6 +56,12 @@ cd $WORKDIR
 
 printinfo > sysinfo.log 2>&1 
 
+# Save original stdout and stderr
+exec 3>&1 4>&2
+
+# Redirect printouts from the scripts and the main job
+exec > mars.log 2>&1
+
 #================================================================
 # Make input files accessible
 
@@ -68,23 +74,27 @@ SEED="${MU2EGRID_BASE_SEED:-$(generateSeed)}"
 addMARSSeeds $masterinput "$SEED"
 
 # Stage input files to the local disk
-stageIn "$MU2EGRID_PRESTAGE" >> mars.log 2>&1
+stageIn "$MU2EGRID_PRESTAGE"
 ret=$?
 
 if [ "$ret" == 0 ]; then
     # Run the job
-    echo "Starting on host $(uname -a) on $(date)" >> mars.log 2>&1
-    echo "Running the command: $executable" >> mars.log 2>&1
-    echo "mu2egrid random seed $SEED" >> mars.log 2>&1
-    /usr/bin/time $executable >> mars.log 2>&1
+    echo "Starting on host $(uname -a) on $(date)"
+    echo "Running the command: $executable"
+    echo "mu2egrid random seed $SEED"
+    /usr/bin/time $executable
     ret=$?
-    echo "mu2egrid exit status $ret" >> mars.log 2>&1
+    echo "mu2egrid exit status $ret"
 else
-    echo "Aborting the job because pre-staging of input files failed: stageIn '$MU2EGRID_PRESTAGE'" >> mars.log 2>&1
+    echo "Aborting the job because pre-staging of input files failed: stageIn '$MU2EGRID_PRESTAGE'"
 fi
 
 # Transfer results
 outdir="$(createMARSOutStage ${outstagebase} ${user} ${outdirfmt} ${cluster} ${process})"
+
+# Restore original stdout and stderr
+exec 1>&3 2>&4
+
 transferOutFiles "$outdir" $(filterOutProxy $(selectFiles *) )
 
 exit $ret
