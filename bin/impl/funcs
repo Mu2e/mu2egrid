@@ -175,15 +175,25 @@ filterOutProxy() {
     done
 }
 #================================================================
+createManifest() {
+    echo '# algorithm: sha256sum' > manifest
+    sha256sum "$@" >> manifest
+    sc="$(sha256sum < manifest)"
+    echo "# selfcheck: $sc" >> manifest
+    echo manifest
+}
+#================================================================
 transferOutFiles() {
     OUTDIR="${1:?transferOutFiles: OUTDIR arg missing}"
     shift
 
     GFTPSERVER=${MU2EGRID_GFTPSERVER:-gsiftp://if-gridftp-mu2e.fnal.gov}
 
+    MANIFEST=$(createManifest "$@")
+
     $CPN_DIR/lock 
 
-    for f in "$@"; do
+    for f in "$MANIFEST" "$@"; do
 	CMD="${GLOBUS_LOCATION}/bin/globus-url-copy -dbg -vb  file://${WORKDIR}/$f ${GFTPSERVER}//${OUTDIR}/"
 	echo "about to do gridftp, the command is $CMD"
 	$CMD
