@@ -32,7 +32,9 @@ sub assert_known_outstage($) {
 sub find_file($) {
     my $fn = shift;
     my $res = abs_path($fn);
-    die "Error: file \"$fn\" does not exist\n" unless defined $res;
+    die "Error: file \"$fn\" does not exist\n"
+	unless (defined $res and -e $res);
+
     return $res;
 }
 
