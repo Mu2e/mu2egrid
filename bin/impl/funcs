@@ -6,8 +6,6 @@
 #
 #
 #================================================================
-CPN_DIR=/grid/fermiapp/common/tools
-#================================================================
 SeedServiceMaxEngines=20
 generateSeed() {
     # art's RandomNumberGenerator_service restrict seeds to
@@ -63,8 +61,9 @@ extractLocalList() {
 }
 
 #================================================================
-# This function takes a list of remote files, stages them in,
-# prepares a list of local files, and returns the name of the local filelist.
+# This function takes an arbitrary number of "prestage specification"
+# files, and copies all the remote files to their destinations
+# under an I/O throttling protection.
 stageIn() {
 
     ret=0
@@ -75,37 +74,30 @@ stageIn() {
 	    specs=("${specs[@]}" $f)
 	fi
     done
-    
+
     if [ "${#specs[@]}" -gt 0 ]; then
+
+	echo "$(date) # Starting to pre-stage input files"
+
+	# Merge all the lists into a single file
+	totalspec=$(mktemp prestage-merged.XXXX)
+	cat "${specs[@]}" > "$totalspec"
+
+	# ifdh does not create destination directories
+        # Do it here
+	mkdir -p $(awk '{print $2}' "$totalspec" | sed -e 's|/[^/]*$||' | sort -u)
+
+	awk '{print "Pre-staging: ",$1,"  ==>  ",$2}' "$totalspec"
 
 	tstart=$(date +%s)
 
-	$CPN_DIR/lock
+	# Get the lock and copy files
+	ifdh cp -f "$totalspec"
+	ret=$?
 
-	t1=$(date +%s)
-	echo "$(date) # Time to get stage-in lock: $((t1-tstart)) seconds"
-
-	for spec in "${specs[@]}"; do
-
-	    cat "$spec" | while read line; do
-		rfn=$(echo $line | awk '{print $1}')
-		lfn=$(echo $line | awk '{print $2}')
-
-		echo "$(date) # Staging in: $rfn ==> $lfn"
-		
-		if ! { mkdir -p $(dirname $lfn) && cp $rfn $lfn; } ; then
-		    ret=1;
-		    break 2
-		fi
-
-	    done
-	    
-	done
-
-	$CPN_DIR/lock free
-    
 	t2=$(date +%s)
-	echo "$(date) # Copy time: $((t2-t1)), total stage-in time: $((t2-tstart)) seconds"
+	echo "$(date) # Total stage-in time: $((t2-tstart)) seconds, status $ret"
+
     fi
 
     return $ret
@@ -184,21 +176,18 @@ createManifest() {
 }
 #================================================================
 transferOutFiles() {
+    echo "$(date) # Starting to transfer output files"
+
     OUTDIR="${1:?transferOutFiles: OUTDIR arg missing}"
     shift
 
-    GFTPSERVER=${MU2EGRID_GFTPSERVER:-gsiftp://if-gridftp-mu2e.fnal.gov}
-
     MANIFEST=$(createManifest "$@")
 
-    $CPN_DIR/lock 
+    t1=$(date +%s)
 
-    for f in "$MANIFEST" "$@"; do
-	CMD="${GLOBUS_LOCATION}/bin/globus-url-copy -dbg -vb  file://${WORKDIR}/$f ${GFTPSERVER}//${OUTDIR}/"
-	echo "about to do gridftp, the command is $CMD"
-	$CMD
-    done
+    ifdh cp --force=expftp -D  "$MANIFEST" "$@" ${OUTDIR}
 
-    $CPN_DIR/lock free
+    t2=$(date +%s)
+    echo "$(date) # Total outstage lock and copy time: $((t2-t1)) seconds"
 }
 #================================================================
