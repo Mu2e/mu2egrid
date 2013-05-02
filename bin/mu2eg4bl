@@ -14,8 +14,6 @@ use mu2egrid;
 
 my $workerscript = abs_path(dirname($0) . '/impl/mu2eg4bl.sh');
 
-my $defaultG4blVersion = 'v2_12';
-
 #================================================================
 sub usage() {
     my $self = basename($0);
@@ -23,13 +21,13 @@ sub usage() {
 Usage: 
 	$self --in=<file> \\
 	      [--tar=<tarfile>] \\
+	      --g4bl-version=<version> \\
 	      --njobs=<M> \\
 	      {--datafiles=<filelist>|--events-per-job=<N>} \\
 	      [--jobname=<name>] \\
 	      [--outstage=<dir>] \\
 	      [--prestage-specs=<specfile>] \\
 	      [--mu2e-setup=<setupmu2e-art.sh>] \\
-	      [--g4bl-version=<version>] \\
 	      [--test-queue] \\
 	      [--no-opportunistic] \\
 	      [--dry-run] \\
@@ -53,8 +51,6 @@ Notes:
     - The jobname argument defines the name of the top level output
       directory.  If this parameter is not specified, a name will be
       derived from the --in file name.
-
-    - The default G4beamline version is $defaultG4blVersion
 
     - The --test-queue option submits a test job.  The job will run
       with highest possible priority, but you can only have one such
@@ -92,7 +88,6 @@ EOF
 
 #================================================================
 my %opt = ('mu2e-setup' => '/grid/fermiapp/products/mu2e/setupmu2e-art.sh',
-	   'g4bl-version' => $defaultG4blVersion,
 	   'outstage' => $mu2egrid::mu2eDefaultOutstage,
 	   'tar' => '',
 	   'help' => 0, 'verbose'=> 0,
@@ -125,7 +120,7 @@ if($opt{'help'}) {
 }
 
 # Check that all of the required args are present:
-foreach my $k ('in', 'njobs') {
+foreach my $k ('in', 'njobs', 'g4bl-version') {
     defined $opt{$k} or die "Error: --$k must be specified.  Try the --help option.\n";
 }
 
