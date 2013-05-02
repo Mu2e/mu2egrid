@@ -80,8 +80,10 @@ stageIn() {
 	echo "$(date) # Starting to pre-stage input files"
 
 	# Merge all the lists into a single file
+	# ifdh is picky about white spaces, (redmine #3790)
+	# Make sure we have exactly one space
 	totalspec=$(mktemp prestage-merged.XXXX)
-	cat "${specs[@]}" > "$totalspec"
+	awk '{print $1" "$2}' "${specs[@]}" > "$totalspec"
 
 	# ifdh does not create destination directories
         # Do it here
