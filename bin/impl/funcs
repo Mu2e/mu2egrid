@@ -78,6 +78,7 @@ stageIn() {
     if [ "${#specs[@]}" -gt 0 ]; then
 
 	echo "$(date) # Starting to pre-stage input files"
+	type ifdh
 
 	# Merge all the lists into a single file
 	# ifdh is picky about white spaces, (redmine #3790)
@@ -179,6 +180,7 @@ createManifest() {
 #================================================================
 transferOutFiles() {
     echo "$(date) # Starting to transfer output files"
+    type ifdh
 
     OUTDIR="${1:?transferOutFiles: OUTDIR arg missing}"
     shift
