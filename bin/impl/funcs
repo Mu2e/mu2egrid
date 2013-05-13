@@ -154,7 +154,7 @@ createOutStage() {
 # Ignores directories and other non-plain files
 selectFiles() {
     for i in "$@"; do
-	test -f "$i" && echo "$i"
+	[ -f "$i" ] && [ ! -h "$i" ] && echo "$i"
     done
 }
 #================================================================
@@ -171,7 +171,9 @@ filterOutProxy() {
 }
 #================================================================
 createManifest() {
-    echo '# algorithm: sha256sum' > manifest
+    ls -l |awk '{print "# "$0}' > manifest
+    echo '#----------------------------------------------------------------' >> manifest
+    echo '# algorithm: sha256sum' >> manifest
     sha256sum "$@" >> manifest
     sc="$(sha256sum < manifest)"
     echo "# selfcheck: $sc" >> manifest
