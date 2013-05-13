@@ -25,7 +25,7 @@ Usage:
 	      {--inputs=<filelist>|--events-per-job=<N> [--run-number=<R>]} \\
 	      [--jobname=<name>] \\
 	      [--outstage=<dir>] \\
-	      [--prestage-specs=<specfile>] \\
+	      [--prestage-spec=<specfile>] \\
 	      [--userscript=<script>] \\
 	      [--mu2e-setup=<setupmu2e-art.sh>] \\
 	      [--ifdh-version=<version>] \\

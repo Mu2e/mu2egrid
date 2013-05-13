@@ -24,7 +24,7 @@ Usage:
 	--njobs=<M> \\
 	[--outdirfmt="%d/run_%03d"] \\
 	[--outstage=dir] \\
-        [--prestage-specs=<specfile>] \\
+        [--prestage-spec=<specfile>] \\
         [--test-queue] \\
 	[--no-opportunistic] \\
 	[--no-group-check] \\

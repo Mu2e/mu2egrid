@@ -26,7 +26,7 @@ Usage:
 	      {--datafiles=<filelist>|--events-per-job=<N>} \\
 	      [--jobname=<name>] \\
 	      [--outstage=<dir>] \\
-	      [--prestage-specs=<specfile>] \\
+	      [--prestage-spec=<specfile>] \\
 	      [--mu2e-setup=<setupmu2e-art.sh>] \\
 	      [--test-queue] \\
 	      [--no-opportunistic] \\
