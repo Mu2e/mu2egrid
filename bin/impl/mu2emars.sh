@@ -77,6 +77,11 @@ addMARSSeeds $masterinput "$SEED"
 stageIn "$MU2EGRID_PRESTAGE"
 ret=$?
 
+if [ -n "$MU2EGRID_SETUP" ]; then
+    echo "Sourcing user setup script $MU2EGRID_SETUP"
+    source "$MU2EGRID_SETUP"
+fi
+
 if [ "$ret" == 0 ]; then
     # Run the job
     echo "Starting on host $(uname -a) on $(date)"

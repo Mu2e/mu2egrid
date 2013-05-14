@@ -25,6 +25,7 @@ Usage:
 	[--outdirfmt="%d/run_%03d"] \\
 	[--outstage=dir] \\
         [--prestage-spec=<specfile>] \\
+	[--setup=<script-to-source.sh>] \\
         [--test-queue] \\
 	[--no-opportunistic] \\
 	[--no-group-check] \\
@@ -51,6 +52,10 @@ Notes:
       total available disk space for all inputs and outputs on a
       worker node is usually 40 GB.
 
+    - A bash script given by the --setup option will be sourced on the
+      worker node before running the job.  It can, for example, setup
+      environment variables as needed.
+
     - The --test-queue option submits a test job.  The job will run
       with highest possible priority, but you can only have one such
       job in the queue at a time.
@@ -75,6 +80,7 @@ EOF
 my %opt = ('outstage' => '/grid/data/marsmu2e/outstage',
 	   'outdirfmt' => '%d/run_%03d',
 	   'help' => 0, 
+	   'setup' => '',
 	   'test-queue' => 0, 'no-opportunistic' => 0,
 	   'no-group-check' => 0,
 	   'verbose' => 0, 'dry-run' => 0);
@@ -89,6 +95,7 @@ GetOptions(\%opt,
 	   "outstage=s",
 	   "prestage-spec=s",
 	   "njobs=i",
+	   "setup=s",
 	   "test-queue",
 	   "no-opportunistic",
 	   "no-group-check",
@@ -113,6 +120,12 @@ my $outstage = find_file($opt{'outstage'});
 assert_known_outstage($outstage);
 
 my $njobs = $opt{'njobs'};
+
+my $setup = '';
+if(defined $opt{'setup'}) {
+    $setup = find_file($opt{'setup'});
+}
+
 my $test_queue = $opt{'test-queue'};
 if($test_queue && ($njobs > 1)) {
     print "WARNING: trying to run more than one job while requesting --test-queue\n";
@@ -124,6 +137,8 @@ $ENV{'MU2EGRID_TOPDIR'} = abs_path('.');
 $ENV{'MU2EGRID_OUTDIRFMT'} = $opt{'outdirfmt'};
 $ENV{'MU2EGRID_OUTSTAGE'} = $outstage;
 $ENV{'MU2EGRID_GFTPSERVER'} = "gsiftp://if-gridftp-marsmu2e.fnal.gov";
+$ENV{'MU2EGRID_SETUP'} = $setup;
+
 
 my $whoami = `whoami`;
 chomp($whoami);
