@@ -63,10 +63,14 @@ exec 3>&1 4>&2
 exec > mars.log 2>&1
 
 #================================================================
-# Make input files accessible
+# Make input files accessible.  These are small files
+# (less than 1M), copy them directly without locking.
+# Could use symlinks instead, but then ifdh breaks
+# on copying them to the outstage, and users want to
+# have *INP with the results.
 
-ln -s $topdir/xsdir $WORKDIR
-ln -s $topdir/*.INP $WORKDIR
+cp $topdir/xsdir $WORKDIR
+cp $topdir/*.INP $WORKDIR
 /bin/rm -f MARS.INP
 
 # Create job config "MARS.INP" by adding random seeds to the master
