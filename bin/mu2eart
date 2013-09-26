@@ -31,6 +31,7 @@ Usage:
 	      [--ifdh-version=<version>] \\
 	      [--test-queue] \\
 	      [--no-opportunistic] \\
+	      [--jobsub-arg=string1] [--jobsub-arg=string2] [...] \\
 	      [--dry-run] \\
 	      [--verbose] \\
 	      [--help]
@@ -102,6 +103,10 @@ Notes:
       The --no-opportunistic options requests to run only on dedicated
       mu2e slots.
 
+    - The --jobsub-arg option allows to pass arbitrary extra
+      parameters to the jobsub command.  Don not use unless you know
+      exactly what you are doing.
+
     - Use --dry-run to test the submission command without actually
       sending the jobs.
 
@@ -118,9 +123,12 @@ EOF
 }
 
 #================================================================
+my @extra_jobsub_args;
+
 my %opt = ('mu2e-setup' => '/grid/fermiapp/products/mu2e/setupmu2e-art.sh',
 	   'outstage' => $mu2egrid::mu2eDefaultOutstage,
 	   'help' => 0, 'test-queue' => 0, '--no-opportunistic' => 0,
+	   'jobsub-arg' => \@extra_jobsub_args,
 	   'dry-run' => 0, verbose => 0);
 
 
@@ -142,6 +150,7 @@ GetOptions(\%opt,
 	   "run-number=i",
 	   "test-queue",
 	   "no-opportunistic",
+	   "jobsub-arg=s@",
 	   "dry-run",
 	   ) 
     or die "\nError processing command line options.\n";
@@ -266,6 +275,7 @@ if(defined($opt{'ifdh-version'})) {
     push @args, ('-e', 'IFDH_VERSION');
 }
 
+push @args, @extra_jobsub_args;
 push @args, $workerscript;
 
 print "Command:  $mu2egrid::jobsub @args\n";
