@@ -86,7 +86,7 @@ Notes:
       generated fcl file as the first command line argument, the
       sequential process number (0 to njobs-1) as the second argument,
       and the total number of jobs in this cluster as the third.  The
-      program is invoked after the process-specific fcl file is
+      program is executed after the process-specific fcl file is
       generated and before the mu2e command is run.  The program may
       modify the fcl file and/or do any other adjustments to the job.
       The process is aborted unless the program exits with zero status
