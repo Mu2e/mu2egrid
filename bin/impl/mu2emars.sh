@@ -71,6 +71,7 @@ exec > mars.log 2>&1
 
 cp $topdir/xsdir $WORKDIR
 cp $topdir/*.INP $WORKDIR
+cp $topdir/*.f $WORKDIR
 /bin/rm -f MARS.INP
 
 # Create job config "MARS.INP" by adding random seeds to the master
