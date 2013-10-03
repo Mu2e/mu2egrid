@@ -33,9 +33,22 @@ sub getUserClusters($) {
 
     while(my $line = <CQ>) {
 	chomp($line);
-	if($line =~ /^\d.*$username/) {
-	    $line =~ s/\..*$//;
-	    ++$clusters{$line} ;
+	my @fields = split(' ', $line);
+#	print "got username = $username, fields = ". join('#', @fields) . "\n";
+	if(($#fields > 5) && ($fields[1] eq $username)) {
+	    my $cn = $fields[0];
+	    $cn =~ s/\.\d*$//;
+
+	    if(!defined($clusters{$cn})) {
+		$clusters{$cn} = [0,0];
+	    }
+
+            # total job count
+	    ++$clusters{$cn}[0];
+            # running jobs count
+	    if($fields[5] eq 'R') {
+		++$clusters{$cn}[1];
+	    }
 	}
     }
 
@@ -66,7 +79,7 @@ else {
     my $clusters = getUserClusters($user);
 
     if(!$brief) {
-	print "Cluster\tnjobs\n";
+	print "Cluster  \tnjobs\trunning\n";
     }
 
     foreach my $cn (sort(keys %$clusters)) {
@@ -74,7 +87,7 @@ else {
 	    print "$cn\n";
 	}
 	else {
-	    print "$cn\t$$clusters{$cn}\n";
+	    print "$cn\t$$clusters{$cn}[0]\t$$clusters{$cn}[1]\n";
 	}
     }
 }
