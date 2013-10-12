@@ -113,6 +113,7 @@ sub classifyJobs($$) {
 
     use constant GOOD => 'good';
     use constant FAILED => 'failed';
+    use constant RERUN  => 'rerun';
     use constant DUPSEED => 'duplicate';
 
     my $summary = {GOOD=>0, FAILED=>0, DUPSEED=>0};
@@ -123,8 +124,8 @@ sub classifyJobs($$) {
 	    ++$$summary{FAILED};
 	}
 	elsif($jobdir =~ m|/[^/]+\.|) { # old instance of a job restarted by condor
-	    $$stats{'decision'} = DUPSEED;
-	    ++$$summary{DUPSEED};
+	    $$stats{'decision'} = RERUN;
+	    ++$$summary{RERUN};
 	}
 	else {
 	    if(scalar(%$seeds)) { # each job in this dataset should have a seed
