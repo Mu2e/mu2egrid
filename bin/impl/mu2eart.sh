@@ -88,7 +88,48 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
         JOBCONFIG=$(createJobFCL "$masterfhicl")
 	SEED="${MU2EGRID_BASE_SEED:-$(generateSeed)}"
         addSeeds "$JOBCONFIG" "$SEED"
-        
+
+        #================================================================
+	# Handle the --fclinput options
+
+        fclinPrestageSpec=''
+        if [ ${MU2EGRID_FCLINPUT_NUMENTRIES:-0} -gt 0 ]; then
+            fclinPrestageSpec=$(mktemp prestage-fclin.XXXX)
+            i=0; while [ $((i+=1)) -le ${MU2EGRID_FCLINPUT_NUMENTRIES:-0} ]; do
+
+                nvn="MU2EGRID_FCLINPUT_${i}_NF"
+                numFiles="${!nvn}"
+                vvn="MU2EGRID_FCLINPUT_${i}_VAR"
+                variable="${!vvn}"
+                fvn="MU2EGRID_FCLINPUT_${i}_FILELIST"
+                fclinRemoteFiles="${!fvn}"
+
+		# select the given number of files for pre-staging
+		tmpremote=$(mktemp prestage-fclin-remote.XXXX)
+		if [ $numFiles -gt 0 ]; then
+		    pickRandomLines "$fclinRemoteFiles" $numFiles > $tmpremote
+		else
+		    cat "$fclinRemoteFiles" > $tmpremote
+		fi
+
+		# the current chunk of prestage spec
+		tmpspec=$(mktemp prestage-fclin-chunk.XXXX)
+		createPrestageSpec $tmpremote $tmpspec > /dev/null
+
+		# Format the local list of files and put it into the fcl file variable
+		echo "$variable : [" >> $JOBCONFIG
+		awk 'BEGIN{first=1}; {if(!first) {cm=",";} else {first=0; cm=" ";}; print "    "cm"\""$2"\""}' $tmpspec >> $JOBCONFIG
+		echo "]" >> $JOBCONFIG
+
+		# Merge prestage specs, and clean up
+		cat $tmpspec >> $fclinPrestageSpec
+		rm -f $tmpremote
+		rm -f $tmpspec
+
+            done
+        fi
+
+        #================================================================
         # mu2e job args: this is the common part of cmdline
         declare -a args=(-c "$JOBCONFIG")
 
@@ -113,7 +154,7 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
         fi
         
         # Stage input files to the local disk
-	stageIn "$eventsPrestageSpec" "$MU2EGRID_PRESTAGE"
+	stageIn "$eventsPrestageSpec" "$MU2EGRID_PRESTAGE" "$fclinPrestageSpec"
 	ret=$?
 
 	if [ "$ret" -eq 0 ]; then

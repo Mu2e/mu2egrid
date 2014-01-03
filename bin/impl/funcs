@@ -21,6 +21,40 @@ generateSeed() {
 }
 
 #================================================================
+# prints a set of nr integers between 0 and (range-1), inclusive.
+getDistinctRandoms() {
+    range=${1:?getDistinctRandoms: range arg is missing}
+    nr=${2:?getDistinctRandoms: numRandoms arg is missing}
+    if [ $range -gt 32768 ]; then
+       # we use bash RANDOM here
+       echo "ERROR: getDistinctRandoms: range=$range is not supported: max is 32768" >&2
+       return 1
+    elif [ $range -lt $nr ]; then
+       echo "ERROR: getDistinctRandoms: inconsistent args: range=$range, nr=$nr" >&2
+       return 1
+    else
+	rlist=''
+	while [ $(for i in $rlist; do echo $i; done|wc -l) -lt $nr ]; do
+	    rlist+=" $(($RANDOM%$range))"
+	    rlist="$(for i in $rlist; do echo $i; done|sort -n -u)"
+	done
+	echo $rlist   
+    fi
+}
+
+#================================================================
+# prints a requested number of lines, selecting random distinct lines
+# from the given file
+pickRandomLines() {
+    file="${1:?pickRandomLines: file arg is missing}"
+    nl=${2:?pickRandomLines: numLines arg is missing}
+    rlist=$(getDistinctRandoms $(wc -l $file|awk '{print $1}') $nl)
+    for ll in $rlist; do
+	tail --lines=+"$((1+$ll))" "$file" | head --lines=1
+    done
+}
+
+#================================================================
 # This cuts a chunk of inputs for this job from the master input file list.
 # The resulting list gives "remote" files names that are to be staged in.
 createInputFileList() {
@@ -40,7 +74,7 @@ createInputFileList() {
 # a list of remote input event files.
 createPrestageSpec() {
     remotelist=${1:?createPrestageSpec: remotelist arg missing}
-    specfile="events_prestage.spec"
+    specfile=${2:-"events_prestage.spec"}
 
     cat $remotelist | while read rfn; do
 	lfn="data/$(echo $rfn|sed -e 's|/|-|g')"

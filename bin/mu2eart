@@ -25,6 +25,7 @@ Usage:
 	      {--inputs=<filelist>|--events-per-job=<N> [--run-number=<R>]} \\
 	      [--jobname=<name>] \\
 	      [--outstage=<dir>] \\
+	      [--fclinput=[numFiles:]<fclVarName>:<filelist>] \\
 	      [--prestage-spec=<specfile>] \\
 	      [--userscript=<script>] \\
 	      [--mu2e-setup=<setupmu2e-art.sh>] \\
@@ -68,6 +69,13 @@ Notes:
            @mu2egrid::knownOutstage
 
       by default $mu2egrid::mu2eDefaultOutstage  is used.
+
+    - The --fclinput option sets the given fcl file variable so that
+      it points to the files in the given filelist.  The files are
+      pre-staged to the worker node.  If numFiles is specified, only
+      the given number of randomly selected files from the list are
+      used, rather than the complete list.   The --fclinput option can
+      be repeated several times, the effect is cumulative.
 
     - The --prestage-spec option allows to specify a list of extra
       files that should be prestaged to the worker node.  Each
@@ -123,11 +131,13 @@ EOF
 }
 
 #================================================================
+my @fclinputs;
 my @extra_jobsub_args;
 
 my %opt = ('mu2e-setup' => '/grid/fermiapp/products/mu2e/setupmu2e-art.sh',
 	   'outstage' => $mu2egrid::mu2eDefaultOutstage,
 	   'help' => 0, 'test-queue' => 0, '--no-opportunistic' => 0,
+	   'fclinput' => \@fclinputs,
 	   'jobsub-arg' => \@extra_jobsub_args,
 	   'dry-run' => 0, verbose => 0);
 
@@ -143,6 +153,7 @@ GetOptions(\%opt,
 	   "userscript=s",
 	   "jobname=s",
 	   "outstage=s",
+	   "fclinput=s@",
 	   "prestage-spec=s",
 	   "njobs=i",
 	   "inputs=s",
@@ -242,6 +253,37 @@ if(defined($opt{'userscript'})) {
 	unless -x $userscript;
 }
 $ENV{'MU2EGRID_USERSCRIPT'} = $userscript;
+
+#----------------
+# Handle the --fclinput options
+$ENV{'MU2EGRID_FCLINPUT_NUMENTRIES'}=0;
+foreach my $fclin (@fclinputs) {
+
+    die "Error in an --fclin specification: no ':' in $fclin\n" unless $fclin =~ /:/;
+
+    my $numFiles = 0; # the default
+    my $var;
+    my $files;
+    (my $l1, my $l2) = split(/:/, $fclin, 2);
+    if($l1 =~ /^\d/) {
+	die "Invalid numFiles=$l1  in --fclinput=$fclin\n"
+	    unless $l1 =~ /^\d+$/;
+	$numFiles = $l1;
+	die "Error in an --fclin specification: no 'filelist' part in $fclin\n" unless $l2 =~ /:/;
+	($var, $files) = split(/:/, $l2, 2);
+    }
+    else {
+	($var, $files) = ($l1, $l2);
+    }
+
+    $files = find_file($files);
+
+    $ENV{'MU2EGRID_FCLINPUT_NUMENTRIES'} += 1;
+    my $prefix = "MU2EGRID_FCLINPUT_$ENV{MU2EGRID_FCLINPUT_NUMENTRIES}";
+    $ENV{$prefix . '_NF'} .= "$numFiles";
+    $ENV{$prefix . '_VAR'} .= "$var";
+    $ENV{$prefix . '_FILELIST'} .= "$files";
+}
 
 #----------------
 # Handle the --prestage-spec options
