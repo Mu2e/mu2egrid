@@ -220,6 +220,7 @@ if(defined $opt{'inputs'}) {
     }
 
     my $inputs = find_file($opt{'inputs'});
+    validate_file_list($inputs);
 
     $ENV{'MU2EGRID_INPUTLIST'} = $inputs;
     my $nlines =  `cat $inputs | wc -l`;
@@ -277,6 +278,7 @@ foreach my $fclin (@fclinputs) {
     }
 
     $files = find_file($files);
+    validate_file_list($files);
 
     $ENV{'MU2EGRID_FCLINPUT_NUMENTRIES'} += 1;
     my $prefix = "MU2EGRID_FCLINPUT_$ENV{MU2EGRID_FCLINPUT_NUMENTRIES}";

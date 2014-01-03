@@ -39,6 +39,24 @@ sub find_file($) {
 }
 
 #================================================================
+sub validate_file_list($) {
+    my $fn = shift;
+
+    die "--prestage-spec is not a regular file: $fn\n" unless (-f $fn or -l $fn);
+
+    if(open(my $fh, $fn)) {
+	while(my $line = <$fh>) {
+	    chop($line);
+	    die "Error: not an absolute file name: \"$line\" in file $fn\n" unless $line =~ m{^/};
+	    die "Error: line contains white spaces or other non-printable characters: \"$line\" in file $fn\n" unless $line =~ /^\p{IsGraph}+$/
+	}
+    }
+    else {
+	die "Error: can not open  file \"$fn\": $!\n";
+    }
+}
+
+#================================================================
 sub validate_prestage_spec($) {
     my $fn = shift;
 
@@ -68,10 +86,10 @@ BEGIN {
     $VERSION = '1.01';
 
     @ISA         = qw(Exporter);
-    @EXPORT      = qw( &find_file &validate_prestage_spec &assert_known_outstage $impldir
+    @EXPORT      = qw( &find_file &validate_file_list &validate_prestage_spec &assert_known_outstage $impldir
                       );
 
-    %EXPORT_TAGS = ( all => [qw( &find_file &validate_prestage_spec &assert_known_outstage
+    %EXPORT_TAGS = ( all => [qw( &find_file &validate_file_list &validate_prestage_spec &assert_known_outstage
 				 $jobsub $impldir @knownOutstage $mu2eDefaultOutstage
                                  )] 
                      );

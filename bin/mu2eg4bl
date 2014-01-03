@@ -182,6 +182,7 @@ if(defined $opt{'datafiles'}) {
     }
 
     my $datafiles = find_file($opt{'datafiles'});
+    validate_file_list($datafiles);
 
     $ENV{'MU2EGRID_INPUTLIST'} = $datafiles;
     my $nlines =  `cat $datafiles | wc -l`;
