@@ -30,6 +30,7 @@ Usage:
 	      [--mu2e-setup=<setupmu2e-art.sh>] \\
 	      [--test-queue] \\
 	      [--no-opportunistic] \\
+	      [--jobsub-arg=string1] [--jobsub-arg=string2] [...] \\
 	      [--dry-run] \\
 	      [--verbose]
 
@@ -87,9 +88,12 @@ EOF
 }
 
 #================================================================
+my @extra_jobsub_args;
+
 my %opt = ('mu2e-setup' => '/grid/fermiapp/products/mu2e/setupmu2e-art.sh',
 	   'outstage' => $mu2egrid::mu2eDefaultOutstage,
 	   'tar' => '',
+	   'jobsub-arg' => \@extra_jobsub_args,
 	   'help' => 0, 'verbose'=> 0,
 	   'test-queue' => 0,  'no-opportunistic' => 0,
 	   'dry-run' => 0);
@@ -113,6 +117,9 @@ GetOptions(\%opt,
 	   "dry-run",
 	   ) 
     or die "\nError processing command line options.\n";
+
+# Export the EXPERIMENT variable for ifdh
+push @extra_jobsub_args, ('-e', 'EXPERIMENT');
 
 if($opt{'help'}) {
     print usage();
@@ -222,6 +229,7 @@ while( (my $key, my $value) = each(%ENV) ) {
     }
 }
 
+push @args, @extra_jobsub_args;
 push @args, $workerscript;
 
 print "Command:  $mu2egrid::jobsub @args\n";

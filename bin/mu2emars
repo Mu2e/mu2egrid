@@ -29,6 +29,7 @@ Usage:
         [--test-queue] \\
 	[--no-opportunistic] \\
 	[--no-group-check] \\
+        [--jobsub-arg=string1] [--jobsub-arg=string2] [...] \\
 	[--dry-run] \\
 	[--verbose] \\
 	[--help]
@@ -77,10 +78,13 @@ EOF
 }
 
 #================================================================
+my @extra_jobsub_args;
+
 my %opt = ('outstage' => '/grid/data/marsmu2e/outstage',
 	   'outdirfmt' => '%d/run_%03d',
 	   'help' => 0, 
 	   'setup' => '',
+	   'jobsub-arg' => \@extra_jobsub_args,
 	   'test-queue' => 0, 'no-opportunistic' => 0,
 	   'no-group-check' => 0,
 	   'verbose' => 0, 'dry-run' => 0);
@@ -102,6 +106,9 @@ GetOptions(\%opt,
 	   "dry-run",
 	   ) 
     or die "\nError processing command line options.\n";
+
+# Export the EXPERIMENT variable for ifdh
+push @extra_jobsub_args, ('-e', 'EXPERIMENT');
 
 if($opt{'help'}) {
     print usage();
@@ -170,6 +177,7 @@ while( (my $key, my $value) = each(%ENV) ) {
     }
 }
 
+push @args, @extra_jobsub_args;
 push @args, $workerscript;
 
 print "Command:  $mu2egrid::jobsub @args\n";

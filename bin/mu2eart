@@ -166,6 +166,9 @@ GetOptions(\%opt,
 	   ) 
     or die "\nError processing command line options.\n";
 
+# Export the EXPERIMENT variable for ifdh
+push @extra_jobsub_args, ('-e', 'EXPERIMENT');
+
 if($opt{'help'}) {
     print usage();
     exit 0;
