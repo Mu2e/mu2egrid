@@ -33,6 +33,7 @@ Usage:
 	      [--test-queue] \\
 	      [--no-opportunistic] \\
 	      [--jobsub-arg=string1] [--jobsub-arg=string2] [...] \\
+	      [--no-sl56] \\
 	      [--dry-run] \\
 	      [--verbose] \\
 	      [--help]
@@ -115,6 +116,9 @@ Notes:
       parameters to the jobsub command.  Don not use unless you know
       exactly what you are doing.
 
+    - By default the --OS=SL5,SL6 option is passed to jobsub.
+      The --no-sl56 option disables that.
+
     - Use --dry-run to test the submission command without actually
       sending the jobs.
 
@@ -136,9 +140,10 @@ my @extra_jobsub_args;
 
 my %opt = ('mu2e-setup' => '/grid/fermiapp/products/mu2e/setupmu2e-art.sh',
 	   'outstage' => $mu2egrid::mu2eDefaultOutstage,
-	   'help' => 0, 'test-queue' => 0, '--no-opportunistic' => 0,
+	   'help' => 0, 'test-queue' => 0, 'no-opportunistic' => 0,
 	   'fclinput' => \@fclinputs,
 	   'jobsub-arg' => \@extra_jobsub_args,
+	   'no-sl56' => 0,
 	   'dry-run' => 0, verbose => 0);
 
 
@@ -162,17 +167,22 @@ GetOptions(\%opt,
 	   "test-queue",
 	   "no-opportunistic",
 	   "jobsub-arg=s@",
+	   "no-sl56",
 	   "dry-run",
 	   ) 
     or die "\nError processing command line options.\n";
-
-# Export the EXPERIMENT variable for ifdh
-push @extra_jobsub_args, ('-e', 'EXPERIMENT');
 
 if($opt{'help'}) {
     print usage();
     exit 0;
 }
+
+if(!$opt{'no-sl56'}) {
+    push @extra_jobsub_args, ('--OS=SL5,SL6');
+}
+
+# Export the EXPERIMENT variable for ifdh
+push @extra_jobsub_args, ('-e', 'EXPERIMENT');
 
 # Check that all of the required args are present:
 foreach my $k ('setup', 'mu2e-setup', 'fcl', 'outstage', 'njobs') {

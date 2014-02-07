@@ -30,6 +30,7 @@ Usage:
 	[--no-opportunistic] \\
 	[--no-group-check] \\
         [--jobsub-arg=string1] [--jobsub-arg=string2] [...] \\
+	[--no-sl56] \\
 	[--dry-run] \\
 	[--verbose] \\
 	[--help]
@@ -65,6 +66,13 @@ Notes:
       The --no-opportunistic options requests to run only on the
       dedicated slots.
 
+    - The --jobsub-arg option allows to pass arbitrary extra
+      parameters to the jobsub command.  Don not use unless you know
+      exactly what you are doing.
+
+    - By default the --OS=SL5,SL6 option is passed to jobsub.
+      The --no-sl56 option disables that.
+
     - The script check the GROUP environment variable and refuse
       submittion if it looks wrong for MARS jobs.  The
       --no-group-check option allows to override this test.
@@ -85,6 +93,7 @@ my %opt = ('outstage' => '/grid/data/marsmu2e/outstage',
 	   'help' => 0, 
 	   'setup' => '',
 	   'jobsub-arg' => \@extra_jobsub_args,
+	   'no-sl56' => 0,
 	   'test-queue' => 0, 'no-opportunistic' => 0,
 	   'no-group-check' => 0,
 	   'verbose' => 0, 'dry-run' => 0);
@@ -101,6 +110,7 @@ GetOptions(\%opt,
 	   "njobs=i",
 	   "setup=s",
 	   "jobsub-arg=s@",
+	   "no-sl56",
 	   "test-queue",
 	   "no-opportunistic",
 	   "no-group-check",
@@ -108,13 +118,17 @@ GetOptions(\%opt,
 	   ) 
     or die "\nError processing command line options.\n";
 
-# Export the EXPERIMENT variable for ifdh
-push @extra_jobsub_args, ('-e', 'EXPERIMENT');
-
 if($opt{'help'}) {
     print usage();
     exit 0;
 }
+
+if(!$opt{'no-sl56'}) {
+    push @extra_jobsub_args, ('--OS=SL5,SL6');
+}
+
+# Export the EXPERIMENT variable for ifdh
+push @extra_jobsub_args, ('-e', 'EXPERIMENT');
 
 # Check that all of the required args are present:
 foreach my $k ('executable', 'input', 'outstage', 'njobs') {
