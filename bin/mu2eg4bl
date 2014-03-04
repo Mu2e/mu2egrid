@@ -31,7 +31,6 @@ Usage:
 	      [--test-queue] \\
 	      [--no-opportunistic] \\
 	      [--jobsub-arg=string1] [--jobsub-arg=string2] [...] \\
-	      [--no-sl56] \\
 	      [--dry-run] \\
 	      [--verbose]
 
@@ -61,13 +60,6 @@ Notes:
     - By default the submitted jobs will use any available job slots.
       The --no-opportunistic options requests to run only on dedicated
       mu2e slots.
-
-    - The --jobsub-arg option allows to pass arbitrary extra
-      parameters to the jobsub command.  Don not use unless you know
-      exactly what you are doing.
-
-    - By default the --OS=SL5,SL6 option is passed to jobsub.
-      The --no-sl56 option disables that.
 
     - Outstage should be one of the following registered locations: 
 
@@ -102,7 +94,6 @@ my %opt = ('mu2e-setup' => '/grid/fermiapp/products/mu2e/setupmu2e-art.sh',
 	   'outstage' => $mu2egrid::mu2eDefaultOutstage,
 	   'tar' => '',
 	   'jobsub-arg' => \@extra_jobsub_args,
-	   'no-sl56' => 0,
 	   'help' => 0, 'verbose'=> 0,
 	   'test-queue' => 0,  'no-opportunistic' => 0,
 	   'dry-run' => 0);
@@ -122,24 +113,19 @@ GetOptions(\%opt,
 	   "datafiles=s",
 	   "events-per-job=i",
 	   "jobsub-arg=s@",
-	   "no-sl56",
 	   "test-queue",
 	   "no-opportunistic",
 	   "dry-run",
 	   ) 
     or die "\nError processing command line options.\n";
 
+# Export the EXPERIMENT variable for ifdh
+push @extra_jobsub_args, ('-e', 'EXPERIMENT');
+
 if($opt{'help'}) {
     print usage();
     exit 0;
 }
-
-if(!$opt{'no-sl56'}) {
-    push @extra_jobsub_args, ('--OS=SL5,SL6');
-}
-
-# Export the EXPERIMENT variable for ifdh
-push @extra_jobsub_args, ('-e', 'EXPERIMENT');
 
 # Check that all of the required args are present:
 foreach my $k ('in', 'njobs', 'g4bl-version') {
