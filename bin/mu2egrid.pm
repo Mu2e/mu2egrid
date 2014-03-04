@@ -12,7 +12,7 @@ use Cwd 'abs_path';
 use File::Basename;
 
 our $jobsub = 'jobsub';
-our @knownOutstage = ('/mu2e/data/outstage', '/grid/data/mu2e/outstage', '/grid/data/marsmu2e/outstage');
+our @knownOutstage = ('/mu2e/data/outstage', '/mu2e/data2/outstage', '/grid/data/mu2e/outstage', '/grid/data/marsmu2e/outstage');
 
 our $mu2eDefaultOutstage = $knownOutstage[0];
 
