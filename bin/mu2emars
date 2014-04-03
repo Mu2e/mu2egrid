@@ -65,6 +65,10 @@ Notes:
       The --no-opportunistic options requests to run only on the
       dedicated slots.
 
+    - The --jobsub-arg option allows to pass arbitrary extra
+      parameters to the jobsub command.  Don not use unless you know
+      exactly what you are doing.
+
     - The script check the GROUP environment variable and refuse
       submittion if it looks wrong for MARS jobs.  The
       --no-group-check option allows to override this test.
@@ -108,13 +112,13 @@ GetOptions(\%opt,
 	   ) 
     or die "\nError processing command line options.\n";
 
-# Export the EXPERIMENT variable for ifdh
-push @extra_jobsub_args, ('-e', 'EXPERIMENT');
-
 if($opt{'help'}) {
     print usage();
     exit 0;
 }
+
+# Export the EXPERIMENT variable for ifdh
+push @extra_jobsub_args, ('-e', 'EXPERIMENT');
 
 # Check that all of the required args are present:
 foreach my $k ('executable', 'input', 'outstage', 'njobs') {
