@@ -75,8 +75,14 @@ Notes:
       it points to the files in the given filelist.  The files are
       pre-staged to the worker node.  If numFiles is specified, only
       the given number of randomly selected files from the list are
-      used, rather than the complete list.   The --fclinput option can
-      be repeated several times, the effect is cumulative.
+      used, rather than the complete list.  The --fclinput option can
+      be repeated several times, the effect is cumulative.  If
+      fclVarName starts with the '\@' sign, it will generate a
+      BEGIN_PROLOG/END_PROLOG block with a fclVarName definition,
+      which should be referred to using the \@local::fclVarName syntax
+      in the user fcl file.  If the variable name does not start with
+      the '\@' sign, an assignment to that variable will be appended to
+      the user fcl file.
 
     - The --prestage-spec option allows to specify a list of extra
       files that should be prestaged to the worker node.  Each

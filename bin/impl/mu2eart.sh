@@ -117,9 +117,24 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
 		createPrestageSpec $tmpremote $tmpspec > /dev/null
 
 		# Format the local list of files and put it into the fcl file variable
-		echo "$variable : [" >> $JOBCONFIG
-		awk 'BEGIN{first=1}; {if(!first) {cm=",";} else {first=0; cm=" ";}; print "    "cm"\""$2"\""}' $tmpspec >> $JOBCONFIG
-		echo "]" >> $JOBCONFIG
+		# Should it go to PROLOG, or should it be appended to the file?
+		if [[ $variable == '@'* ]]; then
+		    # Prepend PROLOG to the file
+		    variable="$(echo $variable | sed -e 's/^@//')"
+		    tmphead=$(mktemp fclin-prolog.XXXX)
+		    echo "BEGIN_PROLOG" > $tmphead
+		    echo "$variable : [" >> $tmphead
+		    awk 'BEGIN{first=1}; {if(!first) {cm=",";} else {first=0; cm=" ";}; print "    "cm"\""$2"\""}' $tmpspec >> $tmphead
+		    echo "]" >> $tmphead
+		    echo "END_PROLOG" >> $tmphead
+		    cat $tmphead $JOBCONFIG > $JOBCONFIG.$$
+		    /bin/mv -f $JOBCONFIG.$$ $JOBCONFIG
+		    rm -f $tmphead
+		else # Append var assignement at the end of the file
+		    echo "$variable : [" >> $JOBCONFIG
+		    awk 'BEGIN{first=1}; {if(!first) {cm=",";} else {first=0; cm=" ";}; print "    "cm"\""$2"\""}' $tmpspec >> $JOBCONFIG
+		    echo "]" >> $JOBCONFIG
+		fi
 
 		# Merge prestage specs, and clean up
 		cat $tmpspec >> $fclinPrestageSpec
