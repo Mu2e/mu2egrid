@@ -23,7 +23,7 @@ Usage:
 	      [--tar=<tarfile>] \\
 	      --g4bl-version=<version> \\
 	      --njobs=<M> \\
-	      {--datafiles=<filelist>|--events-per-job=<N>} \\
+	      --events-per-job=<N> \\
 	      [--jobname=<name>] \\
 	      [--outstage=<dir>] \\
 	      [--prestage-spec=<specfile>] \\
@@ -40,7 +40,6 @@ constructs denote mutually exclusive alternatives.
 Notes:
 
     - All option names may be abbreviates as long as this is unambiguous.
-      (For example, '--data' and '--datafiles' mean the same.)
 
     - The --in argument specifies the name of the main G4beamline
       input file.
@@ -114,7 +113,7 @@ GetOptions(\%opt,
 	   "outstage=s",
 	   "prestage-spec=s",
 	   "njobs=i",
-	   "datafiles=s",
+#	   "datafiles=s",
 	   "events-per-job=i",
 	   "jobsub-arg=s@",
 	   "test-queue",
@@ -187,33 +186,38 @@ if(defined($opt{'prestage-spec'})) {
 }
 $ENV{'MU2EGRID_PRESTAGE'} = $prestage;
 
-# Either --datafiles or --events-per-job is required.
-if(defined $opt{'datafiles'}) {
-    if(defined($opt{'events-per-job'})) {
-	die "Arguments --datafiles and --events-per-job are mutually exclusive.";
-    }
+# # Either --datafiles or --events-per-job is required.
+# if(defined $opt{'datafiles'}) {
+#     if(defined($opt{'events-per-job'})) {
+# 	die "Arguments --datafiles and --events-per-job are mutually exclusive.";
+#     }
+# 
+#     my $datafiles = find_file($opt{'datafiles'});
+#     validate_file_list($datafiles);
+# 
+#     $ENV{'MU2EGRID_INPUTLIST'} = $datafiles;
+#     my $nlines =  `cat $datafiles | wc -l`;
+#     chomp($nlines);
+#     print "nlines = $nlines in file $datafiles\n" if $opt{'verbose'};
+# 
+#     if($nlines < $njobs) {
+# 	die "Error too many requested jobs = $njobs.  The input file list has only $nlines lines: $datafiles\n";
+#     }
+#     $ENV{'MU2EGRID_CHUNKSIZE'} = ceil($nlines/$njobs);
+# 
+# }
+# else {
+#     if(!defined($opt{'events-per-job'})) {
+# 	die "Either --datafiles or --events-per-job must be specified.";
+#     }
+# 
+#     $ENV{'MU2EGRID_EVENTS_PER_JOB'} = $opt{'events-per-job'};
+# }
 
-    my $datafiles = find_file($opt{'datafiles'});
-    validate_file_list($datafiles);
-
-    $ENV{'MU2EGRID_INPUTLIST'} = $datafiles;
-    my $nlines =  `cat $datafiles | wc -l`;
-    chomp($nlines);
-    print "nlines = $nlines in file $datafiles\n" if $opt{'verbose'};
-
-    if($nlines < $njobs) {
-	die "Error too many requested jobs = $njobs.  The input file list has only $nlines lines: $datafiles\n";
-    }
-    $ENV{'MU2EGRID_CHUNKSIZE'} = ceil($nlines/$njobs);
-
+if(!defined($opt{'events-per-job'})) {
+    die "Error: --events-per-job must be specified.";
 }
-else {
-    if(!defined($opt{'events-per-job'})) {
-	die "Either --datafiles or --events-per-job must be specified.";
-    }
-
-    $ENV{'MU2EGRID_EVENTS_PER_JOB'} = $opt{'events-per-job'};
-}
+$ENV{'MU2EGRID_EVENTS_PER_JOB'} = $opt{'events-per-job'};
 
 #----------------
 my @args = ('--grid', '--mail_never', '-N', $njobs, '-f', $in);
