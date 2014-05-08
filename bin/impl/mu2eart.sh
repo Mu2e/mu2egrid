@@ -31,6 +31,12 @@ addEventID() {
     echo "source.firstEvent   : ${4:-1}" >> "$fcl"
 }
 
+addGeometry() {
+    fcl=${1:?addGeometry: arg1 missing}
+    geomfile=${2:?addGeometry: no geometry given}
+    echo "services.user.GeometryService.inputFile :  \"${geomfile}\"" >>  "$fcl"
+}
+
 #================================================================
 umask 002
 
@@ -166,6 +172,16 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
 	    eventsPrestageSpec=$(createPrestageSpec $remoteList)
 	    localList=$(extractLocalList $eventsPrestageSpec)
             args+=(-S "$localList" --nevts -1)
+        fi
+
+        # override histogram filename
+        if [ -n "${MU2EGRID_TFILESERVICE}" ]; then
+            args+=(-T "${MU2EGRID_TFILESERVICE}")
+        fi 
+
+        # override geometry setting
+        if [ -n "${MU2EGRID_GEOMETRY}" ]; then
+            addGeometry "$JOBCONFIG" "$MU2EGRID_GEOMETRY"
         fi
         
         # Stage input files to the local disk

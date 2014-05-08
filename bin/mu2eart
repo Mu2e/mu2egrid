@@ -24,6 +24,8 @@ Usage:
 	      --njobs=<M> \\
 	      {--inputs=<filelist>|--events-per-job=<N> [--run-number=<R>]} \\
 	      [--jobname=<name>] \\
+	      [--TFileService=<name>] \\
+	      [--geometry=<name>] \\
 	      [--outstage=<dir>] \\
 	      [--fclinput=[numFiles:]<fclVarName>:<filelist>] \\
 	      [--prestage-spec=<specfile>] \\
@@ -70,6 +72,16 @@ Notes:
            @mu2egrid::knownOutstage
 
       by default $mu2egrid::mu2eDefaultOutstage  is used.
+
+    - The --TFileService option sets the output histogram filename.
+      Given filename will be passed over to Offline mu2e as the
+      argument of -T option. 
+
+    - The --geometry option sets the geometry configuration file.
+      The style of path of input filename valuable should be the 
+      same with services.user.GeometryService.inputFile in fcl file,
+      which assumes the Offline path. It should not be absolute or 
+      relative path from `pwd`.
 
     - The --fclinput option sets the given fcl file variable so that
       it points to the files in the given filelist.  The files are
@@ -163,6 +175,8 @@ GetOptions(\%opt,
 	   "fcl=s",
 	   "userscript=s",
 	   "jobname=s",
+	   "TFileService=s",
+	   "geometry=s",
 	   "outstage=s",
 	   "fclinput=s@",
 	   "prestage-spec=s",
@@ -273,6 +287,16 @@ if(defined($opt{'userscript'})) {
 	unless -x $userscript;
 }
 $ENV{'MU2EGRID_USERSCRIPT'} = $userscript;
+
+#----------------
+# Handle TFileService output name
+my $tfileservice = $opt{'TFileService'};
+$ENV{'MU2EGRID_TFILESERVICE'} = $tfileservice;
+
+#----------------
+# Handle geometry file
+my $geometry = $opt{'geometry'};
+$ENV{'MU2EGRID_GEOMETRY'} = $geometry;
 
 #----------------
 # Handle the --fclinput options
