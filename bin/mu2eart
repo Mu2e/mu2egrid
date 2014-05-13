@@ -290,12 +290,18 @@ $ENV{'MU2EGRID_USERSCRIPT'} = $userscript;
 
 #----------------
 # Handle TFileService output name
-my $tfileservice = $opt{'TFileService'};
+my $tfileservice = '';
+if(defined($opt{'TFileService'})) {
+    $tfileservice = $opt{'TFileService'};
+}
 $ENV{'MU2EGRID_TFILESERVICE'} = $tfileservice;
 
 #----------------
 # Handle geometry file
-my $geometry = $opt{'geometry'};
+my $geometry = '';
+if(defined($opt{'geometry'})) {
+    $geometry = $opt{'geometry'};
+}
 $ENV{'MU2EGRID_GEOMETRY'} = $geometry;
 
 #----------------
