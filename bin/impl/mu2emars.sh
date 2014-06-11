@@ -99,12 +99,11 @@ else
     echo "Aborting the job because pre-staging of input files failed: stageIn '$MU2EGRID_PRESTAGE'"
 fi
 
-# Transfer results
-outdir="$(createMARSOutStage ${outstagebase} ${user} ${outdirfmt} ${cluster} ${process})"
-
 # Restore original stdout and stderr
 exec 1>&3 2>&4
 
+# Transfer results
+outdir="$(createMARSOutStage ${outstagebase} ${user} ${outdirfmt} ${cluster} ${process})"
 transferOutFiles "$outdir" $(filterOutProxy $(selectFiles *) )
 
 exit $ret

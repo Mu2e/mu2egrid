@@ -226,12 +226,11 @@ else
 fi
 
 #================================================================
-outdir="$(createOutStage ${outstagebase} ${user} ${jobname} ${cluster} ${process})"
-
 # Restore original stdout and stderr
 exec 1>&3 2>&4
 
 # Transfer results (or system info in case of environment problems)
+outdir="$(createOutStage ${outstagebase} ${user} ${jobname} ${cluster} ${process})"
 transferOutFiles "$outdir" $(filterOutProxy $(selectFiles *) )
 
 exit $ret
