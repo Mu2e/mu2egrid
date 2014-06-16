@@ -13,6 +13,7 @@ source "$(dirname $0)/funcs"
 createJobFCL() {
     fcl="./mu2e.fcl"    
     /bin/cp "${1:?createJobFCL: arg1 missing}" "$fcl"
+    chmod u+w "$fcl"
     echo "services.scheduler.defaultExceptions : false"             >> "$fcl"
     echo "$fcl"
 }
