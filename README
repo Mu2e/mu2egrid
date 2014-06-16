@@ -14,3 +14,9 @@ The process requires cmake and cetbuildtools v2_03_06 as ups products.
    ready to be copied and unwound in artexternals
 
 
+To declare as "current" after installing in the artexeternals UPS area:
+login as mu2e and:
+
+$ ups list -aK+ mu2egrid
+$ ups declare -c mu2egrid vN_NN_NN -z /grid/fermiapp/products/mu2e/artexternals
+$ ups list -aK+ mu2egrid
