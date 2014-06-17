@@ -129,7 +129,8 @@ stageIn() {
 	tstart=$(date +%s)
 
 	# Get the lock and copy files
-	ifdh cp -f "$totalspec"
+	# We have to force the use of gridftp to handle a mix of bluearc and pnfs files (INC000000418568)
+	IFDH_FORCE=gridftp ifdh cp -f "$totalspec"
 	ret=$?
 
 	t2=$(date +%s)
