@@ -171,8 +171,6 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
 
 	if [ "$ret" -eq 0 ]; then
 
-	    /bin/rm -f "$eventsPrestageSpec" "$fclinPrestageSpec"
-
             # Run the optional user script
 	    if [ -n "$userscript" ]; then
 		"$userscript" "$JOBCONFIG" "$process" "$MU2EGRID_NCLUSTERJOBS"
@@ -187,6 +185,10 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
 		/usr/bin/time mu2e "${args[@]}"
 		ret=$?
 		echo "mu2egrid exit status $ret"
+		if [ "$ret" -eq 0 ]; then
+                    # clean up
+		    rm -f "$eventsPrestageSpec" "$fclinPrestageSpec" "$remoteList" "$localList"
+		fi
 	    else
 		echo "Aborting the job because the user --userscript script failed.  The command line was:"
 		echo ""
