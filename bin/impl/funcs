@@ -133,6 +133,8 @@ stageIn() {
 	IFDH_FORCE=gridftp ifdh cp -f "$totalspec"
 	ret=$?
 
+	# Do not delete the prestage-merged file - it is useful, e.g. to re-run an exact job.
+
 	t2=$(date +%s)
 	echo "$(date) # Total stage-in time: $((t2-tstart)) seconds, status $ret"
 

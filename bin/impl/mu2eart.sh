@@ -171,6 +171,8 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
 
 	if [ "$ret" -eq 0 ]; then
 
+	    /bin/rm -f "$eventsPrestageSpec" "$fclinPrestageSpec"
+
             # Run the optional user script
 	    if [ -n "$userscript" ]; then
 		"$userscript" "$JOBCONFIG" "$process" "$MU2EGRID_NCLUSTERJOBS"
@@ -194,7 +196,7 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
 	    fi
 
 	else
-	    echo "Aborting the job because pre-staging of input files failed: stageIn '$eventsPrestageSpec' '$MU2EGRID_PRESTAGE'"
+	    echo "Aborting the job because pre-staging of input files failed: stageIn '$eventsPrestageSpec' '$MU2EGRID_PRESTAGE' '$fclinPrestageSpec'"
 	fi
 
     else
