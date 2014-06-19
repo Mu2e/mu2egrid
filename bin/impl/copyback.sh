@@ -28,35 +28,7 @@ printinfo() {
     echo "TMPDIR: df -h"
     df -h "$TMPDIR"
 }
-#================================================================
-createOutStage() {
-    # Copy arguments into meaningful names.
-    outstagebase=${1:?createOutStage: outstagebase missing}
-    user=${2:?createOutStage: user missing}
-    fmt=${3:?createOutStage: outfmt missing}
-    cluster=${4:?createOutStage: cluster missing}
-    process=${5:?createOutStage: process missing}
 
-    outstage="${outstagebase}/$user/$(printf $fmt $cluster $process)"
-
-    # There are cases when a job fails after creating the outstage
-    # directory then automatically restarted by condor.  We don't want
-    # to loose the output from the restarted job.  It is also good to
-    # preserve whatever was transmitted by the first instance for a
-    # post-mortem analysis.  Just rename a pre-existing directory.
-    # There should be no race condition as the previous instance of
-    # this process should be dead before a new one is started.
-
-    if [ -d "$outstage" ]; then
-	## FIXME: no renaming functionality in ifdh, https://cdcvs.fnal.gov/redmine/issues/6514
-	## this only works on directly mounted file systems.
-	/bin/mv "$outstage" $(mktemp -u "$outstage".XXX)
-    fi
-
-    # IFDH_FORCE=expftp ifdh mkdir "${outstage}"
-    mkdir -p --mode 0775 "${outstage}"
-    echo "${outstage}"
-}
 #================================================================
 # Ignores directories and other non-plain files
 selectFiles() {
@@ -128,9 +100,18 @@ outstagebase=${MU2EGRID_OUTSTAGE:?"Error: MU2EGRID_OUTSTAGE is not set"}
 "$(dirname $0)/${1:?Error: copyback.sh arg missing}" > mu2e.log 2>&1
 ret=$?
 
-# Transfer the results
-# FIXME: better copy files to a tmp dir, than rename to the final dst
-outdir="$(createOutStage ${outstagebase} ${user} ${outfmt} ${CLUSTER:-1} ${PROCESS:-0})"
-transferOutFiles "$outdir" $(filterOutProxy $(selectFiles *) )
+# Transfer the results.  There were cases when jobs failed after
+# creating the outstage directory, and were automatically restarted by
+# condor.  I also observed cased when more than one instance of the
+# same job, duplicated by some glitches in the grid system, completed
+# and transferred files back.  To prevent data corruption we write to
+# a unique tmp dir, than rename it to the final name.
+
+finalOutDir="${outstagebase}/$user/$(printf $outfmt  ${CLUSTER:-1} ${PROCESS:-0})"
+mkdir -p --mode 0775 "$(dirname ${finalOutDir})"
+tmpOutDir="$(mktemp -d $finalOutDir.XXX)"
+chmod 0775 "${tmpOutDir}"
+transferOutFiles "${tmpOutDir}" $(filterOutProxy $(selectFiles *) )
+/bin/mv "${tmpOutDir}" "${finalOutDir}"
 
 exit $ret
