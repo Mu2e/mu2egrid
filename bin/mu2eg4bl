@@ -12,8 +12,6 @@ use POSIX qw(ceil);
 use lib dirname($0);
 use mu2egrid;
 
-my $workerscript = abs_path(dirname($0) . '/impl/mu2eg4bl.sh');
-
 #================================================================
 sub usage() {
     my $self = basename($0);
@@ -169,7 +167,7 @@ if($tar) {
     $ENV{'MU2EGRID_TAR'} = basename($tar);
 }
 
-$ENV{'MU2EGRID_JOBNAME'} = $jobname;
+$ENV{'MU2EGRID_OUTDIRFMT'} = "$jobname.%d/%05d";
 $ENV{'MU2EGRID_OUTSTAGE'} = $outstage;
 $ENV{'MU2EGRID_NCLUSTERJOBS'} = $njobs;
 
@@ -239,7 +237,8 @@ while( (my $key, my $value) = each(%ENV) ) {
 }
 
 push @args, @extra_jobsub_args;
-push @args, $workerscript;
+push @args, $mu2egrid::impldir . '/copyback.sh';
+push @args, 'mu2eg4bl.sh';
 
 print "Command:  $mu2egrid::jobsub @args\n";
 if(!$opt{'dry-run'}) {

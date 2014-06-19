@@ -7,6 +7,8 @@
 # Andrei Gaponenko, 2012
 #
 
+set -e
+
 source "$(dirname $0)/funcs"
 
 #================================================================
@@ -39,43 +41,21 @@ addGeometry() {
 }
 
 #================================================================
-umask 002
-
-export startdir=$(pwd)
 export cluster=${CLUSTER:-1}
 export process=${PROCESS:-0}
-export user=${MU2EGRID_SUBMITTER:?"Error: MU2EGRID_SUBMITTER not set"}
 export masterfhicl=${MU2EGRID_MASTERFHICL:?"Error: MU2EGRID_MASTERFHICL not set"}
 export userscript=${MU2EGRID_USERSCRIPT:-''}
-export jobname=${MU2EGRID_JOBNAME:?"Error: MU2EGRID_JOBNAME not set"}
-export outstagebase=${MU2EGRID_OUTSTAGE:?"Error: MU2EGRID_OUTSTAGE not set"}
-
-#================================================================
-# TMPDIR is defined and created by Condor.
-WORKDIR="$TMPDIR"
-{ [[ -n "$WORKDIR" ]] && mkdir -p "$WORKDIR"; } || \
-    { echo "ERROR: unable to create temporary directory!" 1>&2; exit 1; }
-# Condor will get rid of any files we leave anyway, but we
-# can also clean up our own files
-trap "[[ -n \"$WORKDIR\" ]] && { cd /; rm -rf \"$WORKDIR\"; }" 0
-#
-#
-cd $WORKDIR
-
-printinfo > sysinfo.log 2>&1 
-
-# Save original stdout and stderr
-exec 3>&1 4>&2
-
-# Redirect printouts from the scripts and the main job
-exec > mu2e.log 2>&1
 
 #================================================================
 # Establish environment.
 
+# UPS setup breaks with "-e", unset it temporary
+set +e
 if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
     if source "${MU2EGRID_USERSETUP:?Error: MU2EGRID_USERSETUP: not defined}"; then
-
+	# re-enable exit no error
+	set -e
+    
         #================================================================
         # There are different typs of jobbs:
         #
@@ -227,11 +207,4 @@ else
 fi
 
 #================================================================
-# Restore original stdout and stderr
-exec 1>&3 2>&4
-
-# Transfer results (or system info in case of environment problems)
-outdir="$(createOutStage ${outstagebase} ${user} ${jobname} ${cluster} ${process})"
-transferOutFiles "$outdir" $(filterOutProxy $(selectFiles *) )
-
 exit $ret
