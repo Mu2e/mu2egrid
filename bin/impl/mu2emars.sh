@@ -30,9 +30,9 @@ export topdir=${MU2EGRID_TOPDIR:?"Error: MU2EGRID_TOPDIR not set"}
 # on copying them to the outstage, and users want to
 # have *INP with the results.
 
-cp $topdir/xsdir $WORKDIR
-cp $topdir/*.INP $WORKDIR
-cp $topdir/*.f $WORKDIR
+cp $topdir/xsdir .
+cp $topdir/*.INP .
+cp $topdir/*.f .
 /bin/rm -f MARS.INP
 
 # Create job config "MARS.INP" by adding random seeds to the master
