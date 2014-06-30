@@ -182,7 +182,7 @@ while( (my $key, my $value) = each(%ENV) ) {
 
 push @args, @extra_jobsub_args;
 push @args, $mu2egrid::impldir . '/copyback.sh';
-push @args, '/mu2emars.sh';
+push @args, 'mu2emars.sh';
 
 print "Command:  $mu2egrid::jobsub @args\n";
 
