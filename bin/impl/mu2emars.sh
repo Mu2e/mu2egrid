@@ -23,6 +23,9 @@ export executable=${MU2EGRID_EXECUTABLE:?"Error: MU2EGRID_EXECUTABLE not set"}
 export masterinput=${MU2EGRID_MASTERINPUT:?"Error: MU2EGRID_MASTERINPUT not set"}
 export topdir=${MU2EGRID_TOPDIR:?"Error: MU2EGRID_TOPDIR not set"}
 
+# a temporary fix per an e-mail from Kenneth Richard Herner <kherner@fnal.gov> on 2014-10-08
+voms-proxy-init -rfc -noregen -limited -bits 1024 -voms fermilab:/fermilab/mars/mu2e/Role=Analysis
+
 #================================================================
 # Make input files accessible.  These are small files
 # (less than 1M), copy them directly without locking.
