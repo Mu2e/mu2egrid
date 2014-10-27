@@ -90,6 +90,15 @@ trap "[[ -n \"$WORKDIR\" ]] && { cd /; rm -rf \"$WORKDIR\"; }" 0
 #
 cd $WORKDIR
 
+
+# a temporary fix per an e-mail from Kenneth Richard Herner <kherner@fnal.gov> on 2014-10-08
+# for reasons we could not figure out, it works here, but not when placed
+# in mu2emars.sh   Because we are putting this MARS-specific bit
+# in a common code path, it needs to be conditional.
+if [[ "$EXPERIMENT" == "marsmu2e" ]]; then
+    voms-proxy-init -rfc -noregen -limited -bits 1024 -voms fermilab:/fermilab/mars/mu2e/Role=Analysis
+fi
+
 printinfo > sysinfo.log 2>&1 
 
 user=${MU2EGRID_SUBMITTER:?"Error: MU2EGRID_SUBMITTER is not set"}
