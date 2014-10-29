@@ -28,6 +28,7 @@ Usage:
 	[--no-opportunistic] \\
 	[--no-group-check] \\
         [--jobsub-arg=string1] [--jobsub-arg=string2] [...] \\
+	[--no-slversion] \\
 	[--dry-run] \\
 	[--verbose] \\
 	[--help]
@@ -67,6 +68,9 @@ Notes:
       parameters to the jobsub command.  Don not use unless you know
       exactly what you are doing.
 
+    - By default the --OS=SL6 option is passed to jobsub.
+      The --no-slversion option disables that.
+
     - The script check the GROUP environment variable and refuse
       submittion if it looks wrong for MARS jobs.  The
       --no-group-check option allows to override this test.
@@ -87,6 +91,7 @@ my %opt = ('outstage' => '/grid/data/marsmu2e/outstage',
 	   'help' => 0, 
 	   'setup' => '',
 	   'jobsub-arg' => \@extra_jobsub_args,
+	   'no-slversion' => 0,
 	   'test-queue' => 0, 'no-opportunistic' => 0,
 	   'no-group-check' => 0,
 	   'verbose' => 0, 'dry-run' => 0);
@@ -106,6 +111,7 @@ GetOptions(\%opt,
 	   "test-queue",
 	   "no-opportunistic",
 	   "no-group-check",
+	   "no-slversion",
 	   "dry-run",
 	   ) 
     or die "\nError processing command line options.\n";
@@ -113,6 +119,10 @@ GetOptions(\%opt,
 if($opt{'help'}) {
     print usage();
     exit 0;
+}
+
+if(!$opt{'no-slversion'}) {
+    push @extra_jobsub_args, ('--OS=SL6');
 }
 
 # Export the EXPERIMENT variable for ifdh
