@@ -70,6 +70,10 @@ transferOutFiles() {
 
     t1=$(date +%s)
 
+    if [[ "$EXPERIMENT" == "marsmu2e" ]]; then
+	voms-proxy-init -rfc -noregen -limited -bits 1024 -valid 24:00 -voms fermilab:/fermilab/mars/mu2e/Role=Analysis
+    fi
+
     ifdh cp --force=expftp -D  "$MANIFEST" "$@" ${OUTDIR}
 
     t2=$(date +%s)
