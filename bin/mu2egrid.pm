@@ -11,7 +11,7 @@ use strict;
 use Cwd 'abs_path';
 use File::Basename;
 
-our $jobsub = 'jobsub';
+our $jobsub = 'jobsub_submit';
 our @knownOutstage = ('/mu2e/data/outstage',
 		      '/mu2e/data2/outstage',
 		      '/grid/data/mu2e/outstage',

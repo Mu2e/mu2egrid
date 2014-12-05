@@ -278,29 +278,26 @@ else {
 
 #----------------
 # Handle the --userscript options
-my $userscript = '';
 if(defined($opt{'userscript'})) {
     $userscript = find_file($opt{'userscript'});
     die "Error: file \"$userscript\" is not executable\n"
 	unless -x $userscript;
+    $ENV{'MU2EGRID_USERSCRIPT'} = $userscript;
 }
-$ENV{'MU2EGRID_USERSCRIPT'} = $userscript;
 
 #----------------
 # Handle TFileService output name
-my $tfileservice = '';
 if(defined($opt{'TFileService'})) {
     $tfileservice = $opt{'TFileService'};
+    $ENV{'MU2EGRID_TFILESERVICE'} = $tfileservice;
 }
-$ENV{'MU2EGRID_TFILESERVICE'} = $tfileservice;
 
 #----------------
 # Handle geometry file
-my $geometry = '';
 if(defined($opt{'geometry'})) {
     $geometry = $opt{'geometry'};
+    $ENV{'MU2EGRID_GEOMETRY'} = $geometry;
 }
-$ENV{'MU2EGRID_GEOMETRY'} = $geometry;
 
 #----------------
 # Handle the --fclinput options
@@ -336,12 +333,11 @@ foreach my $fclin (@fclinputs) {
 
 #----------------
 # Handle the --prestage-spec options
-my $prestage = '';
 if(defined($opt{'prestage-spec'})) {
     $prestage = find_file($opt{'prestage-spec'});
     validate_prestage_spec($prestage);
+    $ENV{'MU2EGRID_PRESTAGE'} = $prestage;
 }
-$ENV{'MU2EGRID_PRESTAGE'} = $prestage;
 
 #----------------
 my @args = ('--grid', '--mail_never', '-N', $njobs);
@@ -367,8 +363,10 @@ if(defined($opt{'ifdh-version'})) {
 }
 
 push @args, @extra_jobsub_args;
-push @args, $mu2egrid::impldir . '/copyback.sh';
-push @args, 'mu2eart.sh';
+push @args, '--group=mu2e';
+push @args, '--jobsub-server=https://fifebatch.fnal.gov:8443';
+push @args, 'file://' . $mu2egrid::impldir . '/copyback.sh';
+push @args, $mu2egrid::impldir . '/mu2eart.sh';
 
 print "Command:  $mu2egrid::jobsub @args\n";
 if(!$opt{'dry-run'}) {
