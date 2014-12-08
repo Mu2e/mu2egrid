@@ -9,6 +9,8 @@ use Getopt::Long;
 use Cwd 'abs_path';
 use POSIX qw(ceil);
 
+use Data::Dumper; # for debugging
+
 use lib dirname($0);
 use mu2egrid;
 
@@ -24,33 +26,17 @@ Usage:
 	      [--jobname=<name>] \\
 	      [--TFileService=<name>] \\
 	      [--geometry=<name>] \\
-	      [--outstage=<dir>] \\
 	      [--fclinput=[numFiles:]<fclVarName>:<filelist>] \\
-	      [--prestage-spec=<specfile>] \\
-	      [--userscript=<script>] \\
 	      [--mu2e-setup=<setupmu2e-art.sh>] \\
-	      [--ifdh-version=<version>] \\
-	      [--test-queue] \\
-	      [--no-opportunistic] \\
-	      [--jobsub-arg=string1] [--jobsub-arg=string2] [...] \\
-	      [--no-sl56] \\
-	      [--dry-run] \\
-	      [--verbose] \\
-	      [--help]
+	      [--userscript=<script>] \\
+EOF
+. mu2egrid::commonOptDoc1() . <<EOF
 
-Where [] denote optional settings, and {alternative1|alternative2}
-constructs denote mutually exclusive alternatives.
-
-Notes:
-
-    - All option names may be abbreviates as long as this is unambiguous.
-      (For example, '--in' and '--inputs' mean the same.)
-    
     - The --setup argument must point to the setup.sh script in a user
       Offline area.  The --mu2e-setup arg is optional, by default
       the current official mu2e release is used.
 
-    - The --inputs filelist is to provide a list of framework ROOT
+    - The --inputs filelist provides a list of framework ROOT
       files to be processed by the job.  This is mutually exclusive
       with --events-per-job, the latter being used for jobs that
       generate new events.  Each process pre-stages its subset of
@@ -64,12 +50,6 @@ Notes:
     - The jobname argument defines the name of the top level output
       directory.  If this parameter is not specified, a name will be
       derived from the fcl file name.
-
-    - Outstage should be one of the following registered locations: 
-
-           @mu2egrid::knownOutstage
-
-      by default $mu2egrid::mu2eDefaultOutstage  is used.
 
     - The --TFileService option sets the output histogram filename.
       Given filename will be passed over to Offline mu2e as the
@@ -94,19 +74,6 @@ Notes:
       the '\@' sign, an assignment to that variable will be appended to
       the user fcl file.
 
-    - The --prestage-spec option allows to specify a list of extra
-      files that should be prestaged to the worker node.  Each
-      line in the specification file has the format:
-
-      /file/name/on/bluarc   relative/file/name/on/worker/node
-
-      that is, source and target file names separated by any amount of
-      white space.  The target file name is relative to the working
-      directory.  It must contain a slash '/' and must not start with
-      a slash. Leading and trailing white spaces are ignored. The
-      total available disk space for all inputs and outputs on a
-      worker node is usually 40 GB.
-
     - The optional --userscript program receives the name of the
       generated fcl file as the first command line argument, the
       sequential process number (0 to njobs-1) as the second argument,
@@ -120,33 +87,8 @@ Notes:
     - The --mu2e-setup option allows to use a non-default artexternals
       location.
 
-    - The --test-queue option submits a test job.  The job will run
-      with highest possible priority, but you can only have one such
-      job in the queue at a time.
-
-    - By default the submitted jobs will use any available job slots.
-      The --no-opportunistic options requests to run only on dedicated
-      mu2e slots.
-
-    - The --jobsub-arg option allows to pass arbitrary extra
-      parameters to the jobsub command.  Don not use unless you know
-      exactly what you are doing.
-
-    - By default the --OS=SL5,SL6 option is passed to jobsub.
-      The --no-sl56 option disables that.
-
-    - Use --dry-run to test the submission command without actually
-      sending the jobs.
-
-    - Add --verbose if you want to see the details of what is going on.
-
-    - The --help option prints this message.
-
-Once grid jobs are submitted the software libraries pointed to by the
-setup script, all configuration files, and the input filelist must be
-left intact until all the jobs finish.
-
 EOF
+. mu2egrid::commonOptDoc2()
 ;
 }
 
@@ -154,40 +96,26 @@ EOF
 my @fclinputs;
 my @extra_jobsub_args;
 
-my %opt = ('mu2e-setup' => '/grid/fermiapp/products/mu2e/setupmu2e-art.sh',
-	   'outstage' => $mu2egrid::mu2eDefaultOutstage,
-	   'help' => 0, 'test-queue' => 0, 'no-opportunistic' => 0,
-	   'fclinput' => \@fclinputs,
-	   'jobsub-arg' => \@extra_jobsub_args,
-	   'no-sl56' => 0,
-	   'dry-run' => 0, verbose => 0);
+my %opt =
+    ('mu2e-setup' => '/grid/fermiapp/products/mu2e/setupmu2e-art.sh',
+    'fclinput' => \@fclinputs
+    );
 
+@opt{keys %mu2egrid::commonOptDefaults}  =  values %mu2egrid::commonOptDefaults;
 
 # Process command line opts.
-GetOptions(\%opt, 
-	   "help",
-	   "verbose",
-	   "setup=s",
-	   "mu2e-setup=s",
-	   "ifdh-version=s",
-	   "fcl=s",
-	   "userscript=s",
-	   "jobname=s",
-	   "TFileService=s",
-	   "geometry=s",
-	   "outstage=s",
-	   "fclinput=s@",
-	   "prestage-spec=s",
-	   "njobs=i",
-	   "inputs=s",
-	   "events-per-job=i",
-	   "run-number=i",
-	   "test-queue",
-	   "no-opportunistic",
-	   "jobsub-arg=s@",
-	   "no-sl56",
-	   "dry-run",
-	   ) 
+GetOptions(\%opt,
+    'setup=s',
+    'fcl=s',
+    'njobs=i',
+    'inputs=s', 'events-per-job=i', 'run-number=i',
+    'jobname=s',
+    'TFileService=s',
+    'geometry=s',
+    'fclinput=s',
+    'mu2e-setup=s',
+    'userscript=s',
+    @mu2egrid::commonOptList) 
     or die "\nError processing command line options.\n";
 
 if($opt{'help'}) {
@@ -195,25 +123,24 @@ if($opt{'help'}) {
     exit 0;
 }
 
-if(!$opt{'no-sl56'}) {
-    push @extra_jobsub_args, ('--OS=SL5,SL6');
-}
+print "Final set of options:\n", Dumper( \%opt ), "\n"
+    if($opt{'verbose'});
 
-# Export the EXPERIMENT variable for ifdh
-push @extra_jobsub_args, ('-e', 'EXPERIMENT');
-
+#tmp: # Export the EXPERIMENT variable for ifdh
+#tmp: push @extra_jobsub_args, ('-e', 'EXPERIMENT');
+#tmp: 
 # Check that all of the required args are present:
 foreach my $k ('setup', 'mu2e-setup', 'fcl', 'outstage', 'njobs') {
     defined $opt{$k} or die "Error: --$k must be specified.  Try the --help option.\n";
 }
 
 # All file args are to be passed to the worker node script using full path names.
-my $setup = find_file($opt{'setup'});
-my $mu2esetup = find_file($opt{'mu2e-setup'});
-my $fcl = find_file($opt{'fcl'});
-my $outstage = find_file($opt{'outstage'});
+my $setup = mu2egrid::find_file($opt{'setup'});
+my $mu2esetup = mu2egrid::find_file($opt{'mu2e-setup'});
+my $fcl = mu2egrid::find_file($opt{'fcl'});
+my $outstage = mu2egrid::find_file($opt{'outstage'});
 
-assert_known_outstage($outstage);
+mu2egrid::assert_known_outstage($outstage);
 
 my $njobs = $opt{'njobs'};
 my $test_queue = $opt{'test-queue'};
@@ -250,8 +177,8 @@ if(defined $opt{'inputs'}) {
 	die "Arguments --inputs and --run-number are mutually exclusive.";
     }
 
-    my $inputs = find_file($opt{'inputs'});
-    validate_file_list($inputs);
+    my $inputs = mu2egrid::find_file($opt{'inputs'});
+    mu2egrid::validate_file_list($inputs);
 
     $ENV{'MU2EGRID_INPUTLIST'} = $inputs;
     my $nlines =  `cat $inputs | wc -l`;
@@ -279,7 +206,7 @@ else {
 #----------------
 # Handle the --userscript options
 if(defined($opt{'userscript'})) {
-    $userscript = find_file($opt{'userscript'});
+    $userscript = mu2egrid::find_file($opt{'userscript'});
     die "Error: file \"$userscript\" is not executable\n"
 	unless -x $userscript;
     $ENV{'MU2EGRID_USERSCRIPT'} = $userscript;
@@ -321,8 +248,8 @@ foreach my $fclin (@fclinputs) {
 	($var, $files) = ($l1, $l2);
     }
 
-    $files = find_file($files);
-    validate_file_list($files);
+    $files = mu2egrid::find_file($files);
+    mu2egrid::validate_file_list($files);
 
     $ENV{'MU2EGRID_FCLINPUT_NUMENTRIES'} += 1;
     my $prefix = "MU2EGRID_FCLINPUT_$ENV{MU2EGRID_FCLINPUT_NUMENTRIES}";
@@ -334,27 +261,34 @@ foreach my $fclin (@fclinputs) {
 #----------------
 # Handle the --prestage-spec options
 if(defined($opt{'prestage-spec'})) {
-    $prestage = find_file($opt{'prestage-spec'});
-    validate_prestage_spec($prestage);
+    $prestage = mu2egrid::find_file($opt{'prestage-spec'});
+    mu2egrid::validate_prestage_spec($prestage);
     $ENV{'MU2EGRID_PRESTAGE'} = $prestage;
 }
 
 #----------------
-my @args = ('--grid', '--mail_never', '-N', $njobs);
+my @args = ('-N', $njobs);
 if($test_queue) {
     push @args, '--test_queue';
-}
-if(!$opt{'no-opportunistic'}) {
-    push @args, '--opportunistic';
 }
 
 while( (my $key, my $value) = each(%ENV) ) {
     if($key =~ m/^MU2EGRID_\w+$/) {
-	#print "Using env $key => $value\n";
 	push @args,  ('-e', $key);
 	print "Using: $key => $ENV{$key}\n" if $opt{'verbose'};
     }
 }
+
+push @args, ('--group', $opt{'group'});
+if(defined($opt{'role'})) {
+    push @args, ('--role', $opt{'role'});
+}
+push @args, ('--jobsub-server', $opt{'jobsub-server'});
+push @args, ('--disk', $opt{'disk'});
+push @args, ('--memory', $opt{'memory'});
+push @args, ('--OS', $opt{'OS'});
+push @args, ('--resource-provides', $opt{'resource-provides'});
+push @args, @extra_jobsub_args;
 
 # IFDH_VERSION is handled by jobsub, not by our worker node scripts
 if(defined($opt{'ifdh-version'})) {
@@ -362,9 +296,6 @@ if(defined($opt{'ifdh-version'})) {
     push @args, ('-e', 'IFDH_VERSION');
 }
 
-push @args, @extra_jobsub_args;
-push @args, '--group=mu2e';
-push @args, '--jobsub-server=https://fifebatch.fnal.gov:8443';
 push @args, 'file://' . $mu2egrid::impldir . '/copyback.sh';
 push @args, $mu2egrid::impldir . '/mu2eart.sh';
 
@@ -377,4 +308,5 @@ if(!$opt{'dry-run'}) {
 else {
     print "Not submitting because --dry-run was requested.\n";
 }
+
 #================================================================
