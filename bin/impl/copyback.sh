@@ -23,8 +23,8 @@ printinfo() {
     echo "Visible disk space:"
     df -P
     echo "================================================================"
-    echo "TMPDIR: ls -al"
-    ls -al "$TMPDIR"
+    echo "TMPDIR: ls -alR"
+    ls -alR "$TMPDIR"
     echo "TMPDIR: df -h"
     df -h "$TMPDIR"
 }
