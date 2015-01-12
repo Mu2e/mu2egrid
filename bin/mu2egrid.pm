@@ -25,11 +25,10 @@ our $mu2eDefaultOutstage = $knownOutstage[0];
 
 #================================================================
 sub default_group_helper() {
-    my @res;
-    if(defined($ENV{'GROUP'})) {
-	@res = ('group' => $ENV{'GROUP'});
-    }
-    return @res;
+    my $group;
+    $group = $ENV{'GROUP'} if(defined($ENV{'GROUP'}));
+    $group = 'mu2e' unless defined($group);
+    return ('group' => $group);
 }
 
 our $jobsub = 'jobsub_submit';
