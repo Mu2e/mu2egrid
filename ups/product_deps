@@ -16,6 +16,5 @@ jobsub_client	-
 
 only_for_build cetbuildtools    v2_04_00
 
-qualifier	jobsub_tools
+qualifier	jobsub_client
 -nq-		-nq-
-
