@@ -1,6 +1,6 @@
 # The parent line must be the first non-comment line in the file
 # This line defines the product name and version
-parent mu2egrid v1_00_27
+parent mu2egrid v2_00_00
 
 # install directory locations
 # this product has no include or lib directories
@@ -12,7 +12,7 @@ no_fq_dir
 
 #
 product		version
-jobsub_tools	-
+jobsub_client	-
 
 only_for_build cetbuildtools    v2_04_00
 
