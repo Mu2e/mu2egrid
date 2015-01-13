@@ -7,7 +7,7 @@
 # The copyback.sh script is responsible for transferring the outputs
 # of a job from the worker node disk.
 #
-# Andrei Gaponenko, 2014
+# Andrei Gaponenko, 2014, 2015
 #
 
 #================================================================
@@ -43,7 +43,7 @@ filterOutProxy() {
 	    *.proxy)
             # Don't expose security sensitive info
 		true;;
-	    *) 
+	    *)
 		echo "$i";;
 	esac
     done
@@ -94,28 +94,38 @@ trap "[[ -n \"$WORKDIR\" ]] && { cd /; rm -rf \"$WORKDIR\"; }" 0
 #
 cd $WORKDIR
 
-printinfo > sysinfo.log 2>&1 
+printinfo > sysinfo.log 2>&1
 
 user=${MU2EGRID_SUBMITTER:?"Error: MU2EGRID_SUBMITTER is not set"}
 outfmt=${MU2EGRID_OUTDIRFMT:?"Error: MU2EGRID_OUTDIRFMT is not set"}
 outstagebase=${MU2EGRID_OUTSTAGE:?"Error: MU2EGRID_OUTSTAGE is not set"}
 
-# Run the job
-"${1:?Error: copyback.sh arg missing}" > mu2e.log 2>&1
-ret=$?
+# Set up Mu2e environment and make ifdh available
+if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
 
-# Transfer the results.  There were cases when jobs failed after
-# creating the outstage directory, and were automatically restarted by
-# condor.  I also observed cased when more than one instance of the
-# same job, duplicated by some glitches in the grid system, completed
-# and transferred files back.  To prevent data corruption we write to
-# a unique tmp dir, than rename it to the final name.
+    setup ifdhc $IFDH_VERSION
 
-finalOutDir="${outstagebase}/$user/$(printf $outfmt  ${CLUSTER:-1} ${PROCESS:-0})"
-mkdir -p --mode 0775 "$(dirname ${finalOutDir})"
-tmpOutDir="$(mktemp -d $finalOutDir.XXX)"
-chmod 0775 "${tmpOutDir}"
-transferOutFiles "${tmpOutDir}" $(filterOutProxy $(selectFiles *) )
-/bin/mv "${tmpOutDir}" "${finalOutDir}"
+    # Run the job
+    "${1:?Error: copyback.sh arg missing}" > mu2e.log 2>&1
+    ret=$?
+
+    # Transfer the results.  There were cases when jobs failed after
+    # creating the outstage directory, and were automatically restarted by
+    # condor.  I also observed cased when more than one instance of the
+    # same job, duplicated by some glitches in the grid system, completed
+    # and transferred files back.  To prevent data corruption we write to
+    # a unique tmp dir, than rename it to the final name.
+
+    finalOutDir="${outstagebase}/$user/$(printf $outfmt  ${CLUSTER:-1} ${PROCESS:-0})"
+    mkdir -p --mode 0775 "$(dirname ${finalOutDir})"
+    tmpOutDir="$(mktemp -d $finalOutDir.XXX)"
+    chmod 0775 "${tmpOutDir}"
+    transferOutFiles "${tmpOutDir}" $(filterOutProxy $(selectFiles *) )
+    /bin/mv "${tmpOutDir}" "${finalOutDir}"
+
+else
+    echo "Error sourcing setup script ${MU2EGRID_MU2ESETUP}: status code $?"
+    ret=1
+fi
 
 exit $ret

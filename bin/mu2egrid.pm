@@ -31,6 +31,14 @@ sub default_group_helper() {
     return ('group' => $group);
 }
 
+sub default_ifdh_helper() {
+    my $ver;
+    # The same env var is used by the jobsub wrapper.
+    $ver = $ENV{'IFDH_VERSION'} if(defined($ENV{'IFDH_VERSION'}));
+    $ver = 'v1_7_1' unless defined($ver);
+    return ('ifdh-version' => $ver);
+}
+
 our $jobsub = 'jobsub_submit';
 
 our @commonOptList = (
@@ -40,9 +48,10 @@ our @commonOptList = (
 		      'disk=i',
 		      'memory=i',
 		      'OS=s',
+                      'mu2e-setup=s',
+                      'ifdh-version=s',
 		      'resource-provides=s',
 		      'jobsub-arg=s@',
-		      'ifdh-version=s',
 		      'outstage=s',
 		      "prestage-spec=s",
 		      'test-queue',
@@ -58,6 +67,8 @@ our %commonOptDefaults = (
 			  'disk' => '30000', # MB
 			  'memory' => '2048', # MB
 			  'OS' => 'SL5,SL6',
+                          'mu2e-setup' => '/grid/fermiapp/products/mu2e/setupmu2e-art.sh',
+                          default_ifdh_helper(),
 			  'resource-provides' => 'usage_model=OPPORTUNISTIC,DEDICATED',
 			  'outstage' => $mu2egrid::mu2eDefaultOutstage,
 			  'test-queue' => 0,
@@ -76,6 +87,7 @@ sub commonOptDoc1() {
 	      [--OS=<comma_separated_list>] \\
 	      [--resource-provides=<spec>] \\
 	      [--jobsub-arg=string1] [--jobsub-arg=string2] [...] \\
+	      [--mu2e-setup=<setupmu2e-art.sh>] \\
 	      [--ifdh-version=<version>] \\
 	      [--outstage=<dir>] \\
 	      [--prestage-spec=<file>] \\
@@ -88,6 +100,7 @@ EOF
 }
 
 sub commonOptDoc2() {
+    my $default_ifdh_version = (default_ifdh_helper())[1];
     return <<EOF
     - The --group, --role, --jobsub-server, --disk, --memory, --OS,
       and --resource-provides options are passed to jobsub_submit.
@@ -102,9 +115,13 @@ sub commonOptDoc2() {
           --OS                 $commonOptDefaults{'OS'}
           --resource-provides  $commonOptDefaults{'resource-provides'}
 
+    --mu2e-setup arg is optional, by default the current official mu2e
+      release is used.  The ifdhc package must be available in the
+      UPS area set up by the script.
+
     --ifdh-version=<version> exports the requested IFDH_VERSION to the
-      worker node, where it is supposed to affect jobsub wrapper
-      scripts.
+      worker node.  It is used by both jobsub wrapper scripts and
+      mu2egrid.  The default is $default_ifdh_version.
 
     - Outstage should be one of the following registered locations:
 

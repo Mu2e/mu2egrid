@@ -27,14 +27,12 @@ Usage:
 	      [--TFileService=<name>] \\
 	      [--geometry=<name>] \\
 	      [--fclinput=[numFiles:]<fclVarName>:<filelist>] \\
-	      [--mu2e-setup=<setupmu2e-art.sh>] \\
 	      [--userscript=<script>] \\
 EOF
 . mu2egrid::commonOptDoc1() . <<EOF
 
     - The --setup argument must point to the setup.sh script in a user
-      Offline area.  The --mu2e-setup arg is optional, by default
-      the current official mu2e release is used.
+      Offline area.
 
     - The --inputs filelist provides a list of framework ROOT
       files to be processed by the job.  This is mutually exclusive
@@ -84,9 +82,6 @@ EOF
       The process is aborted unless the program exits with zero status
       code.
 
-    - The --mu2e-setup option allows to use a non-default artexternals
-      location.
-
 EOF
 . mu2egrid::commonOptDoc2()
 ;
@@ -95,10 +90,11 @@ EOF
 #================================================================
 my @fclinputs;
 my @extra_jobsub_args;
+my @files_to_transfer;
 
 my %opt =
-    ('mu2e-setup' => '/grid/fermiapp/products/mu2e/setupmu2e-art.sh',
-    'fclinput' => \@fclinputs
+    ('fclinput' => \@fclinputs,
+    'jobsub-arg' => \@extra_jobsub_args,
     );
 
 @opt{keys %mu2egrid::commonOptDefaults}  =  values %mu2egrid::commonOptDefaults;
@@ -113,7 +109,6 @@ GetOptions(\%opt,
     'TFileService=s',
     'geometry=s',
     'fclinput=s',
-    'mu2e-setup=s',
     'userscript=s',
     @mu2egrid::commonOptList) 
     or die "\nError processing command line options.\n";
@@ -126,14 +121,13 @@ if($opt{'help'}) {
 print "Final set of options:\n", Dumper( \%opt ), "\n"
     if($opt{'verbose'});
 
-#tmp: # Export the EXPERIMENT variable for ifdh
-#tmp: push @extra_jobsub_args, ('-e', 'EXPERIMENT');
-#tmp: 
+
 # Check that all of the required args are present:
 foreach my $k ('setup', 'mu2e-setup', 'fcl', 'outstage', 'njobs') {
     defined $opt{$k} or die "Error: --$k must be specified.  Try the --help option.\n";
 }
 
+#----------------
 # All file args are to be passed to the worker node script using full path names.
 my $setup = mu2egrid::find_file($opt{'setup'});
 my $mu2esetup = mu2egrid::find_file($opt{'mu2e-setup'});
@@ -158,10 +152,12 @@ else {
 
 $ENV{'MU2EGRID_USERSETUP'} = $setup;
 $ENV{'MU2EGRID_MU2ESETUP'} = $mu2esetup;
-$ENV{'MU2EGRID_MASTERFHICL'} = $fcl;
 $ENV{'MU2EGRID_OUTDIRFMT'} = "$jobname.%d/%05d";
 $ENV{'MU2EGRID_OUTSTAGE'} = $outstage;
 $ENV{'MU2EGRID_NCLUSTERJOBS'} = $njobs;
+
+$ENV{'MU2EGRID_MASTERFHICL'} = basename($fcl);
+push @files_to_transfer, $fcl;
 
 my $whoami = `whoami`;
 chomp($whoami);
@@ -180,7 +176,9 @@ if(defined $opt{'inputs'}) {
     my $inputs = mu2egrid::find_file($opt{'inputs'});
     mu2egrid::validate_file_list($inputs);
 
-    $ENV{'MU2EGRID_INPUTLIST'} = $inputs;
+    $ENV{'MU2EGRID_INPUTLIST'} = basename($inputs);
+    push @files_to_transfer, $inputs;
+
     my $nlines =  `cat $inputs | wc -l`;
     chomp($nlines);
     print "nlines = $nlines in file $inputs\n" if $opt{'verbose'};
@@ -263,21 +261,12 @@ foreach my $fclin (@fclinputs) {
 if(defined($opt{'prestage-spec'})) {
     $prestage = mu2egrid::find_file($opt{'prestage-spec'});
     mu2egrid::validate_prestage_spec($prestage);
-    $ENV{'MU2EGRID_PRESTAGE'} = $prestage;
+    $ENV{'MU2EGRID_PRESTAGE'} = basename($prestage);
+    push @files_to_transfer, $prestage;
 }
 
-#----------------
-my @args = ('-N', $njobs);
-if($test_queue) {
-    push @args, '--test_queue';
-}
-
-while( (my $key, my $value) = each(%ENV) ) {
-    if($key =~ m/^MU2EGRID_\w+$/) {
-	push @args,  ('-e', $key);
-	print "Using: $key => $ENV{$key}\n" if $opt{'verbose'};
-    }
-}
+#----------------------------------------------------------------
+my @args;
 
 push @args, ('--group', $opt{'group'});
 if(defined($opt{'role'})) {
@@ -290,11 +279,37 @@ push @args, ('--OS', $opt{'OS'});
 push @args, ('--resource-provides', $opt{'resource-provides'});
 push @args, @extra_jobsub_args;
 
-# IFDH_VERSION is handled by jobsub, not by our worker node scripts
-if(defined($opt{'ifdh-version'})) {
+# IFDH_VERSION is interpreded by both jobsub and our worker node scripts
+if(defined($opt{'ifdh-version'}) and ($opt{'ifdh-version'} ne '')) {
     $ENV{'IFDH_VERSION'} = $opt{'ifdh-version'};
-    push @args, ('-e', 'IFDH_VERSION');
 }
+
+# Export the EXPERIMENT variable for ifdh
+push @args, ('-e', 'EXPERIMENT');
+
+if($test_queue) {
+    push @args, '--test_queue';
+}
+
+while( (my $key, my $value) = each(%ENV) ) {
+    if(($key =~ m/^MU2EGRID_\w+$/) or ($key eq 'IFDH_VERSION')) {
+	push @args,  ('-e', $key);
+	print "Using: $key => $ENV{$key}\n" if $opt{'verbose'};
+    }
+}
+
+
+my %filecheck;
+foreach my $f (@files_to_transfer) {
+    push @args, ('-f', $f);
+    my $bn = basename($f);
+    if(defined($filecheck{$f})) {
+        die "Error: duplicate file name $f on the transfer list\n";
+    }
+    $filecheck{$f} = 1;
+}
+
+push @args, ('-N', $njobs);
 
 push @args, 'file://' . $mu2egrid::impldir . '/copyback.sh';
 push @args, $mu2egrid::impldir . '/mu2eart.sh';
