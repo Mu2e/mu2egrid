@@ -101,6 +101,7 @@ EOF
 
 sub commonOptDoc2() {
     my $default_ifdh_version = (default_ifdh_helper())[1];
+    my $formattedOutstage = join("\n\t\t", ('', @mu2egrid::knownOutstage));
     return <<EOF
     - The --group, --role, --jobsub-server, --disk, --memory, --OS,
       and --resource-provides options are passed to jobsub_submit.
@@ -124,8 +125,7 @@ sub commonOptDoc2() {
       mu2egrid.  The default is $default_ifdh_version.
 
     - Outstage should be one of the following registered locations:
-
-           @mu2egrid::knownOutstage
+           $formattedOutstage
 
       by default $mu2egrid::mu2eDefaultOutstage  is used.
 
