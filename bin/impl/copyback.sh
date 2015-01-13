@@ -59,6 +59,22 @@ createManifest() {
     echo manifest
 }
 #================================================================
+ifdh_mkdir_p() {
+    local dir="$1"
+    local force="$2"
+
+    #### "ifdh ls" exits with 0 even for non-existing dirs.
+    ## if ifdh ls $dir 0 $force > /dev/null
+    if [ $(ifdh ls $dir 0 $force  2>/dev/null |wc -l) -gt 0 ]
+    then
+	: # done
+    else
+	ifdh_mkdir_p $(dirname $dir) $force
+	ifdh mkdir $dir $force
+        ifdh chmod 0755 $dir $force
+    fi
+}
+#================================================================
 transferOutFiles() {
     echo "$(date) # Starting to transfer output files"
     type ifdh
@@ -117,11 +133,30 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
     # a unique tmp dir, than rename it to the final name.
 
     finalOutDir="${outstagebase}/$user/$(printf $outfmt  ${CLUSTER:-1} ${PROCESS:-0})"
-    mkdir -p --mode 0775 "$(dirname ${finalOutDir})"
-    tmpOutDir="$(mktemp -d $finalOutDir.XXX)"
-    chmod 0775 "${tmpOutDir}"
-    transferOutFiles "${tmpOutDir}" $(filterOutProxy $(selectFiles *) )
-    /bin/mv "${tmpOutDir}" "${finalOutDir}"
+
+    # Create the "cluster level" output directory.
+    ifdh_mkdir_p "$(dirname ${finalOutDir})" --force=expftp
+
+    # There is no "mktemp" in ifdh.  Imitate it by hand
+    tmpOutDir=''
+    numTries=0
+    while [ $((numTries+=1)) -le 5 ]; do
+	tmpOutDir="${finalOutDir}.$(od -A n -N 4 -t x4 /dev/urandom|sed -e 's/ //g')"
+
+	echo "Trying to create tmpOutDir = $tmpOutDir"
+	if ifdh mkdir "$tmpOutDir" --force=expftp ; then break; fi
+
+	echo "Attemtp to make tmpOutDir = $tmpOutDir failed"
+	tmpOutDir=''
+    done
+
+    echo "Got tmpOutDir = $tmpOutDir"
+
+    if [ x"$tmpOutDir" != x ]; then
+        ifdh chmod 0755 "${tmpOutDir}" --force=expftp
+        transferOutFiles "${tmpOutDir}" $(filterOutProxy $(selectFiles *) )
+        ifdh rename "${tmpOutDir}" "${finalOutDir}" --force=expftp
+    fi
 
 else
     echo "Error sourcing setup script ${MU2EGRID_MU2ESETUP}: status code $?"
