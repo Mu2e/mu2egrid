@@ -9,6 +9,8 @@ use Getopt::Long;
 use Cwd 'abs_path';
 use POSIX qw(ceil);
 
+use Data::Dumper;
+
 use lib dirname($0);
 use mu2egrid;
 
@@ -23,21 +25,8 @@ Usage:
 	      --njobs=<M> \\
 	      --events-per-job=<N> \\
 	      [--jobname=<name>] \\
-	      [--outstage=<dir>] \\
-	      [--prestage-spec=<specfile>] \\
-	      [--mu2e-setup=<setupmu2e-art.sh>] \\
-	      [--test-queue] \\
-	      [--no-opportunistic] \\
-	      [--jobsub-arg=string1] [--jobsub-arg=string2] [...] \\
-	      [--dry-run] \\
-	      [--verbose]
-
-Where [] denote optional settings, and {alternative1|alternative2}
-constructs denote mutually exclusive alternatives.
-
-Notes:
-
-    - All option names may be abbreviates as long as this is unambiguous.
+EOF
+. mu2egrid::commonOptDoc1() . <<EOF
 
     - The --in argument specifies the name of the main G4beamline
       input file.
@@ -50,74 +39,34 @@ Notes:
       directory.  If this parameter is not specified, a name will be
       derived from the --in file name.
 
-    - The --test-queue option submits a test job.  The job will run
-      with highest possible priority, but you can only have one such
-      job in the queue at a time.
-
-    - By default the submitted jobs will use any available job slots.
-      The --no-opportunistic options requests to run only on dedicated
-      mu2e slots.
-
-    - The --jobsub-arg option allows to pass arbitrary extra
-      parameters to the jobsub command.  Don not use unless you know
-      exactly what you are doing.
-
-    - Outstage should be one of the following registered locations: 
-
-           @mu2egrid::knownOutstage
-
-      by default $mu2egrid::mu2eDefaultOutstage  is used.
-
-    - The --prestage-spec option allows to specify a list of extra
-      files that should be prestaged to the worker node.  Each
-      line in the specification file has the format:
-
-      /file/name/on/bluarc   relative/file/name/on/worker/node
-
-      that is, source and target file names separated by any amount of
-      white space.  The target file name is relative to the working
-      directory.  It must contain a slash '/' and must not start with
-      a slash. Leading and trailing white spaces are ignored.  The
-      total available disk space for all inputs and outputs on a
-      worker node is usually 40 GB.
-
     - All the files mentioned on the submission command line must be
       left intact until all the jobs finish.
 
 EOF
+. mu2egrid::commonOptDoc2()
 ;
 }
 
 #================================================================
 my @extra_jobsub_args;
+my @files_to_transfer;
 
-my %opt = ('mu2e-setup' => '/grid/fermiapp/products/mu2e/setupmu2e-art.sh',
-	   'outstage' => $mu2egrid::mu2eDefaultOutstage,
-	   'tar' => '',
-	   'jobsub-arg' => \@extra_jobsub_args,
-	   'help' => 0, 'verbose'=> 0,
-	   'test-queue' => 0,  'no-opportunistic' => 0,
-	   'dry-run' => 0);
+my %opt = (
+    'tar' => '',
+    'jobsub-arg' => \@extra_jobsub_args,
+    );
+
+@opt{keys %mu2egrid::commonOptDefaults}  =  values %mu2egrid::commonOptDefaults;
 
 # Process command line opts.
 GetOptions(\%opt, 
-	   "help",
-	   "verbose",
-	   "in=s",
-	   "tar=s",
-	   "mu2e-setup=s",
-	   "g4bl-version=s",
-	   "jobname=s",
-	   "outstage=s",
-	   "prestage-spec=s",
-	   "njobs=i",
-#	   "datafiles=s",
-	   "events-per-job=i",
-	   "jobsub-arg=s@",
-	   "test-queue",
-	   "no-opportunistic",
-	   "dry-run",
-	   ) 
+    "in=s",
+    "tar=s",
+    "g4bl-version=s",
+    "jobname=s",
+    "njobs=i",
+    "events-per-job=i",
+    @mu2egrid::commonOptList)
     or die "\nError processing command line options.\n";
 
 if($opt{'help'}) {
@@ -125,8 +74,8 @@ if($opt{'help'}) {
     exit 0;
 }
 
-# Export the EXPERIMENT variable for ifdh
-push @extra_jobsub_args, ('-e', 'EXPERIMENT');
+print "Final set of options:\n", Dumper( \%opt ), "\n"
+    if($opt{'verbose'});
 
 # Check that all of the required args are present:
 foreach my $k ('in', 'njobs', 'g4bl-version') {
@@ -134,14 +83,14 @@ foreach my $k ('in', 'njobs', 'g4bl-version') {
 }
 
 # All file args are to be passed to the worker node script using full path names.
-my $in = find_file($opt{'in'});
+my $in = mu2egrid::find_file($opt{'in'});
 my $tar = $opt{'tar'};
-$tar = find_file($tar) unless $tar eq '';
+$tar = mu2egrid::find_file($tar) unless $tar eq '';
 
-my $mu2esetup = find_file($opt{'mu2e-setup'});
-my $outstage = find_file($opt{'outstage'});
+my $mu2esetup = mu2egrid::find_file($opt{'mu2e-setup'});
+my $outstage = mu2egrid::find_file($opt{'outstage'});
 
-assert_known_outstage($outstage);
+mu2egrid::assert_known_outstage($outstage);
 
 my $njobs = $opt{'njobs'};
 my $test_queue = $opt{'test-queue'};
@@ -158,18 +107,19 @@ else {
 }
 
 $ENV{'MU2EGRID_MU2ESETUP'} = $mu2esetup;
-$ENV{'MU2EGRID_G4BLVERSION'} = $opt{'g4bl-version'};
-
-# These files are transfere
-$ENV{'MU2EGRID_MASTERIN'} = basename($in);
-$ENV{'MU2EGRID_TAR'} = '';
-if($tar) {
-    $ENV{'MU2EGRID_TAR'} = basename($tar);
-}
-
 $ENV{'MU2EGRID_OUTDIRFMT'} = "$jobname.%d/%05d";
 $ENV{'MU2EGRID_OUTSTAGE'} = $outstage;
 $ENV{'MU2EGRID_NCLUSTERJOBS'} = $njobs;
+$ENV{'MU2EGRID_G4BLVERSION'} = $opt{'g4bl-version'};
+
+$ENV{'MU2EGRID_MASTERIN'} = basename($in);
+push @files_to_transfer, $in;
+
+$ENV{'MU2EGRID_TAR'} = '';
+if($tar) {
+    $ENV{'MU2EGRID_TAR'} = basename($tar);
+    push @files_to_transfer, $tar;
+}
 
 my $whoami = `whoami`;
 chomp($whoami);
@@ -177,40 +127,12 @@ $ENV{'MU2EGRID_SUBMITTER'} = $whoami;
 
 #----------------
 # Handle the --prestage-spec options
-my $prestage = '';
 if(defined($opt{'prestage-spec'})) {
-    $prestage = find_file($opt{'prestage-spec'});
-    validate_prestage_spec($prestage);
+    $prestage = mu2egrid::find_file($opt{'prestage-spec'});
+    mu2egrid::validate_prestage_spec($prestage);
+    $ENV{'MU2EGRID_PRESTAGE'} = basename($prestage);
+    push @files_to_transfer, $prestage;
 }
-$ENV{'MU2EGRID_PRESTAGE'} = $prestage;
-
-# # Either --datafiles or --events-per-job is required.
-# if(defined $opt{'datafiles'}) {
-#     if(defined($opt{'events-per-job'})) {
-# 	die "Arguments --datafiles and --events-per-job are mutually exclusive.";
-#     }
-# 
-#     my $datafiles = find_file($opt{'datafiles'});
-#     validate_file_list($datafiles);
-# 
-#     $ENV{'MU2EGRID_INPUTLIST'} = $datafiles;
-#     my $nlines =  `cat $datafiles | wc -l`;
-#     chomp($nlines);
-#     print "nlines = $nlines in file $datafiles\n" if $opt{'verbose'};
-# 
-#     if($nlines < $njobs) {
-# 	die "Error too many requested jobs = $njobs.  The input file list has only $nlines lines: $datafiles\n";
-#     }
-#     $ENV{'MU2EGRID_CHUNKSIZE'} = ceil($nlines/$njobs);
-# 
-# }
-# else {
-#     if(!defined($opt{'events-per-job'})) {
-# 	die "Either --datafiles or --events-per-job must be specified.";
-#     }
-# 
-#     $ENV{'MU2EGRID_EVENTS_PER_JOB'} = $opt{'events-per-job'};
-# }
 
 if(!defined($opt{'events-per-job'})) {
     die "Error: --events-per-job must be specified.";
@@ -218,27 +140,56 @@ if(!defined($opt{'events-per-job'})) {
 $ENV{'MU2EGRID_EVENTS_PER_JOB'} = $opt{'events-per-job'};
 
 #----------------
-my @args = ('--grid', '--mail_never', '-N', $njobs, '-f', $in);
+my @args;
+
+push @args, ('--group', $opt{'group'});
+if(defined($opt{'role'})) {
+    push @args, ('--role', $opt{'role'});
+}
+
+push @args, ('--jobsub-server', $opt{'jobsub-server'});
+push @args, ('--disk', $opt{'disk'});
+push @args, ('--memory', $opt{'memory'});
+push @args, ('--OS', $opt{'OS'});
+push @args, ('--resource-provides', $opt{'resource-provides'});
+push @args, @extra_jobsub_args;
+
+# IFDH_VERSION is interpreded by both jobsub and our worker node scripts
+if(defined($opt{'ifdh-version'}) and ($opt{'ifdh-version'} ne '')) {
+    $ENV{'IFDH_VERSION'} = $opt{'ifdh-version'};
+}
+
+# Export the EXPERIMENT variable for ifdh
+push @args, ('-e', 'EXPERIMENT');
+
 if($tar) {
     push @args, ('-f', $tar);
 }
 if($test_queue) {
     push @args, '--test_queue';
 }
-if(!$opt{'no-opportunistic'}) {
-    push @args, '--opportunistic';
-}
 
 while( (my $key, my $value) = each(%ENV) ) {
-    if($key =~ m/^MU2EGRID_\w+$/) {
-	push @args,  ('-e', $key);
-	print "Using: $key => $ENV{$key}\n" if $opt{'verbose'};
+    if(($key =~ m/^MU2EGRID_\w+$/) or ($key eq 'IFDH_VERSION')) {
+        push @args,  ('-e', $key);
+        print "Using: $key => $ENV{$key}\n" if $opt{'verbose'};
     }
 }
 
-push @args, @extra_jobsub_args;
-push @args, $mu2egrid::impldir . '/copyback.sh';
-push @args, 'mu2eg4bl.sh';
+my %filecheck;
+foreach my $f (@files_to_transfer) {
+    push @args, ('-f', $f);
+    my $bn = basename($f);
+    if(defined($filecheck{$f})) {
+        die "Error: duplicate file name $f on the transfer list\n";
+    }
+    $filecheck{$f} = 1;
+}
+
+push @args, ('-N', $njobs);
+
+push @args, 'file://' . $mu2egrid::impldir . '/copyback.sh';
+push @args, $mu2egrid::impldir . '/mu2eg4bl.sh';
 
 print "Command:  $mu2egrid::jobsub @args\n";
 if(!$opt{'dry-run'}) {
