@@ -39,9 +39,13 @@ cp $topdir/*.f .
 SEED="${MU2EGRID_BASE_SEED:-$(generateSeed)}"
 addMARSSeeds $masterinput "$SEED"
 
+ret=1
 # Stage input files to the local disk
-stageIn "$MU2EGRID_PRESTAGE"
-ret=$?
+if [ -n "${MU2EGRID_PRESTAGE}" ]; then
+    MU2EGRID_PRESTAGE="$CONDOR_DIR_INPUT/$MU2EGRID_PRESTAGE"
+    stageIn "$MU2EGRID_PRESTAGE"
+    ret=$?
+fi
 
 if [ -n "$MU2EGRID_SETUP" ]; then
     echo "Sourcing user setup script $MU2EGRID_SETUP"
