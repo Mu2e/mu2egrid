@@ -54,7 +54,6 @@ our @commonOptList = (
 		      'jobsub-arg=s@',
 		      'outstage=s',
 		      "prestage-spec=s",
-		      'test-queue',
 		      'dry-run',
 		      'verbose',
 		      'help',
@@ -71,7 +70,6 @@ our %commonOptDefaults = (
                           default_ifdh_helper(),
 			  'resource-provides' => 'usage_model=OPPORTUNISTIC,DEDICATED',
 			  'outstage' => $mu2egrid::mu2eDefaultOutstage,
-			  'test-queue' => 0,
 			  'dry-run' => 0,
 			  'verbose' => 0,
 			  'help' => 0,
@@ -91,7 +89,6 @@ sub commonOptDoc1() {
 	      [--ifdh-version=<version>] \\
 	      [--outstage=<dir>] \\
 	      [--prestage-spec=<file>] \\
-	      [--test-queue] \\
 	      [--dry-run] \\
 	      [--verbose] \\
 	      [--help]
@@ -139,10 +136,6 @@ sub commonOptDoc2() {
       white space.  The target file name is relative to the working
       directory.  It must contain a slash '/' and must not start with
       a slash. Leading and trailing white spaces are ignored.
-
-    - The --test-queue option submits a test job.  The job will run
-      with highest possible priority, but you can only have one such
-      job in the queue at a time.
 
     - Use --dry-run to test the submission command without actually
       sending the jobs.  Usually used in conjunction with --verbose.
