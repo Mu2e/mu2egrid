@@ -87,6 +87,7 @@ foreach my $k ('executable', 'input', 'outstage', 'njobs') {
 # All file args are to be passed to the worker node script using full path names.
 my $executable = mu2egrid::find_file($opt{'executable'});
 my $input = mu2egrid::find_file($opt{'input'});
+my $mu2esetup = mu2egrid::find_file($opt{'mu2e-setup'});
 my $outstage = mu2egrid::find_file($opt{'outstage'});
 mu2egrid::assert_known_outstage($outstage);
 
@@ -106,6 +107,7 @@ $ENV{'MU2EGRID_EXECUTABLE'} = $executable;
 $ENV{'MU2EGRID_MASTERINPUT'} = $input;
 $ENV{'MU2EGRID_TOPDIR'} = abs_path('.');
 $ENV{'MU2EGRID_OUTDIRFMT'} = $opt{'outdirfmt'};
+$ENV{'MU2EGRID_MU2ESETUP'} = $mu2esetup;
 $ENV{'MU2EGRID_OUTSTAGE'} = $outstage;
 $ENV{'MU2EGRID_GFTPSERVER'} = "gsiftp://if-gridftp-marsmu2e.fnal.gov";
 $ENV{'MU2EGRID_SETUP'} = $setup;
