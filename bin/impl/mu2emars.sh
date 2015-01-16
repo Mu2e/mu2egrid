@@ -39,7 +39,7 @@ cp $topdir/*.f .
 SEED="${MU2EGRID_BASE_SEED:-$(generateSeed)}"
 addMARSSeeds $masterinput "$SEED"
 
-ret=1
+ret=0
 # Stage input files to the local disk
 if [ -n "${MU2EGRID_PRESTAGE}" ]; then
     MU2EGRID_PRESTAGE="$CONDOR_DIR_INPUT/$MU2EGRID_PRESTAGE"
@@ -47,12 +47,13 @@ if [ -n "${MU2EGRID_PRESTAGE}" ]; then
     ret=$?
 fi
 
-if [ -n "$MU2EGRID_SETUP" ]; then
-    echo "Sourcing user setup script $MU2EGRID_SETUP"
-    source "$MU2EGRID_SETUP"
-fi
-
 if [ "$ret" == 0 ]; then
+
+    if [ -n "$MU2EGRID_SETUP" ]; then
+	echo "Sourcing user setup script $MU2EGRID_SETUP"
+	source "$MU2EGRID_SETUP"
+    fi
+
     # Run the job
     echo "Starting on host $(uname -a) on $(date)"
     echo "Running the command: $executable"
