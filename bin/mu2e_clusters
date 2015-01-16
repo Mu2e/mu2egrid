@@ -1,8 +1,8 @@
 #!/usr/bin/perl -w
 #
-# A simple wrapper for condor_q to figure out what job clusters are still in the queue.
+# A simple wrapper for jobsub_q to figure out what job clusters are still in the queue.
 #
-# A.Gaponenko, 2012
+# A.Gaponenko, 2012, 2015
 #
 use strict;
 use Getopt::Long;
@@ -26,8 +26,11 @@ EOF
 sub getUserClusters($) {
     my $username = shift;
 
-    open(CQ, '-|', 'condor_q', $username)
-	or die "Can not read condor_q output: $!\n";
+    open OLDERR,     ">&", \*STDERR or die "Can't dup STDERR: $!";
+    close STDERR;
+
+    open(CQ, '-|', 'jobsub_q', '--user', $username)
+	or die "Can not read jobsub_q output: $!\n";
 
     my %clusters;
 
@@ -37,7 +40,7 @@ sub getUserClusters($) {
 #	print "got username = $username, fields = ". join('#', @fields) . "\n";
 	if(($#fields > 5) && ($fields[1] eq $username)) {
 	    my $cn = $fields[0];
-	    $cn =~ s/\.\d*$//;
+	    $cn =~ s/\..*$//;
 
 	    if(!defined($clusters{$cn})) {
 		$clusters{$cn} = [0,0];
@@ -53,6 +56,8 @@ sub getUserClusters($) {
     }
 
     close CQ;
+
+    open STDERR,     ">&", \*OLDERR or die "Can't restor STDERR: $!";
 
     return \%clusters;
 }
@@ -87,7 +92,7 @@ else {
 	    print "$cn\n";
 	}
 	else {
-	    print "$cn\t$$clusters{$cn}[0]\t$$clusters{$cn}[1]\n";
+	    print "$cn\t\t$$clusters{$cn}[0]\t$$clusters{$cn}[1]\n";
 	}
     }
 }
