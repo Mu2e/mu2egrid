@@ -1,6 +1,6 @@
 
 INSTALL ( PROGRAMS checkAndMove
- 		   condor_clusters
+ 		   mu2e_clusters
 		   mu2eart
 		   mu2eg4bl
 		   mu2emars
