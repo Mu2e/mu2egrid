@@ -19,11 +19,11 @@ sub usage() {
     return <<EOF
 Usage: 
 	$self --executable program \\
-	--input MARSBASE.INP \\
-	--njobs=<M> \\
-	[--outdirfmt="%d/run_%03d"] \\
-	[--setup=<script-to-source.sh>] \\
-	[--no-group-check] \\
+	      --input MARSBASE.INP \\
+	      --njobs=<M> \\
+	      [--outdirfmt="%d/run_%03d"] \\
+	      [--setup=<script-to-source.sh>] \\
+	      [--no-group-check] \\
 EOF
 . mu2egrid::commonOptDoc1() . <<EOF
 
