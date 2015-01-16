@@ -109,7 +109,6 @@ $ENV{'MU2EGRID_TOPDIR'} = abs_path('.');
 $ENV{'MU2EGRID_OUTDIRFMT'} = $opt{'outdirfmt'};
 $ENV{'MU2EGRID_MU2ESETUP'} = $mu2esetup;
 $ENV{'MU2EGRID_OUTSTAGE'} = $outstage;
-$ENV{'MU2EGRID_GFTPSERVER'} = "gsiftp://if-gridftp-marsmu2e.fnal.gov";
 $ENV{'MU2EGRID_SETUP'} = $setup;
 
 
