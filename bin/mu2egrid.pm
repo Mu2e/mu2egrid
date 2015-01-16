@@ -124,7 +124,7 @@ sub commonOptDoc2() {
     - Outstage should be one of the following registered locations:
            $formattedOutstage
 
-      by default $mu2egrid::mu2eDefaultOutstage  is used.
+      by default $mu2egrid::mu2eDefaultOutstage  is used (except for MARS).
 
     - The --prestage-spec option allows to specify a list of extra
       files that should be prestaged to the worker node.  Each

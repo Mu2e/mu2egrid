@@ -60,6 +60,9 @@ my %opt = (
 
 @opt{keys %mu2egrid::commonOptDefaults}  =  values %mu2egrid::commonOptDefaults;
 
+# Override the mu2egrid.pm default
+$opt{'outstage'} = '/grid/data/marsmu2e/outstage';
+
 # Process command line opts.
 GetOptions(\%opt, 
     "executable=s",
