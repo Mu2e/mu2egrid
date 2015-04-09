@@ -171,8 +171,11 @@ if($test_queue) {
 
 while( (my $key, my $value) = each(%ENV) ) {
     if(($key =~ m/^MU2EGRID_\w+$/) or ($key eq 'IFDH_VERSION')) {
-        push @args,  ('-e', $key);
-        print "Using: $key => $ENV{$key}\n" if $opt{'verbose'};
+	# jobsub_client does not allow empty string as environment values
+	if($value ne '') {
+	    push @args,  ('-e', $key);
+	    print "Using: $key => $ENV{$key}\n" if $opt{'verbose'};
+	}
     }
 }
 
