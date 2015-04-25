@@ -35,7 +35,7 @@ sub default_ifdh_helper() {
     my $ver;
     # The same env var is used by the jobsub wrapper.
     $ver = $ENV{'IFDH_VERSION'} if(defined($ENV{'IFDH_VERSION'}));
-    $ver = 'v1_7_1' unless defined($ver);
+    $ver = 'v1_8_2' unless defined($ver);
     return ('ifdh-version' => $ver);
 }
 
