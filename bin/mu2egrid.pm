@@ -182,8 +182,10 @@ sub validate_file_list($) {
 
     die "--prestage-spec is not a regular file: $fn\n" unless (-f $fn or -l $fn);
 
+    my $numlines = 0;
     if(open(my $fh, $fn)) {
 	while(my $line = <$fh>) {
+	    ++$numlines;
 	    chop($line);
 	    die "Error: not an absolute file name: \"$line\" in file $fn\n" unless $line =~ m{^/};
 	    die "Error: line contains white spaces or other non-printable characters: \"$line\" in file $fn\n" unless $line =~ /^\p{IsGraph}+$/
@@ -192,6 +194,8 @@ sub validate_file_list($) {
     else {
 	die "Error: can not open  file \"$fn\": $!\n";
     }
+
+    return $numlines;
 }
 
 #================================================================
