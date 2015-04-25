@@ -51,6 +51,7 @@ our @commonOptList = (
                       'mu2e-setup=s',
                       'ifdh-version=s',
 		      'resource-provides=s',
+		      'site=s',
 		      'jobsub-arg=s@',
 		      'outstage=s',
 		      "prestage-spec=s",
@@ -84,6 +85,7 @@ sub commonOptDoc1() {
 	      [--memory=<size_MB>] \\
 	      [--OS=<comma_separated_list>] \\
 	      [--resource-provides=<spec>] \\
+	      [--site=<site1,site2,...>] \\
 	      [--jobsub-arg=string1] [--jobsub-arg=string2] [...] \\
 	      [--mu2e-setup=<setupmu2e-art.sh>] \\
 	      [--ifdh-version=<version>] \\
@@ -101,7 +103,7 @@ sub commonOptDoc2() {
     my $formattedOutstage = join("\n\t\t", ('', @mu2egrid::knownOutstage));
     return <<EOF
     - The --group, --role, --jobsub-server, --disk, --memory, --OS,
-      and --resource-provides options are passed to jobsub_submit.
+      --resource-provides, and --site options are passed to jobsub_submit.
       Arbitrary other jobsub_submit options can be passed using
       --jobsub-arg.  Their default values are
 
@@ -112,6 +114,7 @@ sub commonOptDoc2() {
 	  --memory             $commonOptDefaults{'memory'}
           --OS                 $commonOptDefaults{'OS'}
           --resource-provides  $commonOptDefaults{'resource-provides'}
+          --site               none
 
     --mu2e-setup arg is optional, by default the current official mu2e
       release is used.  The ifdhc package must be available in the
@@ -124,7 +127,7 @@ sub commonOptDoc2() {
     - Outstage should be one of the following registered locations:
            $formattedOutstage
 
-      by default $mu2egrid::mu2eDefaultOutstage  is used (except for MARS).
+      by default $mu2egrid::mu2eDefaultOutstage  is used (except for MARS and mu2eprodsys).
 
     - The --prestage-spec option allows to specify a list of extra
       files that should be prestaged to the worker node.  Each
