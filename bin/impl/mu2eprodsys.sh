@@ -83,18 +83,19 @@ CVMFSHACK=/cvmfs/grid.cern.ch/util/cvmfs-uptodate
 test -x $CVMFSHACK && $CVMFSHACK /cvmfs/mu2e.opensciencegrid.org
 
 #================================================================
-user=${MU2EGRID_SUBMITTER:?"Error: MU2EGRID_SUBMITTER is not set"}
+submitter=${MU2EGRID_SUBMITTER:?"Error: MU2EGRID_SUBMITTER is not set"}
+dsowner=${MU2EGRID_DSOWNER:?"Error: MU2EGRID_DSOWNER is not set"}
 
 origFCL=$(getFCLFileName "${MU2EGRID_INPUTLIST}" ${PROCESS:?PROCESS environment variable is not set})
 
 # set current user and version info to obtain the name of this job
-jobname=$(basename $origFCL .fcl | awk -F . '{OFS="."; $2="'$user'"; $4="'${MU2EGRID_DSCONF}'"; print $0;}')
+jobname=$(basename $origFCL .fcl | awk -F . '{OFS="."; $2="'$dsowner'"; $4="'${MU2EGRID_DSCONF}'"; print $0;}')
 
 localFCL="./$jobname.fcl"
 logFileName="${jobname}.log"
 
 cluster=$(printf %06d ${CLUSTER:-0})
-finalOutDir="/pnfs/mu2e/scratch/outstage/$user/$cluster/$jobname"
+finalOutDir="/pnfs/mu2e/scratch/outstage/$submitter/$cluster/$jobname"
 
 ret=1
 
@@ -149,7 +150,7 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
         # FIXME: define and use a "current" version
         setup mu2ebintools v1_00_00 -qe7:prof
 
-        case $user in
+        case $dsowner in
             mu2e*) ffprefix=phy ;;
             *)     ffprefix=usr ;;
         esac
