@@ -110,6 +110,10 @@ trap "[[ -n \"$WORKDIR\" ]] && { cd /; rm -rf \"$WORKDIR\"; }" 0
 #
 cd $WORKDIR
 
+# make sure we are not stuck with stale CVMFS data
+CVMFSHACK=/cvmfs/grid.cern.ch/util/cvmfs-uptodate
+test -x $CVMFSHACK && $CVMFSHACK /cvmfs/mu2e.opensciencegrid.org
+
 printinfo > sysinfo.log 2>&1
 
 user=${MU2EGRID_SUBMITTER:?"Error: MU2EGRID_SUBMITTER is not set"}
