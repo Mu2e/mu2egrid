@@ -46,7 +46,7 @@ addManifest() {
     echo '# algorithm: sha256sum' >> $manifest
     sha256sum "$@" >> $manifest
     sc="$(sha256sum < $manifest)"
-    echo "# selfcheck: $sc" >> $manifest
+    echo "# mu2egrid manifest selfcheck: $sc" >> $manifest
 }
 #================================================================
 ifdh_mkdir_p() {
