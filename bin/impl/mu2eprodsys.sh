@@ -121,11 +121,9 @@ mu2eprodsys_payload() {
 
         echo "#================================================================"
 
-
         # Create SAM metadata for the outputs.
-        # FIXME: we should not hardcode the qualifiers.
-        # FIXME: define and use a "current" version
-        setup mu2ebintools v1_00_00 -qe7:prof
+
+        setup mu2ebintools -q "${MU2E_UPS_QUALIFIERS}"
 
         case ${MU2EGRID_DSOWNER} in
             mu2e*) ffprefix=phy ;;
