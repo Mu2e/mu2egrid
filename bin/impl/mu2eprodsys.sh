@@ -93,6 +93,8 @@ mu2eprodsys_payload() {
 
     if source "${MU2EGRID_USERSETUP:?Error: MU2EGRID_USERSETUP: not defined}"; then
 
+        setup mu2ebintools -q "${MU2E_UPS_QUALIFIERS}"
+
         printinfo
 
         timecmd=time  # shell builtin is the fallback option
@@ -122,8 +124,6 @@ mu2eprodsys_payload() {
         echo "#================================================================"
 
         # Create SAM metadata for the outputs.
-
-        setup mu2ebintools -q "${MU2E_UPS_QUALIFIERS}"
 
         case ${MU2EGRID_DSOWNER} in
             mu2e*) ffprefix=phy ;;
