@@ -1,0 +1,150 @@
+#!/usr/bin/perl -w
+#
+# A frontend script to submit mu2e framework jobs
+#
+# A.Gaponenko, 2012, 2015
+#
+use File::Basename;
+use Getopt::Long;
+use Cwd 'abs_path';
+use POSIX qw(ceil);
+
+use Data::Dumper; # for debugging
+
+use lib dirname($0);
+use mu2egrid;
+
+#================================================================
+sub usage() {
+    my $self = basename($0);
+    return <<EOF
+Usage:
+        $self --setup=<script-to-source.sh> \\
+        --fcllist=<fcl-file-list> \\
+        --dsconf=<output-dataset-version-string> \\
+        [--dsowner=<name>] \\
+EOF
+        . mu2egrid::commonOptDoc1() . <<EOF
+
+        - The --setup argument must point to the setup.sh script in a user
+        Offline area.
+
+        - The set of fcl files specified via --fcllist will be processed
+        by Mu2e Offline, one fcl file per job.
+
+        - The configuration field in the names of output files should be
+        specified via --dsconf.
+
+        - The --dsowner option specifies the username field in the names
+        of output files.  The default is the username of the submitter.
+
+FIXME: remove --prestage-spec
+
+EOF
+. mu2egrid::commonOptDoc2()
+    ;
+}
+
+#================================================================
+my @extra_jobsub_args;
+
+my $whoami = `whoami`;
+chomp($whoami);
+
+my %opt =
+    (
+    'jobsub-arg' => \@extra_jobsub_args,
+    'dsowner' => $whoami,
+    );
+
+@opt{keys %mu2egrid::commonOptDefaults}  =  values %mu2egrid::commonOptDefaults;
+$opt{'outstage'} = '/pnfs/mu2e/scratch/outstage';
+
+# Process command line opts.
+GetOptions(\%opt,
+    'setup=s',
+    'fcllist=s',
+    'dsconf=s',
+    'dsowner=s',
+    @mu2egrid::commonOptList)
+    or die "\nError processing command line options.\n";
+
+if($opt{'help'}) {
+    print usage();
+exit 0;
+}
+
+print "Final set of options:\n", Dumper( \%opt ), "\n"
+    if($opt{'verbose'});
+
+
+# Check that all of the required args are present:
+foreach my $k ('setup', 'mu2e-setup', 'fcllist', 'dsconf', 'dsowner') {
+    defined $opt{$k} or die "Error: --$k must be specified.  Try the --help option.\n";
+}
+
+#----------------
+# All file args are to be passed to the worker node script using full path names.
+
+$ENV{'MU2EGRID_MU2ESETUP'} = mu2egrid::find_file($opt{'mu2e-setup'});
+$ENV{'MU2EGRID_USERSETUP'} = mu2egrid::find_file($opt{'setup'});
+
+my $fcllist = mu2egrid::find_file($opt{'fcllist'});
+my $njobs = mu2egrid::validate_file_list($fcllist);
+$ENV{'MU2EGRID_INPUTLIST'} = $fcllist;
+
+my $outstage = $opt{'outstage'};
+mu2egrid::assert_known_outstage($outstage);
+$ENV{'MU2EGRID_OUTSTAGE'} = $outstage;
+
+$ENV{'MU2EGRID_SUBMITTER'} = $whoami;
+$ENV{'MU2EGRID_DSOWNER'} = $opt{'dsowner'};
+
+$ENV{'MU2EGRID_DSCONF'} = $opt{'dsconf'};
+
+#----------------------------------------------------------------
+my @args;
+
+push @args, ('--group', $opt{'group'});
+push @args, ('--role', $opt{'role'}) if defined $opt{'role'};
+push @args, ('--jobsub-server', $opt{'jobsub-server'});
+push @args, ('--disk', $opt{'disk'});
+push @args, ('--memory', $opt{'memory'});
+push @args, ('--OS', $opt{'OS'});
+push @args, ('--resource-provides', $opt{'resource-provides'});
+push @args, ('--site', $opt{'site'}) if defined $opt{'site'};
+push @args, @extra_jobsub_args;
+
+# IFDH_VERSION is interpreded by both jobsub and our worker node scripts
+if(defined($opt{'ifdh-version'}) and ($opt{'ifdh-version'} ne '')) {
+    $ENV{'IFDH_VERSION'} = $opt{'ifdh-version'};
+}
+
+# Export the EXPERIMENT variable for ifdh
+push @args, ('-e', 'EXPERIMENT');
+
+while( (my $key, my $value) = each(%ENV) ) {
+    if(($key =~ m/^MU2EGRID_\w+$/) or ($key eq 'IFDH_VERSION')) {
+        # jobsub_client does not allow empty string as environment values
+        if($value ne '') {
+            push @args,  ('-e', $key);
+            print "Using: $key => $ENV{$key}\n" if $opt{'verbose'};
+        }
+}
+}
+
+push @args, ('-N', $njobs);
+
+push @args, 'file://' . $mu2egrid::impldir . '/mu2eprodsys.sh';
+
+print "Command:  $mu2egrid::jobsub @args\n";
+if(!$opt{'dry-run'}) {
+    print "Submitting....\n";
+exec { $mu2egrid::jobsub } $mu2egrid::jobsub, @args
+    or die "Error executing $mu2egrid::jobsub: $!";
+}
+else {
+    print "Not submitting because --dry-run was requested.\n";
+}
+
+#================================================================
