@@ -71,52 +71,29 @@ ifdh_mkdir_p() {
     fi
 }
 #================================================================
-# Execution starts here
+# Run the framework jobs and create json files for the outputs
+# Running it inside a function makes it easier to exit on error
+# during the "payload" part, but still transfer the log file back.
+mu2eprodsys_payload() {
 
-umask 002
+    mu2epseh() {
+        echo "Error from $BASH_COMMAND: exit code $?"
+        exit 1
+    }
+    trap mu2epseh ERR
 
-# TMPDIR is defined and created by Condor.
-cd $TMPDIR
-
-# make sure we are not stuck with stale CVMFS data
-CVMFSHACK=/cvmfs/grid.cern.ch/util/cvmfs-uptodate
-test -x $CVMFSHACK && $CVMFSHACK /cvmfs/mu2e.opensciencegrid.org
-
-#================================================================
-submitter=${MU2EGRID_SUBMITTER:?"Error: MU2EGRID_SUBMITTER is not set"}
-dsowner=${MU2EGRID_DSOWNER:?"Error: MU2EGRID_DSOWNER is not set"}
-
-origFCL=$(getFCLFileName "${MU2EGRID_INPUTLIST}" ${PROCESS:?PROCESS environment variable is not set})
-
-# set current user and version info to obtain the name of this job
-jobname=$(basename $origFCL .fcl | awk -F . '{OFS="."; $2="'$dsowner'"; $4="'${MU2EGRID_DSCONF}'"; print $0;}')
-
-localFCL="./$jobname.fcl"
-logFileName="${jobname}.log"
-
-cluster=$(printf %06d ${CLUSTER:-0})
-finalOutDir="/pnfs/mu2e/scratch/outstage/$submitter/$cluster/$jobname"
-
-ret=1
-
-#================================================================
-# Set up Mu2e environment and make ifdh available
-if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
-
-    setup ifdhc $IFDH_VERSION
-
-    ifdh cp $origFCL $localFCL >> $logFileName 2>&1
+    ifdh cp $origFCL $localFCL
 
     sed -e "s/MU2EGRIDDSOWNER/$MU2EGRID_DSOWNER/g" -e "s/MU2EGRIDDSCONF/$MU2EGRID_DSCONF/g" $localFCL > $localFCL.tmp
 
-    mv $localFCL.tmp $localFCL >> $logFileName 2>&1
+    mv $localFCL.tmp $localFCL
     # include the edited copy of the fcl into the log?
 
     # FIXME: pre-stage input data files - not needed for stage 1
 
-    if source "${MU2EGRID_USERSETUP:?Error: MU2EGRID_USERSETUP: not defined}"  >> $logFileName 2>&1; then
+    if source "${MU2EGRID_USERSETUP:?Error: MU2EGRID_USERSETUP: not defined}"; then
 
-        printinfo >> $logFileName 2>&1
+        printinfo
 
         timecmd=time  # shell builtin is the fallback option
         if [ -x /usr/bin/time ]; then
@@ -135,12 +112,12 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
         fi
 
         # Run the job
-        echo "#================================================================" >> $logFileName 2>&1
-        echo "Running the command: $timecmd mu2e -c $localFCL"  >> $logFileName 2>&1
-        $timecmd mu2e -c $localFCL  >> $logFileName 2>&1
+        echo "#================================================================"
+        echo "Running the command: $timecmd mu2e -c $localFCL"
+        $timecmd mu2e -c $localFCL
         ret=$?
 
-        echo "mu2egrid exit status $ret"  >> $logFileName 2>&1
+        echo "mu2egrid exit status $ret"
 
         echo "#================================================================"
 
@@ -150,7 +127,7 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
         # FIXME: define and use a "current" version
         setup mu2ebintools v1_00_00 -qe7:prof
 
-        case $dsowner in
+        case ${MU2EGRID_DSOWNER} in
             mu2e*) ffprefix=phy ;;
             *)     ffprefix=usr ;;
         esac
@@ -169,7 +146,7 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
                 -i mc.simulation_stage=$(fhicl-getpar --int    mu2emetadata.mc.simulation_stage $localFCL) \
                 -i mc.primary_particle=$(fhicl-getpar --string mu2emetadata.mc.primary_particle $localFCL) \
                 -x \
-                $i >> $logFileName 2>&1
+                $i
         done
 
         for i in *.root; do
@@ -180,14 +157,14 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
                 -i mc.simulation_stage=$(fhicl-getpar --int    mu2emetadata.mc.simulation_stage $localFCL) \
                 -i mc.primary_particle=$(fhicl-getpar --string mu2emetadata.mc.primary_particle $localFCL) \
                 -x \
-                $i >> $logFileName 2>&1
+                $i
         done
 
         declare -a outfiles=( *.art *.root *.json )
 
         # A file should be immutable after its json is created.
         # addManifest appends to the log file; log.json has to be made after that.
-        addManifest $logFileName "${outfiles[@]}"
+        addManifest $logFileName "${outfiles[@]}" >&3 2>&4
 
         for i in $logFileName; do
             ${MU2E_BASE_RELEASE}/Tools/DH/jsonMaker.py \
@@ -197,59 +174,94 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
                 -i mc.simulation_stage=$(fhicl-getpar --int    mu2emetadata.mc.simulation_stage $localFCL) \
                 -i mc.primary_particle=$(fhicl-getpar --string mu2emetadata.mc.primary_particle $localFCL) \
                 -x \
-                $i
+                $i >&3 2>&4
         done
-
-        outfiles+=( $logFileName ${logFileName}.json )
-
-        # Transfer the results.  There were cases when jobs failed after
-        # creating the outstage directory, and were automatically restarted by
-        # condor.  I also observed cased when more than one instance of the
-        # same job, duplicated by some glitches in the grid system, completed
-        # and transferred files back.  To prevent data corruption we write to
-        # a unique tmp dir, than rename it to the final name.
-
-        # Create the "cluster level" output directory.
-        ifdh_mkdir_p "$(dirname ${finalOutDir})" --force=expftp
-
-        # There is no "mktemp" in ifdh.  Imitate it by hand
-        tmpOutDir=''
-        numTries=0
-        while [ $((numTries+=1)) -le 5 ]; do
-            tmpOutDir="${finalOutDir}.$(od -A n -N 4 -t x4 /dev/urandom|sed -e 's/ //g')"
-
-            if ifdh mkdir "$tmpOutDir" --force=expftp ; then break; fi
-
-            echo "Attemtp to make tmpOutDir = $tmpOutDir failed"
-            tmpOutDir=''
-        done
-
-        if [ x"$tmpOutDir" != x ]; then
-            ifdh chmod 0755 "${tmpOutDir}" --force=expftp
-
-
-            t1=$(date +%s)
-
-            ifdh cp --force=expftp -D "${outfiles[@]}" "${tmpOutDir}"
-            ifdh rename "${tmpOutDir}" "${finalOutDir}" --force=expftp
-
-            t2=$(date +%s)
-            echo "$(date) # Total outstage lock and copy time: $((t2-t1)) seconds"
-
-            for i in "${outfiles[@]}"; do
-                #  pin for a week
-                ifdh pin $f $((3600*24*7))
-            done
-
-            t3=$(date +%s)
-            echo "$(date) # Total outstage pin time: $((t3-t2)) seconds"
-
-        fi
 
     else
         echo "Error sourcing setup script ${MU2EGRID_USERSETUP}: status code $?"
         ret=1
     fi
+}
+export mu2eprodsys_payload
+
+#================================================================
+# Execution starts here
+
+umask 002
+
+# TMPDIR is defined and created by Condor.
+cd $TMPDIR
+
+# make sure we are not stuck with stale CVMFS data
+CVMFSHACK=/cvmfs/grid.cern.ch/util/cvmfs-uptodate
+test -x $CVMFSHACK && $CVMFSHACK /cvmfs/mu2e.opensciencegrid.org
+
+#================================================================
+export origFCL=$(getFCLFileName "${MU2EGRID_INPUTLIST}" ${PROCESS:?PROCESS environment variable is not set})
+
+# set current user and version info to obtain the name of this job
+jobname=$(basename $origFCL .fcl | awk -F . '{OFS="."; $2="'${MU2EGRID_DSOWNER:?"Error: MU2EGRID_DSOWNER is not set"}'"; $4="'${MU2EGRID_DSCONF}'"; print $0;}')
+
+export localFCL="./$jobname.fcl"
+export logFileName="${jobname}.log"
+
+cluster=$(printf %06d ${CLUSTER:-0})
+finalOutDir="/pnfs/mu2e/scratch/outstage/${MU2EGRID_SUBMITTER:?Error: MU2EGRID_SUBMITTER is not set}/$cluster/$jobname"
+
+ret=1
+
+#================================================================
+# Set up Mu2e environment and make ifdh available
+if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
+
+    setup ifdhc $IFDH_VERSION
+
+    ( mu2eprodsys_payload ) 3>&1 4>&2 1>> $logFileName 2>&1
+
+    declare -a outfiles=( *.art *.root $logFileName *.json )
+
+    # Transfer the results.  There were cases when jobs failed after
+    # creating the outstage directory, and were automatically restarted by
+    # condor.  I also observed cased when more than one instance of the
+    # same job, duplicated by some glitches in the grid system, completed
+    # and transferred files back.  To prevent data corruption we write to
+    # a unique tmp dir, than rename it to the final name.
+
+    # Create the "cluster level" output directory.
+    ifdh_mkdir_p "$(dirname ${finalOutDir})" --force=expftp
+
+    # There is no "mktemp" in ifdh.  Imitate it by hand
+    tmpOutDir=''
+    numTries=0
+    while [ $((numTries+=1)) -le 5 ]; do
+        tmpOutDir="${finalOutDir}.$(od -A n -N 4 -t x4 /dev/urandom|sed -e 's/ //g')"
+
+        if ifdh mkdir "$tmpOutDir" --force=expftp ; then break; fi
+
+        echo "Attemtp to make tmpOutDir = $tmpOutDir failed"
+        tmpOutDir=''
+    done
+
+    if [ x"$tmpOutDir" != x ]; then
+
+        ifdh chmod 0755 "${tmpOutDir}" --force=expftp
+
+        t1=$(date +%s)
+
+        ifdh cp --force=expftp -D "${outfiles[@]}" "${tmpOutDir}"
+        ifdh rename "${tmpOutDir}" "${finalOutDir}" --force=expftp
+
+        t2=$(date +%s)
+        echo "$(date) # Total outstage lock and copy time: $((t2-t1)) seconds"
+
+        for i in "${outfiles[@]}"; do
+            ifdh pin $f $((3600*24*7)) #  pin for a week
+        done
+
+        t3=$(date +%s)
+        echo "$(date) # Total outstage pin time: $((t3-t2)) seconds"
+    fi
+
 else
     echo "Error sourcing setup script ${MU2EGRID_MU2ESETUP}: status code $?"
     ret=1
