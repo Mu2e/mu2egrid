@@ -4,6 +4,7 @@ INSTALL ( PROGRAMS checkAndMove
 		   mu2eart
 		   mu2eg4bl
 		   mu2emars
+		   mu2eprodsys
           DESTINATION ${product}/${version}/bin )
 
 INSTALL ( FILES mu2egrid.pm
