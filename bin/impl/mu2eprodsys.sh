@@ -9,18 +9,15 @@
 
 #================================================================
 printinfo() {
-    echo "================================================================"
     echo Starting on host `uname -a` on `date`
     echo running as user `id`
     echo "current work dir is $(/bin/pwd)"
     echo OS version `cat /etc/redhat-release`
     echo "job arguments: $@"
-    echo "The environment is:"
-    /usr/bin/printenv
-    echo "================================================================"
+    echo "#================================================================"
     echo "Visible disk space:"
     df -P
-    echo "================================================================"
+    echo "#================================================================"
     echo "TMPDIR: ls -alR"
     ls -alR "$TMPDIR"
     echo "TMPDIR: df -h"
@@ -82,6 +79,7 @@ mu2eprodsys_payload() {
     }
     trap mu2epseh ERR
 
+    echo "Copying in $origFCL"
     ifdh cp $origFCL $localFCL
 
     sed -e "s/MU2EGRIDDSOWNER/$MU2EGRID_DSOWNER/g" -e "s/MU2EGRIDDSCONF/$MU2EGRID_DSCONF/g" $localFCL > $localFCL.tmp
@@ -95,7 +93,10 @@ mu2eprodsys_payload() {
 
         setup mu2ebintools -q "${MU2E_UPS_QUALIFIERS}"
 
-        printinfo
+        echo "#================================================================"
+        echo "After package setup, the environment is:"
+        /usr/bin/printenv
+        echo "#================================================================"
 
         timecmd=time  # shell builtin is the fallback option
         if [ -x /usr/bin/time ]; then
@@ -114,7 +115,6 @@ mu2eprodsys_payload() {
         fi
 
         # Run the job
-        echo "#================================================================"
         echo "Running the command: $timecmd mu2e -c $localFCL"
         $timecmd mu2e -c $localFCL
         ret=$?
@@ -158,11 +158,11 @@ mu2eprodsys_payload() {
                 $i
         done
 
-        declare -a outfiles=( *.art *.root *.json )
+        declare -a manifestfiles=( *.art *.root *.json )
 
         # A file should be immutable after its json is created.
         # addManifest appends to the log file; log.json has to be made after that.
-        addManifest $logFileName "${outfiles[@]}" >&3 2>&4
+        addManifest $logFileName "${manifestfiles[@]}" >&3 2>&4
 
         for i in $logFileName; do
             ${MU2E_BASE_RELEASE}/Tools/DH/jsonMaker.py \
@@ -196,28 +196,42 @@ test -x $CVMFSHACK && $CVMFSHACK /cvmfs/mu2e.opensciencegrid.org
 
 ret=1
 
+jobname=failedjob
+export logFileName="${jobname}.log"
+declare -a outfiles=( $logFileName )
+finalOutDir="/pnfs/mu2e/scratch/outstage/${MU2EGRID_SUBMITTER:?Error: MU2EGRID_SUBMITTER is not set}/$cluster/$jobname.${PROCESS}"
+
 #================================================================
 # Set up Mu2e environment and make ifdh available
 if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
 
     setup ifdhc $IFDH_VERSION
 
-    mkdir inputs
-    ifdh cp "${MU2EGRID_INPUTLIST:?MU2EGRID_INPUTLIST environment variable is not set}" inputs/masterlist
-    export origFCL=$(getFCLFileName inputs/masterlist ${PROCESS:?PROCESS environment variable is not set})
+    printinfo >> $logFileName 2>&1
 
-    # set current user and version info to obtain the name of this job
-    jobname=$(basename $origFCL .fcl | awk -F . '{OFS="."; $2="'${MU2EGRID_DSOWNER:?"Error: MU2EGRID_DSOWNER is not set"}'"; $4="'${MU2EGRID_DSCONF}'"; print $0;}')
+    mkdir inputs >> $logFileName 2>&1
+    echo "Copying in masterlist: ifdh cp \"${MU2EGRID_INPUTLIST}\" inputs/masterlist" >> $logFileName 2>&1
+    if ifdh cp "${MU2EGRID_INPUTLIST:?MU2EGRID_INPUTLIST environment variable is not set}" inputs/masterlist >> $logFileName 2>&1; then
 
-    export localFCL="./$jobname.fcl"
-    export logFileName="${jobname}.log"
+        export origFCL=$(getFCLFileName inputs/masterlist ${PROCESS:?PROCESS environment variable is not set}) 2>> $logFileName
+        if [ -n "$origFCL" ]; then
 
-    cluster=$(printf %06d ${CLUSTER:-0})
-    finalOutDir="/pnfs/mu2e/scratch/outstage/${MU2EGRID_SUBMITTER:?Error: MU2EGRID_SUBMITTER is not set}/$cluster/$jobname"
+            # set current user and version info to obtain the name of this job
+            jobname=$(basename $origFCL .fcl | awk -F . '{OFS="."; $2="'${MU2EGRID_DSOWNER:?"Error: MU2EGRID_DSOWNER is not set"}'"; $4="'${MU2EGRID_DSCONF}'"; print $0;}')
+            mv $logFileName "${jobname}.log"
+            export logFileName="${jobname}.log"
 
-    ( mu2eprodsys_payload ) 3>&1 4>&2 1>> $logFileName 2>&1
+            export localFCL="./$jobname.fcl"
 
-    declare -a outfiles=( *.art *.root $logFileName *.json )
+            cluster=$(printf %06d ${CLUSTER:-0})
+            finalOutDir="/pnfs/mu2e/scratch/outstage/${MU2EGRID_SUBMITTER:?Error: MU2EGRID_SUBMITTER is not set}/$cluster/$jobname"
+
+            ( mu2eprodsys_payload ) 3>&1 4>&2 1>> $logFileName 2>&1
+
+            outfiles=( $logFileName *.art *.root *.json )
+
+        fi
+    fi
 
     # Transfer the results.  There were cases when jobs failed after
     # creating the outstage directory, and were automatically restarted by
