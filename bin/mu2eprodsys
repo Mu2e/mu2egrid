@@ -67,7 +67,7 @@ GetOptions(\%opt,
     'fcllist=s',
     'dsconf=s',
     'dsowner=s',
-    @mu2egrid::commonOptList)
+    grep {!/prestage-spec/} @mu2egrid::commonOptList)
     or die "\nError processing command line options.\n";
 
 if($opt{'help'}) {
