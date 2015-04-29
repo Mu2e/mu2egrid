@@ -76,7 +76,13 @@ our %commonOptDefaults = (
 			  'help' => 0,
 			  );
 
-sub commonOptDoc1() {
+sub commonOptDoc1 {
+    my %features = @_;
+    # legacy default
+    my $prestageIsSupported = $features{'prestageIsSupported'} // 1;
+
+    my $prestagestr = $prestageIsSupported ? "	      [--prestage-spec=<file>] \\" : "";
+
     return <<EOF
 	      [--group=<name>] \\
 	      [--role=<name>] \\
@@ -90,7 +96,11 @@ sub commonOptDoc1() {
 	      [--mu2e-setup=<setupmu2e-art.sh>] \\
 	      [--ifdh-version=<version>] \\
 	      [--outstage=<dir>] \\
-	      [--prestage-spec=<file>] \\
+EOF
+.
+    $prestagestr
+.    <<EOF
+
 	      [--dry-run] \\
 	      [--verbose] \\
 	      [--help]
@@ -98,10 +108,15 @@ EOF
 ;
 }
 
-sub commonOptDoc2() {
+sub commonOptDoc2 {
+    my %features = @_;
+    # legacy default
+    my $prestageIsSupported = 1;
+    $prestageIsSupported = $features{'prestageIsSupported'} if defined $features{'prestageIsSupported'};
+
     my $default_ifdh_version = (default_ifdh_helper())[1];
     my $formattedOutstage = join("\n\t\t", ('', @mu2egrid::knownOutstage));
-    return <<EOF
+    my $res= <<EOF
     - The --group, --role, --jobsub-server, --disk, --memory, --OS,
       --resource-provides, and --site options are passed to jobsub_submit.
       Arbitrary other jobsub_submit options can be passed using
@@ -128,6 +143,10 @@ sub commonOptDoc2() {
            $formattedOutstage
 
       by default $mu2egrid::mu2eDefaultOutstage  is used (except for MARS and mu2eprodsys).
+EOF
+;
+    if($prestageIsSupported) {
+	$res .= <<EOF
 
     - The --prestage-spec option allows to specify a list of extra
       files that should be prestaged to the worker node.  Each
@@ -139,6 +158,11 @@ sub commonOptDoc2() {
       white space.  The target file name is relative to the working
       directory.  It must contain a slash '/' and must not start with
       a slash. Leading and trailing white spaces are ignored.
+EOF
+;
+    }
+
+    $res .= <<EOF
 
     - Use --dry-run to test the submission command without actually
       sending the jobs.  Usually used in conjunction with --verbose.
@@ -157,7 +181,8 @@ alternatives.  All option names may be abbreviates as long as this is
 unambiguous.  (For example, '--verbose' and '--verb' mean the same
 thing.)
 EOF
-;
+    ;
+return $res;
 }
 
 #================================================================

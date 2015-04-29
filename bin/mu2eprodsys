@@ -14,6 +14,8 @@ use Data::Dumper; # for debugging
 use lib dirname($0);
 use mu2egrid;
 
+my %features = ( prestageIsSupported => 0);
+
 #================================================================
 sub usage() {
     my $self = basename($0);
@@ -24,7 +26,7 @@ Usage:
         --dsconf=<output-dataset-version-string> \\
         [--dsowner=<name>] \\
 EOF
-        . mu2egrid::commonOptDoc1() . <<EOF
+        . mu2egrid::commonOptDoc1(%features) . <<EOF
 
         - The --setup argument must point to the setup.sh script in a user
         Offline area.
@@ -38,10 +40,8 @@ EOF
         - The --dsowner option specifies the username field in the names
         of output files.  The default is the username of the submitter.
 
-FIXME: remove --prestage-spec
-
 EOF
-. mu2egrid::commonOptDoc2()
+. mu2egrid::commonOptDoc2(%features)
     ;
 }
 
