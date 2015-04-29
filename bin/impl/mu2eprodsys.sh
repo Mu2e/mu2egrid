@@ -194,18 +194,6 @@ cd $TMPDIR
 CVMFSHACK=/cvmfs/grid.cern.ch/util/cvmfs-uptodate
 test -x $CVMFSHACK && $CVMFSHACK /cvmfs/mu2e.opensciencegrid.org
 
-#================================================================
-export origFCL=$(getFCLFileName "${MU2EGRID_INPUTLIST}" ${PROCESS:?PROCESS environment variable is not set})
-
-# set current user and version info to obtain the name of this job
-jobname=$(basename $origFCL .fcl | awk -F . '{OFS="."; $2="'${MU2EGRID_DSOWNER:?"Error: MU2EGRID_DSOWNER is not set"}'"; $4="'${MU2EGRID_DSCONF}'"; print $0;}')
-
-export localFCL="./$jobname.fcl"
-export logFileName="${jobname}.log"
-
-cluster=$(printf %06d ${CLUSTER:-0})
-finalOutDir="/pnfs/mu2e/scratch/outstage/${MU2EGRID_SUBMITTER:?Error: MU2EGRID_SUBMITTER is not set}/$cluster/$jobname"
-
 ret=1
 
 #================================================================
@@ -213,6 +201,19 @@ ret=1
 if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
 
     setup ifdhc $IFDH_VERSION
+
+    mkdir inputs
+    ifdh cp "${MU2EGRID_INPUTLIST:?MU2EGRID_INPUTLIST environment variable is not set}" inputs/masterlist
+    export origFCL=$(getFCLFileName inputs/masterlist ${PROCESS:?PROCESS environment variable is not set})
+
+    # set current user and version info to obtain the name of this job
+    jobname=$(basename $origFCL .fcl | awk -F . '{OFS="."; $2="'${MU2EGRID_DSOWNER:?"Error: MU2EGRID_DSOWNER is not set"}'"; $4="'${MU2EGRID_DSCONF}'"; print $0;}')
+
+    export localFCL="./$jobname.fcl"
+    export logFileName="${jobname}.log"
+
+    cluster=$(printf %06d ${CLUSTER:-0})
+    finalOutDir="/pnfs/mu2e/scratch/outstage/${MU2EGRID_SUBMITTER:?Error: MU2EGRID_SUBMITTER is not set}/$cluster/$jobname"
 
     ( mu2eprodsys_payload ) 3>&1 4>&2 1>> $logFileName 2>&1
 
