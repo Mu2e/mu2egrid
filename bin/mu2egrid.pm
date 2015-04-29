@@ -81,7 +81,7 @@ sub commonOptDoc1 {
     # legacy default
     my $prestageIsSupported = $features{'prestageIsSupported'} // 1;
 
-    my $prestagestr = $prestageIsSupported ? "              [--prestage-spec=<file>] \\" : "";
+    my $prestagestr = $prestageIsSupported ? "              [--prestage-spec=<file>] \\\n" : "";
 
     return <<EOF
               [--group=<name>] \\
@@ -100,7 +100,6 @@ EOF
 .
     $prestagestr
 .    <<EOF
-
               [--dry-run] \\
               [--verbose] \\
               [--help]
@@ -111,8 +110,8 @@ EOF
 sub commonOptDoc2 {
     my %features = @_;
     # legacy default
-    my $prestageIsSupported = 1;
-    $prestageIsSupported = $features{'prestageIsSupported'} if defined $features{'prestageIsSupported'};
+    my $prestageIsSupported = $features{'prestageIsSupported'} // 1;
+    my $docOutstage = $features{'defaultOutstage'} // $mu2eDefaultOutstage;
 
     my $default_ifdh_version = (default_ifdh_helper())[1];
     my $formattedOutstage = join("\n\t\t", ('', @mu2egrid::knownOutstage));
@@ -142,7 +141,7 @@ sub commonOptDoc2 {
     - Outstage should be one of the following registered locations:
            $formattedOutstage
 
-      by default $mu2egrid::mu2eDefaultOutstage  is used (except for MARS and mu2eprodsys).
+      by default $docOutstage  is used.
 EOF
 ;
     if($prestageIsSupported) {

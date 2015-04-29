@@ -14,7 +14,8 @@ use Data::Dumper; # for debugging
 use lib dirname($0);
 use mu2egrid;
 
-my %features = ( prestageIsSupported => 0);
+my $prodsysDefaultOutstage = '/pnfs/mu2e/scratch/outstage';
+my %features = ( prestageIsSupported => 0, defaultOutstage => $prodsysDefaultOutstage);
 
 #================================================================
 sub usage() {
@@ -58,7 +59,7 @@ my %opt =
     );
 
 @opt{keys %mu2egrid::commonOptDefaults}  =  values %mu2egrid::commonOptDefaults;
-$opt{'outstage'} = '/pnfs/mu2e/scratch/outstage';
+$opt{'outstage'} = $prodsysDefaultOutstage;
 
 # Process command line opts.
 GetOptions(\%opt,
