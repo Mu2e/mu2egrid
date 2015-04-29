@@ -15,11 +15,11 @@ our $impldir;
 $impldir = abs_path(dirname($0) . '/impl');
 
 our @knownOutstage = ('/mu2e/data/outstage',
-		      '/mu2e/data2/outstage',
-		      '/grid/data/mu2e/outstage',
-		      '/grid/data/marsmu2e/outstage',
-		      '/pnfs/mu2e/scratch/outstage'
-		      );
+                      '/mu2e/data2/outstage',
+                      '/grid/data/mu2e/outstage',
+                      '/grid/data/marsmu2e/outstage',
+                      '/pnfs/mu2e/scratch/outstage'
+                      );
 
 our $mu2eDefaultOutstage = $knownOutstage[0];
 
@@ -42,68 +42,68 @@ sub default_ifdh_helper() {
 our $jobsub = 'jobsub_submit';
 
 our @commonOptList = (
-		      'group=s',
-		      'role=s',
-		      'jobsub-server=s',
-		      'disk=i',
-		      'memory=i',
-		      'OS=s',
+                      'group=s',
+                      'role=s',
+                      'jobsub-server=s',
+                      'disk=i',
+                      'memory=i',
+                      'OS=s',
                       'mu2e-setup=s',
                       'ifdh-version=s',
-		      'resource-provides=s',
-		      'site=s',
-		      'jobsub-arg=s@',
-		      'outstage=s',
-		      "prestage-spec=s",
-		      'dry-run',
-		      'verbose',
-		      'help',
-		      );
+                      'resource-provides=s',
+                      'site=s',
+                      'jobsub-arg=s@',
+                      'outstage=s',
+                      "prestage-spec=s",
+                      'dry-run',
+                      'verbose',
+                      'help',
+                      );
 
 # those that are not defaulted must be tested with exists($opt{'option'}) before accessing their values
 our %commonOptDefaults = (
-			  default_group_helper(),
-			  'jobsub-server' => 'https://fifebatch.fnal.gov:8443',
-			  'disk' => '30000', # MB
-			  'memory' => '2048', # MB
-			  'OS' => 'SL5,SL6',
+                          default_group_helper(),
+                          'jobsub-server' => 'https://fifebatch.fnal.gov:8443',
+                          'disk' => '30000', # MB
+                          'memory' => '2048', # MB
+                          'OS' => 'SL5,SL6',
                           'mu2e-setup' => '/cvmfs/mu2e.opensciencegrid.org/setupmu2e-art.sh',
                           default_ifdh_helper(),
-			  'resource-provides' => 'usage_model=OPPORTUNISTIC,DEDICATED',
-			  'outstage' => $mu2egrid::mu2eDefaultOutstage,
-			  'dry-run' => 0,
-			  'verbose' => 0,
-			  'help' => 0,
-			  );
+                          'resource-provides' => 'usage_model=OPPORTUNISTIC,DEDICATED',
+                          'outstage' => $mu2egrid::mu2eDefaultOutstage,
+                          'dry-run' => 0,
+                          'verbose' => 0,
+                          'help' => 0,
+                          );
 
 sub commonOptDoc1 {
     my %features = @_;
     # legacy default
     my $prestageIsSupported = $features{'prestageIsSupported'} // 1;
 
-    my $prestagestr = $prestageIsSupported ? "	      [--prestage-spec=<file>] \\" : "";
+    my $prestagestr = $prestageIsSupported ? "              [--prestage-spec=<file>] \\" : "";
 
     return <<EOF
-	      [--group=<name>] \\
-	      [--role=<name>] \\
-	      [--jobsub-server=<URL>] \\
-	      [--disk=<size_MB>] \\
-	      [--memory=<size_MB>] \\
-	      [--OS=<comma_separated_list>] \\
-	      [--resource-provides=<spec>] \\
-	      [--site=<site1,site2,...>] \\
-	      [--jobsub-arg=string1] [--jobsub-arg=string2] [...] \\
-	      [--mu2e-setup=<setupmu2e-art.sh>] \\
-	      [--ifdh-version=<version>] \\
-	      [--outstage=<dir>] \\
+              [--group=<name>] \\
+              [--role=<name>] \\
+              [--jobsub-server=<URL>] \\
+              [--disk=<size_MB>] \\
+              [--memory=<size_MB>] \\
+              [--OS=<comma_separated_list>] \\
+              [--resource-provides=<spec>] \\
+              [--site=<site1,site2,...>] \\
+              [--jobsub-arg=string1] [--jobsub-arg=string2] [...] \\
+              [--mu2e-setup=<setupmu2e-art.sh>] \\
+              [--ifdh-version=<version>] \\
+              [--outstage=<dir>] \\
 EOF
 .
     $prestagestr
 .    <<EOF
 
-	      [--dry-run] \\
-	      [--verbose] \\
-	      [--help]
+              [--dry-run] \\
+              [--verbose] \\
+              [--help]
 EOF
 ;
 }
@@ -123,10 +123,10 @@ sub commonOptDoc2 {
       --jobsub-arg.  Their default values are
 
           --group              from the GROUP environment variable
-	  --role               none
-	  --jobsub-server      $commonOptDefaults{'jobsub-server'}
-	  --disk               $commonOptDefaults{'disk'}
-	  --memory             $commonOptDefaults{'memory'}
+          --role               none
+          --jobsub-server      $commonOptDefaults{'jobsub-server'}
+          --disk               $commonOptDefaults{'disk'}
+          --memory             $commonOptDefaults{'memory'}
           --OS                 $commonOptDefaults{'OS'}
           --resource-provides  $commonOptDefaults{'resource-provides'}
           --site               none
@@ -146,7 +146,7 @@ sub commonOptDoc2 {
 EOF
 ;
     if($prestageIsSupported) {
-	$res .= <<EOF
+        $res .= <<EOF
 
     - The --prestage-spec option allows to specify a list of extra
       files that should be prestaged to the worker node.  Each
@@ -189,7 +189,7 @@ return $res;
 sub assert_known_outstage($) {
     my $d = shift;
     foreach my $o (@knownOutstage) {
-	$o eq $d and return 1;
+        $o eq $d and return 1;
     }
     die "The specified outstage \"$d\" is not recognized - is this a typo?  Known location: @knownOutstage\n";
 }
@@ -199,7 +199,7 @@ sub find_file($) {
     my $fn = shift;
     my $res = abs_path($fn);
     die "Error: file \"$fn\" does not exist\n"
-	unless (defined $res and -e $res);
+        unless (defined $res and -e $res);
 
     return $res;
 }
@@ -212,15 +212,15 @@ sub validate_file_list($) {
 
     my $numlines = 0;
     if(open(my $fh, $fn)) {
-	while(my $line = <$fh>) {
-	    ++$numlines;
-	    chop($line);
-	    die "Error: not an absolute file name: \"$line\" in file $fn\n" unless $line =~ m{^/};
-	    die "Error: line contains white spaces or other non-printable characters: \"$line\" in file $fn\n" unless $line =~ /^\p{IsGraph}+$/
-	}
+        while(my $line = <$fh>) {
+            ++$numlines;
+            chop($line);
+            die "Error: not an absolute file name: \"$line\" in file $fn\n" unless $line =~ m{^/};
+            die "Error: line contains white spaces or other non-printable characters: \"$line\" in file $fn\n" unless $line =~ /^\p{IsGraph}+$/
+        }
     }
     else {
-	die "Error: can not open  file \"$fn\": $!\n";
+        die "Error: can not open  file \"$fn\": $!\n";
     }
 
     return $numlines;
@@ -233,17 +233,17 @@ sub validate_prestage_spec($) {
     die "--prestage-spec is not a regular file: $fn\n" unless (-f $fn or -l $fn);
 
     if(open(my $fh, $fn)) {
-	while(my $line = <$fh>) {
-	    chomp($line);
-	    $line =~ s/^\s+//;
-	    if($line) { # ignore emtpy lines
-		$line =~ /^\S+\s+\S+$/ or die "Error: the following --prestage-spec line does not contain two whitespace separated strings:\n$line\n";
-		$line =~ m|^\S+\s+[^/\s]+/\S+$| or die "Error: --prestage-spec target filename must contain a slash and not start with a slash.  Bad line:\n$line\n";
-	    }
-	}
+        while(my $line = <$fh>) {
+            chomp($line);
+            $line =~ s/^\s+//;
+            if($line) { # ignore emtpy lines
+                $line =~ /^\S+\s+\S+$/ or die "Error: the following --prestage-spec line does not contain two whitespace separated strings:\n$line\n";
+                $line =~ m|^\S+\s+[^/\s]+/\S+$| or die "Error: --prestage-spec target filename must contain a slash and not start with a slash.  Bad line:\n$line\n";
+            }
+        }
     }
     else {
-	die "Error: can not open  file \"$fn\": $!\n";
+        die "Error: can not open  file \"$fn\": $!\n";
     }
 }
 
@@ -262,11 +262,11 @@ BEGIN {
     # your exported package globals go here,
     # as well as any optionally exported functions
     @EXPORT_OK   = qw(
-		      $impldir
-		      @knownOutstage $mu2eDefaultOutstage
-		      $jobsub @commonOptList %commonOptDefaults &commonOptDoc1 &commonOptDoc2
-		      &assert_known_outstage &find_file &validate_file_list &validate_prestage_spec
-		      );
+                      $impldir
+                      @knownOutstage $mu2eDefaultOutstage
+                      $jobsub @commonOptList %commonOptDefaults &commonOptDoc1 &commonOptDoc2
+                      &assert_known_outstage &find_file &validate_file_list &validate_prestage_spec
+                      );
 }
 our @EXPORT_OK;
 use vars @EXPORT_OK;
