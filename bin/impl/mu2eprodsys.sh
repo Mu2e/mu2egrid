@@ -195,6 +195,7 @@ CVMFSHACK=/cvmfs/grid.cern.ch/util/cvmfs-uptodate
 test -x $CVMFSHACK && $CVMFSHACK /cvmfs/mu2e.opensciencegrid.org
 
 ret=1
+cluster=$(printf %06d ${CLUSTER:-0})
 
 jobname=failedjob
 export logFileName="${jobname}.log"
@@ -209,28 +210,24 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
 
     printinfo >> $logFileName 2>&1
 
-    mkdir inputs >> $logFileName 2>&1
-    echo "Copying in masterlist: ifdh cp \"${MU2EGRID_INPUTLIST}\" inputs/masterlist" >> $logFileName 2>&1
-    if ifdh cp "${MU2EGRID_INPUTLIST:?MU2EGRID_INPUTLIST environment variable is not set}" inputs/masterlist >> $logFileName 2>&1; then
+    masterlist="$CONDOR_DIR_INPUT/${MU2EGRID_INPUTLIST:?MU2EGRID_INPUTLIST environment variable is not set}";
+    export origFCL=$(getFCLFileName $masterlist ${PROCESS:?PROCESS environment variable is not set}) 2>> $logFileName
 
-        export origFCL=$(getFCLFileName inputs/masterlist ${PROCESS:?PROCESS environment variable is not set}) 2>> $logFileName
-        if [ -n "$origFCL" ]; then
+    if [ -n "$origFCL" ]; then
 
-            # set current user and version info to obtain the name of this job
-            jobname=$(basename $origFCL .fcl | awk -F . '{OFS="."; $2="'${MU2EGRID_DSOWNER:?"Error: MU2EGRID_DSOWNER is not set"}'"; $4="'${MU2EGRID_DSCONF}'"; print $0;}')
-            mv $logFileName "${jobname}.log"
-            export logFileName="${jobname}.log"
+        # set current user and version info to obtain the name of this job
+        jobname=$(basename $origFCL .fcl | awk -F . '{OFS="."; $2="'${MU2EGRID_DSOWNER:?"Error: MU2EGRID_DSOWNER is not set"}'"; $4="'${MU2EGRID_DSCONF}'"; print $0;}')
+        mv $logFileName "${jobname}.log"
+        export logFileName="${jobname}.log"
 
-            export localFCL="./$jobname.fcl"
+        export localFCL="./$jobname.fcl"
 
-            cluster=$(printf %06d ${CLUSTER:-0})
-            finalOutDir="/pnfs/mu2e/scratch/outstage/${MU2EGRID_SUBMITTER:?Error: MU2EGRID_SUBMITTER is not set}/$cluster/$jobname"
+        finalOutDir="/pnfs/mu2e/scratch/outstage/${MU2EGRID_SUBMITTER:?Error: MU2EGRID_SUBMITTER is not set}/$cluster/$jobname"
 
-            ( mu2eprodsys_payload ) 3>&1 4>&2 1>> $logFileName 2>&1
+        ( mu2eprodsys_payload ) 3>&1 4>&2 1>> $logFileName 2>&1
 
-            outfiles=( $logFileName *.art *.root *.json )
+        outfiles=( $logFileName *.art *.root *.json )
 
-        fi
     fi
 
     # Transfer the results.  There were cases when jobs failed after

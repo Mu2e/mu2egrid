@@ -92,7 +92,7 @@ $ENV{'MU2EGRID_USERSETUP'} = mu2egrid::find_file($opt{'setup'});
 
 my $fcllist = mu2egrid::find_file($opt{'fcllist'});
 my $njobs = mu2egrid::validate_file_list($fcllist);
-$ENV{'MU2EGRID_INPUTLIST'} = $fcllist;
+$ENV{'MU2EGRID_INPUTLIST'} = basename($fcllist); # use jobsub_client's -f, the worker node only needs the basename
 
 my $outstage = $opt{'outstage'};
 mu2egrid::assert_known_outstage($outstage);
@@ -135,6 +135,8 @@ while( (my $key, my $value) = each(%ENV) ) {
 }
 
 push @args, ('-N', $njobs);
+
+push @args, ( '-f', "dropbox://$fcllist" );
 
 push @args, 'file://' . $mu2egrid::impldir . '/mu2eprodsys.sh';
 
