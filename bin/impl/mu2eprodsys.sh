@@ -75,7 +75,7 @@ mu2eprodsys_payload() {
 
     mu2epseh() {
         echo "Error from $BASH_COMMAND: exit code $?"
-        exit 1
+        exit $?
     }
     trap mu2epseh ERR
 
@@ -117,9 +117,7 @@ mu2eprodsys_payload() {
         # Run the job
         echo "Running the command: $timecmd mu2e -c $localFCL"
         $timecmd mu2e -c $localFCL
-        ret=$?
-
-        echo "mu2egrid exit status $ret"
+        echo "mu2egrid exit status $?"
 
         echo "#================================================================"
 
@@ -177,7 +175,6 @@ mu2eprodsys_payload() {
 
     else
         echo "Error sourcing setup script ${MU2EGRID_USERSETUP}: status code $?"
-        ret=1
     fi
 }
 export mu2eprodsys_payload
@@ -226,6 +223,8 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
 
         ( mu2eprodsys_payload ) 3>&1 4>&2 1>> $logFileName 2>&1
 
+        ret=$?
+
         outfiles=( $logFileName *.art *.root *.json )
 
     fi
@@ -258,7 +257,7 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
 
         t1=$(date +%s)
 
-        ifdh cp --force=expftp -D "${outfiles[@]}" "${tmpOutDir}"
+        ifdh cp --force=expftp -D "${outfiles[@]}" "${tmpOutDir}"  || ret=2
         ifdh rename "${tmpOutDir}" "${finalOutDir}" --force=expftp
 
         t2=$(date +%s)
@@ -274,7 +273,6 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
 
 else
     echo "Error sourcing setup script ${MU2EGRID_MU2ESETUP}: status code $?"
-    ret=1
 fi
 
 exit $ret
