@@ -33,19 +33,19 @@ printinfo() {
 # Ignores directories and other non-plain files
 selectFiles() {
     for i in "$@"; do
-	[ -f "$i" ] && [ ! -h "$i" ] && echo "$i"
+        [ -f "$i" ] && [ ! -h "$i" ] && echo "$i"
     done
 }
 #================================================================
 filterOutProxy() {
     for i in "$@"; do
-	case "$i" in
-	    *.proxy)
+        case "$i" in
+            *.proxy)
             # Don't expose security sensitive info
-		true;;
-	    *)
-		echo "$i";;
-	esac
+                true;;
+            *)
+                echo "$i";;
+        esac
     done
 }
 #================================================================
@@ -67,10 +67,10 @@ ifdh_mkdir_p() {
     ## if ifdh ls $dir 0 $force > /dev/null
     if [ $(ifdh ls $dir 0 $force  2>/dev/null |wc -l) -gt 0 ]
     then
-	: # done
+        : # done
     else
-	ifdh_mkdir_p $(dirname $dir) $force
-	ifdh mkdir $dir $force
+        ifdh_mkdir_p $(dirname $dir) $force
+        ifdh mkdir $dir $force
         ifdh chmod 0755 $dir $force
     fi
 }
@@ -87,7 +87,7 @@ transferOutFiles() {
     t1=$(date +%s)
 
     if [[ "$EXPERIMENT" == "marsmu2e" ]]; then
-	voms-proxy-init -rfc -noregen -limited -bits 1024 -valid 24:00 -voms fermilab:/fermilab/mars/mu2e/Role=Analysis
+        voms-proxy-init -rfc -noregen -limited -bits 1024 -valid 24:00 -voms fermilab:/fermilab/mars/mu2e/Role=Analysis
     fi
 
     ifdh cp --force=expftp -D  "$MANIFEST" "$@" ${OUTDIR}
@@ -145,13 +145,13 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
     tmpOutDir=''
     numTries=0
     while [ $((numTries+=1)) -le 5 ]; do
-	tmpOutDir="${finalOutDir}.$(od -A n -N 4 -t x4 /dev/urandom|sed -e 's/ //g')"
+        tmpOutDir="${finalOutDir}.$(od -A n -N 4 -t x4 /dev/urandom|sed -e 's/ //g')"
 
-	echo "Trying to create tmpOutDir = $tmpOutDir"
-	if ifdh mkdir "$tmpOutDir" --force=expftp ; then break; fi
+        echo "Trying to create tmpOutDir = $tmpOutDir"
+        if ifdh mkdir "$tmpOutDir" --force=expftp ; then break; fi
 
-	echo "Attemtp to make tmpOutDir = $tmpOutDir failed"
-	tmpOutDir=''
+        echo "Attemtp to make tmpOutDir = $tmpOutDir failed"
+        tmpOutDir=''
     done
 
     echo "Got tmpOutDir = $tmpOutDir"

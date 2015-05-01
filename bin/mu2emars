@@ -17,13 +17,13 @@ use mu2egrid;
 sub usage() {
     my $self = basename($0);
     return <<EOF
-Usage: 
-	$self --executable program \\
-	      --input MARSBASE.INP \\
-	      --njobs=<M> \\
-	      [--outdirfmt="%d/run_%03d"] \\
-	      [--setup=<script-to-source.sh>] \\
-	      [--no-group-check] \\
+Usage:
+        $self --executable program \\
+              --input MARSBASE.INP \\
+              --njobs=<M> \\
+              [--outdirfmt="%d/run_%03d"] \\
+              [--setup=<script-to-source.sh>] \\
+              [--no-group-check] \\
 EOF
 . mu2egrid::commonOptDoc1() . <<EOF
 
@@ -41,7 +41,7 @@ EOF
 
     - Once grid jobs are sumbitted the software libraries pointed to
       by the setup script, all configuration files, and the input
-      filelist must be left intact until all the jobs finish.  
+      filelist must be left intact until all the jobs finish.
 
 EOF
 . mu2egrid::commonOptDoc2()
@@ -64,14 +64,14 @@ my %opt = (
 $opt{'outstage'} = '/grid/data/marsmu2e/outstage';
 
 # Process command line opts.
-GetOptions(\%opt, 
+GetOptions(\%opt,
     "executable=s",
     "input=s",
     "outdirfmt=s",
     "njobs=i",
     "setup=s",
     "no-group-check",
-    @mu2egrid::commonOptList) 
+    @mu2egrid::commonOptList)
     or die "\nError processing command line options.\n";
 
 if($opt{'help'}) {
@@ -157,10 +157,10 @@ if($test_queue) {
 
 while( (my $key, my $value) = each(%ENV) ) {
     if(($key =~ m/^MU2EGRID_\w+$/) or ($key eq 'IFDH_VERSION')) {
-	if($value ne '') {
-	    push @args,  ('-e', $key);
-	    print "Using: $key => $ENV{$key}\n" if $opt{'verbose'};
-	}
+        if($value ne '') {
+            push @args,  ('-e', $key);
+            print "Using: $key => $ENV{$key}\n" if $opt{'verbose'};
+        }
     }
 }
 
@@ -182,7 +182,7 @@ push @args, $mu2egrid::impldir . '/mu2emars.sh';
 print "Command:  $mu2egrid::jobsub @args\n";
 if(!$opt{'no-group-check'}) {
     die "\nError: environment variable GROUP=$ENV{GROUP} looks wrong for MARS jobs.  Use the --no-group-check option to submit anyway.\n"
-	unless $ENV{'GROUP'} =~ m/mars/i;
+        unless $ENV{'GROUP'} =~ m/mars/i;
 }
 if(!$opt{'dry-run'}) {
     print "Submitting....\n";

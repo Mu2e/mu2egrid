@@ -18,13 +18,13 @@ use mu2egrid;
 sub usage() {
     my $self = basename($0);
     return <<EOF
-Usage: 
-	$self --in=<file> \\
-	      [--tar=<tarfile>] \\
-	      --g4bl-version=<version> \\
-	      --njobs=<M> \\
-	      --events-per-job=<N> \\
-	      [--jobname=<name>] \\
+Usage:
+        $self --in=<file> \\
+              [--tar=<tarfile>] \\
+              --g4bl-version=<version> \\
+              --njobs=<M> \\
+              --events-per-job=<N> \\
+              [--jobname=<name>] \\
 EOF
 . mu2egrid::commonOptDoc1() . <<EOF
 
@@ -59,7 +59,7 @@ my %opt = (
 @opt{keys %mu2egrid::commonOptDefaults}  =  values %mu2egrid::commonOptDefaults;
 
 # Process command line opts.
-GetOptions(\%opt, 
+GetOptions(\%opt,
     "in=s",
     "tar=s",
     "g4bl-version=s",
@@ -171,11 +171,11 @@ if($test_queue) {
 
 while( (my $key, my $value) = each(%ENV) ) {
     if(($key =~ m/^MU2EGRID_\w+$/) or ($key eq 'IFDH_VERSION')) {
-	# jobsub_client does not allow empty string as environment values
-	if($value ne '') {
-	    push @args,  ('-e', $key);
-	    print "Using: $key => $ENV{$key}\n" if $opt{'verbose'};
-	}
+        # jobsub_client does not allow empty string as environment values
+        if($value ne '') {
+            push @args,  ('-e', $key);
+            print "Using: $key => $ENV{$key}\n" if $opt{'verbose'};
+        }
     }
 }
 
@@ -198,7 +198,7 @@ print "Command:  $mu2egrid::jobsub @args\n";
 if(!$opt{'dry-run'}) {
     print "Submitting....\n";
     exec { $mu2egrid::jobsub } $mu2egrid::jobsub, @args
-	or die "Error executing $mu2egrid::jobsub: $!";
+        or die "Error executing $mu2egrid::jobsub: $!";
 }
 else {
     print "Not submitting because --dry-run was requested.\n";

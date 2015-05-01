@@ -50,8 +50,8 @@ fi
 if [ "$ret" == 0 ]; then
 
     if [ -n "$MU2EGRID_SETUP" ]; then
-	echo "Sourcing user setup script $MU2EGRID_SETUP"
-	source "$MU2EGRID_SETUP"
+        echo "Sourcing user setup script $MU2EGRID_SETUP"
+        source "$MU2EGRID_SETUP"
     fi
 
     # Run the job

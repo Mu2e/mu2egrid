@@ -10,9 +10,9 @@ use Getopt::Long;
 #================================================================
 sub usage() {
     return <<EOF
-Usage: 
+Usage:
 
-	condor_clusters [--brief] [username]
+        condor_clusters [--brief] [username]
 
 will display a list of all active condor clusters for the user and job
 count in each cluster.  If the '--brief' options is given, just cluster
@@ -30,29 +30,29 @@ sub getUserClusters($) {
     close STDERR;
 
     open(CQ, '-|', 'jobsub_q', '--user', $username)
-	or die "Can not read jobsub_q output: $!\n";
+        or die "Can not read jobsub_q output: $!\n";
 
     my %clusters;
 
     while(my $line = <CQ>) {
-	chomp($line);
-	my @fields = split(' ', $line);
-#	print "got username = $username, fields = ". join('#', @fields) . "\n";
-	if(($#fields > 5) && ($fields[1] eq $username)) {
-	    my $cn = $fields[0];
-	    $cn =~ s/\..*$//;
+        chomp($line);
+        my @fields = split(' ', $line);
+#       print "got username = $username, fields = ". join('#', @fields) . "\n";
+        if(($#fields > 5) && ($fields[1] eq $username)) {
+            my $cn = $fields[0];
+            $cn =~ s/\..*$//;
 
-	    if(!defined($clusters{$cn})) {
-		$clusters{$cn} = [0,0];
-	    }
+            if(!defined($clusters{$cn})) {
+                $clusters{$cn} = [0,0];
+            }
 
             # total job count
-	    ++$clusters{$cn}[0];
+            ++$clusters{$cn}[0];
             # running jobs count
-	    if($fields[5] eq 'R') {
-		++$clusters{$cn}[1];
-	    }
-	}
+            if($fields[5] eq 'R') {
+                ++$clusters{$cn}[1];
+            }
+        }
     }
 
     close CQ;
@@ -74,26 +74,26 @@ else {
 
     my $user;
     if($#ARGV == 0) {
-	$user = $ARGV[0];
+        $user = $ARGV[0];
     }
     else {
-	$user = `whoami`;
-	chomp($user);
+        $user = `whoami`;
+        chomp($user);
     }
 
     my $clusters = getUserClusters($user);
 
     if(!$brief) {
-	print "Cluster  \tnjobs\trunning\n";
+        print "Cluster  \tnjobs\trunning\n";
     }
 
     foreach my $cn (sort(keys %$clusters)) {
-	if($brief) {
-	    print "$cn\n";
-	}
-	else {
-	    print "$cn\t\t$$clusters{$cn}[0]\t$$clusters{$cn}[1]\n";
-	}
+        if($brief) {
+            print "$cn\n";
+        }
+        else {
+            print "$cn\t\t$$clusters{$cn}[0]\t$$clusters{$cn}[1]\n";
+        }
     }
 }
 

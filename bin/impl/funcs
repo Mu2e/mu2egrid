@@ -14,8 +14,8 @@ generateSeed() {
     # Should leave space for SeedService to increment, thus -20.
     seed=0
     maxseed=$((900000001 - $SeedServiceMaxEngines))
-    while [ "$seed" -le 0 ]; do 
-	seed=$(( $(od --format u4 --read-bytes 4 /dev/urandom | head -1| awk '{print $2}') % maxseed ))
+    while [ "$seed" -le 0 ]; do
+        seed=$(( $(od --format u4 --read-bytes 4 /dev/urandom | head -1| awk '{print $2}') % maxseed ))
     done
     echo $seed
 }
@@ -33,12 +33,12 @@ getDistinctRandoms() {
        echo "ERROR: getDistinctRandoms: inconsistent args: range=$range, nr=$nr" >&2
        return 1
     else
-	rlist=''
-	while [ $(for i in $rlist; do echo $i; done|wc -l) -lt $nr ]; do
-	    rlist+=" $(($RANDOM%$range))"
-	    rlist="$(for i in $rlist; do echo $i; done|sort -n -u)"
-	done
-	echo $rlist   
+        rlist=''
+        while [ $(for i in $rlist; do echo $i; done|wc -l) -lt $nr ]; do
+            rlist+=" $(($RANDOM%$range))"
+            rlist="$(for i in $rlist; do echo $i; done|sort -n -u)"
+        done
+        echo $rlist
     fi
 }
 
@@ -50,7 +50,7 @@ pickRandomLines() {
     nl=${2:?pickRandomLines: numLines arg is missing}
     rlist=$(getDistinctRandoms $(wc -l $file|awk '{print $1}') $nl)
     for ll in $rlist; do
-	tail --lines=+"$((1+$ll))" "$file" | head --lines=1
+        tail --lines=+"$((1+$ll))" "$file" | head --lines=1
     done
 }
 
@@ -63,7 +63,7 @@ createInputFileList() {
     process=${3:?createInputFileList: process arg missing}
 
     firstline=$((1 + $chunksize * $process))
-    
+
     mylist="mu2eRemoteInputFiles.txt"
     tail --lines=+"$firstline" "$masterlist" | head --lines="$chunksize" > "$mylist"
     echo "$mylist"
@@ -77,8 +77,8 @@ createPrestageSpec() {
     specfile=${2:-"events_prestage.spec"}
 
     cat $remotelist | while read rfn; do
-	lfn="data/$(echo $rfn|sed -e 's|/|-|g')"
-	echo $rfn $lfn >> $specfile
+        lfn="data/$(echo $rfn|sed -e 's|/|-|g')"
+        echo $rfn $lfn >> $specfile
     done
 
     echo "$specfile"
@@ -104,39 +104,39 @@ stageIn() {
 
     declare -a specs
     for f in "$@"; do
-	if [ -n "$f" ]; then
-	    specs=("${specs[@]}" $f)
-	fi
+        if [ -n "$f" ]; then
+            specs=("${specs[@]}" $f)
+        fi
     done
 
     if [ "${#specs[@]}" -gt 0 ]; then
 
-	echo "$(date) # Starting to pre-stage input files"
-	type ifdh
+        echo "$(date) # Starting to pre-stage input files"
+        type ifdh
 
-	# Merge all the lists into a single file
-	# ifdh is picky about white spaces, (redmine #3790)
-	# Make sure we have exactly one space
-	totalspec=$(mktemp prestage-merged.XXXX)
-	awk '{print $1" "$2}' "${specs[@]}" > "$totalspec"
+        # Merge all the lists into a single file
+        # ifdh is picky about white spaces, (redmine #3790)
+        # Make sure we have exactly one space
+        totalspec=$(mktemp prestage-merged.XXXX)
+        awk '{print $1" "$2}' "${specs[@]}" > "$totalspec"
 
-	# ifdh does not create destination directories
+        # ifdh does not create destination directories
         # Do it here
-	mkdir -p $(awk '{print $2}' "$totalspec" | sed -e 's|/[^/]*$||' | sort -u)
+        mkdir -p $(awk '{print $2}' "$totalspec" | sed -e 's|/[^/]*$||' | sort -u)
 
-	awk '{print "Pre-staging: ",$1,"  ==>  ",$2}' "$totalspec"
+        awk '{print "Pre-staging: ",$1,"  ==>  ",$2}' "$totalspec"
 
-	tstart=$(date +%s)
+        tstart=$(date +%s)
 
-	# Get the lock and copy files
-	# We have to force the use of gridftp to handle a mix of bluearc and pnfs files (INC000000418568)
-	IFDH_FORCE=gridftp ifdh cp -f "$totalspec"
-	ret=$?
+        # Get the lock and copy files
+        # We have to force the use of gridftp to handle a mix of bluearc and pnfs files (INC000000418568)
+        IFDH_FORCE=gridftp ifdh cp -f "$totalspec"
+        ret=$?
 
-	# Do not delete the prestage-merged file - it is useful, e.g. to re-run an exact job.
+        # Do not delete the prestage-merged file - it is useful, e.g. to re-run an exact job.
 
-	t2=$(date +%s)
-	echo "$(date) # Total stage-in time: $((t2-tstart)) seconds, status $ret"
+        t2=$(date +%s)
+        echo "$(date) # Total stage-in time: $((t2-tstart)) seconds, status $ret"
 
     fi
 

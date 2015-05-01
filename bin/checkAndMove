@@ -18,10 +18,10 @@ my %opt = (help=>0, add=>0, verbose=>0, 'dry-run'=>0, debug=>0);
 sub usage() {
     my $self = basename($0);
     return <<EOF
-Usage: 
-	$self [--dry-run] [--verbose] --dsttop=dir-to-create src-outstage-jobdir1 [src-outstage-jobdir2 ...]
+Usage:
+        $self [--dry-run] [--verbose] --dsttop=dir-to-create src-outstage-jobdir1 [src-outstage-jobdir2 ...]
 OR
-	$self [--dry-run] [--verbose] --dstarea=existing-dir src-outstage-jobdir1 [src-outstage-jobdir2 ...]
+        $self [--dry-run] [--verbose] --dstarea=existing-dir src-outstage-jobdir1 [src-outstage-jobdir2 ...]
 
 The use of --dstarea causes dsttop to be inferred from the src dir names so that
 dstarea/the-inferred-name is used as dsttop.
@@ -35,7 +35,7 @@ sub inferDirName($) {
     $srcdir = basename($srcdir);
 
     die "Error: inferDirName(): input dir name '$srcdir' does not have a numeric suffix, do not know what to do!\n"
-	unless $srcdir =~ m/^(.+)\.(\d+)$/;
+        unless $srcdir =~ m/^(.+)\.(\d+)$/;
 
     return $1;
 }
@@ -49,28 +49,28 @@ sub logfile($) {
 #================================================================
 sub parseLogFile($$) {
     (my $jobStats, my $filename,) = @_;
-    
+
     # Assume failed unless can verify otherwise
     $$jobStats{'status'} = 1;
 
     if(open(my $fh, $filename)) {
 
-	while(my $line = <$fh>) {
+        while(my $line = <$fh>) {
 
-	    if($line =~ m/^mu2egrid exit status 0$/) {
-		$$jobStats{'status'} = 0;
-	    }
+            if($line =~ m/^mu2egrid exit status 0$/) {
+                $$jobStats{'status'} = 0;
+            }
 
-	    if($line =~ m/^mu2egrid *random *seed *(\d+)$/) {
-		$$jobStats{'g4seed'} = $1;
-	    }
-	}
+            if($line =~ m/^mu2egrid *random *seed *(\d+)$/) {
+                $$jobStats{'g4seed'} = $1;
+            }
+        }
     }
 }
 
 #================================================================
 sub loadDataProcess($$) {
-    (my $jobStats, my $srcdir) = @_;    
+    (my $jobStats, my $srcdir) = @_;
     my $res = {};
     parseLogFile($res, logfile($srcdir));
     $$jobStats{$srcdir} = $res;
@@ -83,8 +83,8 @@ sub loadDataCluster($$) {
     my $SRCDD;
     opendir(SRCDD, $srctop) or die "Can't opendir($srctop): $!\n";
     while(my $d = readdir(SRCDD)) {
-	next if $d =~ /^\./;
-	loadDataProcess($jobStats, $srctop . '/' . $d);
+        next if $d =~ /^\./;
+        loadDataProcess($jobStats, $srctop . '/' . $d);
     }
     closedir(SRCDD);
 }
@@ -94,15 +94,15 @@ sub resolveDuplicates($) {
 
     my $best = $$duplist[0];
     foreach my $dir (@$duplist) {
-	next if $dir eq $best;
+        next if $dir eq $best;
 
-	# Need to decide between the current $best and the candidate $dir
-	# Use the modification time of the log file and prefer the earlier job
-	
+        # Need to decide between the current $best and the candidate $dir
+        # Use the modification time of the log file and prefer the earlier job
 
-	if(-M logfile($best) < -M logfile($dir))  {
-	    $best = $dir;
-	}	
+
+        if(-M logfile($best) < -M logfile($dir))  {
+            $best = $dir;
+        }
     }
     return $best;
 }
@@ -119,36 +119,36 @@ sub classifyJobs($$) {
     my $summary = {GOOD=>0, FAILED=>0, RERUN=>0, DUPSEED=>0};
 
     while((my $jobdir, my $stats) = each(%$jobStats)) {
-	if($$stats{'status'} != 0) {
-	    $$stats{'decision'} = FAILED;
-	    ++$$summary{FAILED};
-	}
-	elsif($jobdir =~ m|/[^/]+\.|) { # old instance of a job restarted by condor
-	    $$stats{'decision'} = RERUN;
-	    ++$$summary{RERUN};
-	}
-	else {
-	    if(scalar(%$seeds)) { # each job in this dataset should have a seed
-		if(defined(${$$jobStats{$jobdir}}{'g4seed'})) {
-		    if (resolveDuplicates($$seeds{${$$jobStats{$jobdir}}{'g4seed'}}) ne $jobdir) {
-			$$stats{'decision'} = DUPSEED;
-			++$$summary{DUPSEED};
-		    }
-		    else {
-			$$stats{'decision'} = GOOD;
-			++$$summary{GOOD};
-		    }
-		}
-		else { # no seed was seen in the log file, but one is required
-		    $$stats{'decision'} = FAILED;
-		    ++$$summary{FAILED};
-		}
-	    }
-	    else { # No seeds for this dataset, and we've checked the status already
-		$$stats{'decision'} = GOOD;
-		++$$summary{GOOD};
-	    }
-	}
+        if($$stats{'status'} != 0) {
+            $$stats{'decision'} = FAILED;
+            ++$$summary{FAILED};
+        }
+        elsif($jobdir =~ m|/[^/]+\.|) { # old instance of a job restarted by condor
+            $$stats{'decision'} = RERUN;
+            ++$$summary{RERUN};
+        }
+        else {
+            if(scalar(%$seeds)) { # each job in this dataset should have a seed
+                if(defined(${$$jobStats{$jobdir}}{'g4seed'})) {
+                    if (resolveDuplicates($$seeds{${$$jobStats{$jobdir}}{'g4seed'}}) ne $jobdir) {
+                        $$stats{'decision'} = DUPSEED;
+                        ++$$summary{DUPSEED};
+                    }
+                    else {
+                        $$stats{'decision'} = GOOD;
+                        ++$$summary{GOOD};
+                    }
+                }
+                else { # no seed was seen in the log file, but one is required
+                    $$stats{'decision'} = FAILED;
+                    ++$$summary{FAILED};
+                }
+            }
+            else { # No seeds for this dataset, and we've checked the status already
+                $$stats{'decision'} = GOOD;
+                ++$$summary{GOOD};
+            }
+        }
     }
 
     return $summary;
@@ -160,43 +160,43 @@ sub moveDir($$) {
     my $dstdir = $dst . '/' . basename($srcdir);
 
     if($opt{'verbose'}) {
-	print "Moving: $srcdir ====> $dstdir\n";
+        print "Moving: $srcdir ====> $dstdir\n";
     }
 
     # We create new dir instead of renaming existing one to fix the ownership
     if(!$opt{'dry-run'} ) {
-	mkpath($dstdir) or die "Can't create output directory $dstdir: $!\n";
+        mkpath($dstdir) or die "Can't create output directory $dstdir: $!\n";
 
-	my $DIR;
-	opendir(DIR, $srcdir) or die "Can't opendir($srcdir): $!\n";
-	while(my $d = readdir(DIR)) {
-	    next if $d =~ /^\./;
-	    rename($srcdir . '/' . $d, $dstdir . '/' . $d) unless $opt{'dry-run'};
-	}
-	closedir(DIR);
+        my $DIR;
+        opendir(DIR, $srcdir) or die "Can't opendir($srcdir): $!\n";
+        while(my $d = readdir(DIR)) {
+            next if $d =~ /^\./;
+            rename($srcdir . '/' . $d, $dstdir . '/' . $d) unless $opt{'dry-run'};
+        }
+        closedir(DIR);
 
-	rmdir($srcdir) or warn "Can't remove $srcdir: $!";
+        rmdir($srcdir) or warn "Can't remove $srcdir: $!";
     }
 }
 
 #================================================================
 sub preloadSeeds($) {
-    # FIXME: need to make sure existing jobs already in gooddir 
+    # FIXME: need to make sure existing jobs already in gooddir
     # take precedence over new ones in case of duplicated seeds.
     die "Not implemented";
 }
 
 #================================================================
 # Process command line opts.
-GetOptions(\%opt, 
-	   "help",
-	   "add",
-	   "verbose",
-	   "dry-run",
-	   "dsttop=s",
-	   "dstarea=s",
-	   "debug",
-	   ) 
+GetOptions(\%opt,
+           "help",
+           "add",
+           "verbose",
+           "dry-run",
+           "dsttop=s",
+           "dstarea=s",
+           "debug",
+           )
     or die "\nError processing command line options.\n";
 
 if($opt{'help'}) {
@@ -219,19 +219,19 @@ if(defined($opt{'dsttop'})) {
 else {
     my $inferred;
     foreach my $srctop (@ARGV) {
-	my $tmp = inferDirName($srctop);
-	if(defined($inferred)) {
-	    die "Error: can not determine dsttop: got inconsistent suggestions '$inferred' and '$tmp'\n"
-		unless $tmp eq $inferred;
-	}
-	else {
-	    $inferred = $tmp;
-	}
+        my $tmp = inferDirName($srctop);
+        if(defined($inferred)) {
+            die "Error: can not determine dsttop: got inconsistent suggestions '$inferred' and '$tmp'\n"
+                unless $tmp eq $inferred;
+        }
+        else {
+            $inferred = $tmp;
+        }
     }
     $dsttop = $opt{'dstarea'} . '/' . $inferred;
 
     if($opt{'verbose'}) {
-	print "Inferred dsttop = $dsttop\n";
+        print "Inferred dsttop = $dsttop\n";
     }
 }
 
@@ -243,10 +243,10 @@ if($opt{'add'}) {
 else {
     #die "Destination directory $dsttop already exists - did you want to --add to it?"
     die "Error: Destination directory $dsttop already exists."
-	if -d $dsttop;
-    
+        if -d $dsttop;
+
     if(!$opt{'dry-run'}) {
-	mkdir($dsttop) or die "Error creating dsttop \"$dsttop\": $!\n";
+        mkdir($dsttop) or die "Error creating dsttop \"$dsttop\": $!\n";
     }
 }
 
@@ -254,7 +254,7 @@ else {
 my %jobStats;
 foreach my $srctop (@ARGV) {
     if($opt{'verbose'}) {
-	print "Loading job summary data from $srctop\n";
+        print "Loading job summary data from $srctop\n";
     }
     loadDataCluster(\%jobStats, $srctop);
 }
@@ -266,12 +266,12 @@ my $seen_seeds = 0;
 my $seen_noseeds = 0;
 while((my $jobdir, my $stats) = each(%jobStats)) {
     if(defined($$stats{'g4seed'})) {
-	my $g4seed = $$stats{'g4seed'};
-	push @{$seeds{$g4seed}}, $jobdir;
-	$seen_seeds = 1;
+        my $g4seed = $$stats{'g4seed'};
+        push @{$seeds{$g4seed}}, $jobdir;
+        $seen_seeds = 1;
     }
     else {
-	$seen_noseeds = 1;
+        $seen_noseeds = 1;
     }
 }
 
@@ -294,7 +294,7 @@ while((my $jobdir, my $stats) = each(%jobStats)) {
 # Remove empty top level srcdirs
 if(!$opt{'dry-run'}) {
     foreach my $srctop (@ARGV) {
-	rmdir $srctop or warn "Could not delete $srctop: $!\n";
+        rmdir $srctop or warn "Could not delete $srctop: $!\n";
     }
 }
 

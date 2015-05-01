@@ -79,7 +79,7 @@ if source "${MU2EGRID_USERSETUP:?Error: MU2EGRID_USERSETUP: not defined}"; then
     addSeeds "$JOBCONFIG" "$SEED"
 
         #================================================================
-	# Handle the --fclinput options
+        # Handle the --fclinput options
 
     fclinPrestageSpec=''
     if [ ${MU2EGRID_FCLINPUT_NUMENTRIES:-0} -gt 0 ]; then
@@ -93,42 +93,42 @@ if source "${MU2EGRID_USERSETUP:?Error: MU2EGRID_USERSETUP: not defined}"; then
             fvn="MU2EGRID_FCLINPUT_${i}_FILELIST"
             fclinRemoteFiles="${!fvn}"
 
-		# select the given number of files for pre-staging
-	    tmpremote=$(mktemp prestage-fclin-remote.XXXX)
-	    if [ $numFiles -gt 0 ]; then
-		pickRandomLines "$fclinRemoteFiles" $numFiles > $tmpremote
-	    else
-		cat "$fclinRemoteFiles" > $tmpremote
-	    fi
+                # select the given number of files for pre-staging
+            tmpremote=$(mktemp prestage-fclin-remote.XXXX)
+            if [ $numFiles -gt 0 ]; then
+                pickRandomLines "$fclinRemoteFiles" $numFiles > $tmpremote
+            else
+                cat "$fclinRemoteFiles" > $tmpremote
+            fi
 
-		# the current chunk of prestage spec
-	    tmpspec=$(mktemp prestage-fclin-chunk.XXXX)
-	    createPrestageSpec $tmpremote $tmpspec > /dev/null
+                # the current chunk of prestage spec
+            tmpspec=$(mktemp prestage-fclin-chunk.XXXX)
+            createPrestageSpec $tmpremote $tmpspec > /dev/null
 
-		# Format the local list of files and put it into the fcl file variable
-		# Should it go to PROLOG, or should it be appended to the file?
-	    if [[ $variable == '@'* ]]; then
-		    # Prepend PROLOG to the file
-		variable="$(echo $variable | sed -e 's/^@//')"
-		tmphead=$(mktemp fclin-prolog.XXXX)
-		echo "BEGIN_PROLOG" > $tmphead
-		echo "$variable : [" >> $tmphead
-		awk 'BEGIN{first=1}; {if(!first) {cm=",";} else {first=0; cm=" ";}; print "    "cm"\""$2"\""}' $tmpspec >> $tmphead
-		echo "]" >> $tmphead
-		echo "END_PROLOG" >> $tmphead
-		cat $tmphead $JOBCONFIG > $JOBCONFIG.$$
-		/bin/mv -f $JOBCONFIG.$$ $JOBCONFIG
-		rm -f $tmphead
-	    else # Append var assignement at the end of the file
-		echo "$variable : [" >> $JOBCONFIG
-		awk 'BEGIN{first=1}; {if(!first) {cm=",";} else {first=0; cm=" ";}; print "    "cm"\""$2"\""}' $tmpspec >> $JOBCONFIG
-		echo "]" >> $JOBCONFIG
-	    fi
+                # Format the local list of files and put it into the fcl file variable
+                # Should it go to PROLOG, or should it be appended to the file?
+            if [[ $variable == '@'* ]]; then
+                    # Prepend PROLOG to the file
+                variable="$(echo $variable | sed -e 's/^@//')"
+                tmphead=$(mktemp fclin-prolog.XXXX)
+                echo "BEGIN_PROLOG" > $tmphead
+                echo "$variable : [" >> $tmphead
+                awk 'BEGIN{first=1}; {if(!first) {cm=",";} else {first=0; cm=" ";}; print "    "cm"\""$2"\""}' $tmpspec >> $tmphead
+                echo "]" >> $tmphead
+                echo "END_PROLOG" >> $tmphead
+                cat $tmphead $JOBCONFIG > $JOBCONFIG.$$
+                /bin/mv -f $JOBCONFIG.$$ $JOBCONFIG
+                rm -f $tmphead
+            else # Append var assignement at the end of the file
+                echo "$variable : [" >> $JOBCONFIG
+                awk 'BEGIN{first=1}; {if(!first) {cm=",";} else {first=0; cm=" ";}; print "    "cm"\""$2"\""}' $tmpspec >> $JOBCONFIG
+                echo "]" >> $JOBCONFIG
+            fi
 
-		# Merge prestage specs, and clean up
-	    cat $tmpspec >> $fclinPrestageSpec
-	    rm -f $tmpremote
-	    rm -f $tmpspec
+                # Merge prestage specs, and clean up
+            cat $tmpspec >> $fclinPrestageSpec
+            rm -f $tmpremote
+            rm -f $tmpspec
 
         done
     fi
@@ -143,17 +143,17 @@ if source "${MU2EGRID_USERSETUP:?Error: MU2EGRID_USERSETUP: not defined}"; then
             # Define new event IDs
         addEventID "$JOBCONFIG" ${MU2EGRID_RUN_NUMBER:-$cluster} ${process}
 
-	nevents=${MU2EGRID_EVENTS_PER_JOB:?Error: both MU2EGRID_EVENTS_PER_JOB and MU2EGRID_INPUTLIST not set}
-	    # treat --events-per-job=0 as a special case.
-	if [ $nevents -ne 0 ]; then
-	    args+=(-n ${nevents})
-	fi
+        nevents=${MU2EGRID_EVENTS_PER_JOB:?Error: both MU2EGRID_EVENTS_PER_JOB and MU2EGRID_INPUTLIST not set}
+            # treat --events-per-job=0 as a special case.
+        if [ $nevents -ne 0 ]; then
+            args+=(-n ${nevents})
+        fi
 
     else
             # There are input files specified.
         remoteList=$(createInputFileList "${MU2EGRID_INPUTLIST}" ${MU2EGRID_CHUNKSIZE:?"Error: MU2EGRID_CHUNKSIZE not set"} ${process})
-	eventsPrestageSpec=$(createPrestageSpec $remoteList)
-	localList=$(extractLocalList $eventsPrestageSpec)
+        eventsPrestageSpec=$(createPrestageSpec $remoteList)
+        localList=$(extractLocalList $eventsPrestageSpec)
         args+=(-S "$localList" --nevts -1)
     fi
 
@@ -174,33 +174,33 @@ if source "${MU2EGRID_USERSETUP:?Error: MU2EGRID_USERSETUP: not defined}"; then
     if [ "$ret" -eq 0 ]; then
 
             # Run the optional user script
-	if [ -n "$userscript" ]; then
-	    "$userscript" "$JOBCONFIG" "$process" "$MU2EGRID_NCLUSTERJOBS"
-	    ret=$?
-	fi
+        if [ -n "$userscript" ]; then
+            "$userscript" "$JOBCONFIG" "$process" "$MU2EGRID_NCLUSTERJOBS"
+            ret=$?
+        fi
 
             # Run the Offline job.
-	if [ "$ret" -eq 0 ]; then
-	    echo "Starting on host $(uname -a) on $(date)"
-	    echo "Running the command: mu2e ${args[@]}"
-	    echo "mu2egrid random seed $SEED"
-	    /usr/bin/time mu2e "${args[@]}"
-	    ret=$?
-	    echo "mu2egrid exit status $ret"
-	    if [ "$ret" -eq 0 ]; then
+        if [ "$ret" -eq 0 ]; then
+            echo "Starting on host $(uname -a) on $(date)"
+            echo "Running the command: mu2e ${args[@]}"
+            echo "mu2egrid random seed $SEED"
+            /usr/bin/time mu2e "${args[@]}"
+            ret=$?
+            echo "mu2egrid exit status $ret"
+            if [ "$ret" -eq 0 ]; then
                     # clean up
-		rm -f "$eventsPrestageSpec" "$fclinPrestageSpec" "$remoteList" "$localList"
-	    fi
-	else
-	    echo "Aborting the job because the user --userscript script failed.  The command line was:"
-	    echo ""
-	    echo "$userscript" "$JOBCONFIG" "$process"
-	    echo ""
-	    echo "Got exit status: $ret"
-	fi
+                rm -f "$eventsPrestageSpec" "$fclinPrestageSpec" "$remoteList" "$localList"
+            fi
+        else
+            echo "Aborting the job because the user --userscript script failed.  The command line was:"
+            echo ""
+            echo "$userscript" "$JOBCONFIG" "$process"
+            echo ""
+            echo "Got exit status: $ret"
+        fi
 
     else
-	echo "Aborting the job because pre-staging of input files failed: stageIn '$eventsPrestageSpec' '$MU2EGRID_PRESTAGE' '$fclinPrestageSpec'"
+        echo "Aborting the job because pre-staging of input files failed: stageIn '$eventsPrestageSpec' '$MU2EGRID_PRESTAGE' '$fclinPrestageSpec'"
     fi
 
 else

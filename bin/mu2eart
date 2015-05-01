@@ -18,16 +18,16 @@ use mu2egrid;
 sub usage() {
     my $self = basename($0);
     return <<EOF
-Usage: 
-	$self --setup=<script-to-source.sh> \\
-	      --fcl=<file> \\
-	      --njobs=<M> \\
-	      {--inputs=<filelist>|--events-per-job=<N> [--run-number=<R>]} \\
-	      [--jobname=<name>] \\
-	      [--TFileService=<name>] \\
-	      [--geometry=<name>] \\
-	      [--fclinput=[numFiles:]<fclVarName>:<filelist>] \\
-	      [--userscript=<script>] \\
+Usage:
+        $self --setup=<script-to-source.sh> \\
+              --fcl=<file> \\
+              --njobs=<M> \\
+              {--inputs=<filelist>|--events-per-job=<N> [--run-number=<R>]} \\
+              [--jobname=<name>] \\
+              [--TFileService=<name>] \\
+              [--geometry=<name>] \\
+              [--fclinput=[numFiles:]<fclVarName>:<filelist>] \\
+              [--userscript=<script>] \\
 EOF
 . mu2egrid::commonOptDoc1() . <<EOF
 
@@ -51,12 +51,12 @@ EOF
 
     - The --TFileService option sets the output histogram filename.
       Given filename will be passed over to Offline mu2e as the
-      argument of -T option. 
+      argument of -T option.
 
     - The --geometry option sets the geometry configuration file.
-      The style of path of input filename valuable should be the 
+      The style of path of input filename valuable should be the
       same with services.user.GeometryService.inputFile in fcl file,
-      which assumes the Offline path. It should not be absolute or 
+      which assumes the Offline path. It should not be absolute or
       relative path from `pwd`.
 
     - The --fclinput option sets the given fcl file variable so that
@@ -110,7 +110,7 @@ GetOptions(\%opt,
     'geometry=s',
     'fclinput=s',
     'userscript=s',
-    @mu2egrid::commonOptList) 
+    @mu2egrid::commonOptList)
     or die "\nError processing command line options.\n";
 
 if($opt{'help'}) {
@@ -166,11 +166,11 @@ $ENV{'MU2EGRID_SUBMITTER'} = $whoami;
 # Either --inputs or --events-per-job is required.   The --run-number option is only combinable with the latter.
 if(defined $opt{'inputs'}) {
     if(defined($opt{'events-per-job'})) {
-	die "Arguments --inputs and --events-per-job are mutually exclusive.";
+        die "Arguments --inputs and --events-per-job are mutually exclusive.";
     }
 
     if(defined($opt{'run-number'})) {
-	die "Arguments --inputs and --run-number are mutually exclusive.";
+        die "Arguments --inputs and --run-number are mutually exclusive.";
     }
 
     my $inputs = mu2egrid::find_file($opt{'inputs'});
@@ -184,20 +184,20 @@ if(defined $opt{'inputs'}) {
     print "nlines = $nlines in file $inputs\n" if $opt{'verbose'};
 
     if($nlines < $njobs) {
-	die "Error too many requested jobs = $njobs.  The input file list has only $nlines lines: $inputs\n";
+        die "Error too many requested jobs = $njobs.  The input file list has only $nlines lines: $inputs\n";
     }
     $ENV{'MU2EGRID_CHUNKSIZE'} = ceil($nlines/$njobs);
 
 }
 else {
     if(!defined($opt{'events-per-job'})) {
-	die "Either --inputs or --events-per-job must be specified.";
+        die "Either --inputs or --events-per-job must be specified.";
     }
 
     $ENV{'MU2EGRID_EVENTS_PER_JOB'} = $opt{'events-per-job'};
 
     if(defined($opt{'run-number'})) {
-	$ENV{'MU2EGRID_RUN_NUMBER'} = $opt{'run-number'};
+        $ENV{'MU2EGRID_RUN_NUMBER'} = $opt{'run-number'};
     }
 }
 
@@ -206,7 +206,7 @@ else {
 if(defined($opt{'userscript'})) {
     $userscript = mu2egrid::find_file($opt{'userscript'});
     die "Error: file \"$userscript\" is not executable\n"
-	unless -x $userscript;
+        unless -x $userscript;
     $ENV{'MU2EGRID_USERSCRIPT'} = $userscript;
 }
 
@@ -236,14 +236,14 @@ foreach my $fclin (@fclinputs) {
     my $files;
     (my $l1, my $l2) = split(/:/, $fclin, 2);
     if($l1 =~ /^\d/) {
-	die "Invalid numFiles=$l1  in --fclinput=$fclin\n"
-	    unless $l1 =~ /^\d+$/;
-	$numFiles = $l1;
-	die "Error in an --fclin specification: no 'filelist' part in $fclin\n" unless $l2 =~ /:/;
-	($var, $files) = split(/:/, $l2, 2);
+        die "Invalid numFiles=$l1  in --fclinput=$fclin\n"
+            unless $l1 =~ /^\d+$/;
+        $numFiles = $l1;
+        die "Error in an --fclin specification: no 'filelist' part in $fclin\n" unless $l2 =~ /:/;
+        ($var, $files) = split(/:/, $l2, 2);
     }
     else {
-	($var, $files) = ($l1, $l2);
+        ($var, $files) = ($l1, $l2);
     }
 
     $files = mu2egrid::find_file($files);
@@ -293,11 +293,11 @@ if($test_queue) {
 
 while( (my $key, my $value) = each(%ENV) ) {
     if(($key =~ m/^MU2EGRID_\w+$/) or ($key eq 'IFDH_VERSION')) {
-	# jobsub_client does not allow empty string as environment values
-	if($value ne '') {
-	    push @args,  ('-e', $key);
-	    print "Using: $key => $ENV{$key}\n" if $opt{'verbose'};
-	}
+        # jobsub_client does not allow empty string as environment values
+        if($value ne '') {
+            push @args,  ('-e', $key);
+            print "Using: $key => $ENV{$key}\n" if $opt{'verbose'};
+        }
     }
 }
 
@@ -321,7 +321,7 @@ print "Command:  $mu2egrid::jobsub @args\n";
 if(!$opt{'dry-run'}) {
     print "Submitting....\n";
     exec { $mu2egrid::jobsub } $mu2egrid::jobsub, @args
-	or die "Error executing $mu2egrid::jobsub: $!";
+        or die "Error executing $mu2egrid::jobsub: $!";
 }
 else {
     print "Not submitting because --dry-run was requested.\n";
