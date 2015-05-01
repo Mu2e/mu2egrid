@@ -13,9 +13,10 @@ no_fq_dir
 #
 product		version
 jobsub_client	-
+sam_web_client	-
 cetbuildtools    v4_07_03 - only_for_build
 end_product_list
 
-qualifier	jobsub_client
--nq-		-nq-
+qualifier	jobsub_client	sam_web_client
+-nq-		-nq-		-nq-
 end_qualifier_list

@@ -16,7 +16,7 @@ use Digest;
 use Data::Dumper;
 
 my $faildir;
-my $verbosity=0;
+my $verbosity=1;
 my $dryrun=0;
 my %opt = ( faildir=>\$faildir, 'verify-data'=>1, verbosity=>\$verbosity, 'dry-run'=>\$dryrun, help=>0 );
 
@@ -29,6 +29,7 @@ use constant EXITSTAT => 'exitstat';
 use constant DATASIZE => 'datasize';
 use constant METAPAIRED => 'metapaired';
 use constant DATACHECK => 'datacheck';
+use constant DUPLICATE => 'duplicate';
 my %jobStats;
 
 # A more readable description for the summary output
@@ -40,6 +41,7 @@ my %errorCodes = (
     DATASIZE() => 'data or json file size',
     METAPAIRED() => 'a non-paired content or json file',
     DATACHECK() => 'corrupted data file',
+    DUPLICATE() => 'duplicate',
     );
 
 #----------------
@@ -179,28 +181,36 @@ sub moveFailedJob($$$) {
 }
 
 #================================================================
+# Use on content files, not on json!
+sub ftsDropDir($) {
+
+    (my $datafn) = @_;
+
+    # data_tier.owner.description.configuration.sequencer.file_format
+    my ($tier, $owner, $description, $conf, $seq, $ext, $extra) = split(/\./, $datafn);
+    die "Error parsing content file name $datafn: too many fields\n" if defined $extra;
+    die "Error parsing content file name $datafn: too few fields\n" if not defined $ext;
+
+    my $fileFamilyPrefix = ($owner eq 'mu2e') ? 'phy' : 'usr';
+    die "Unknown data tier \"$tier\" for file $datafn\n" unless defined  $fileFamilySuffixByTier{$tier};
+    my $fileFamily = $fileFamilyPrefix . '-' . $fileFamilySuffixByTier{$tier};
+
+    # the fts area has subdirectories to manage large
+    # numbers of files.  Pick a 2-digit subdir based on file's name
+    my $dig = Digest->new('SHA-256');
+    $dig->add($datafn);
+    my $twodigit = sprintf '%02d', unpack('%32L', $dig->digest) % 100;
+
+    return join('/', ($ftsTopDir, $fileFamily, $twodigit ));
+}
+
+#================================================================
 # Move files to the FTS upload dropbox
 sub uploadFiles($$) {
     (my $srcdir, my $filelist) = @_;
 
     for my $datafn (@$filelist) {
-        # data_tier.owner.description.configuration.sequencer.file_format
-        my ($tier, $owner, $description, $conf, $seq, $ext, $extra) = split(/\./, $datafn);
-        die "Error parsing content file name $datafn: too many fields\n" if defined $extra;
-        die "Error parsing content file name $datafn: too few fields\n" if not defined $ext;
-
-        my $fileFamilyPrefix = ($owner eq 'mu2e') ? 'phy' : 'usr';
-        die "Unknown data tier \"$tier\" for file $datafn\n" unless defined  $fileFamilySuffixByTier{$tier};
-        my $fileFamily = $fileFamilyPrefix . '-' . $fileFamilySuffixByTier{$tier};
-
-        # the fts area has subdirectories to manage large
-        # numbers of files.  Pick a 2-digit subdir based on file's name
-        my $dig = Digest->new('SHA-256');
-        $dig->add($datafn);
-        my $twodigit = sprintf '%02d', unpack('%32L', $dig->digest) % 100;
-
-        my $dstdir = join('/', ($ftsTopDir, $fileFamily, $twodigit ));
-
+        my $dstdir = ftsDropDir($datafn);
         maybe_rename("$srcdir/$datafn", "$dstdir/$datafn");
         maybe_rename("$srcdir/$datafn.json", "$dstdir/$datafn.json");
     }
@@ -211,9 +221,46 @@ sub uploadFiles($$) {
 }
 
 #================================================================
+sub isDuplicated($) {
+    my ($fn) = @_;
+
+    # The FTS copies files from the dropbox into a permanent location,
+    # and registers them in SAM.  The removal from the dropbox happens
+    # only after the file is registered in SAM.  To handle the race
+    # condition between this script and the FTS correctly we should
+    # check the dropbox first, then check SAM.
+
+    my $res = 0;
+
+    my $dropname = ftsDropDir($fn) .'/'. basename($fn);
+    $res = 1 if(-e $dropname);
+
+    system('samweb locate-file ' . basename($fn) . ' > /dev/null 2>&1');
+    my ($exit_value, $signal_num, $dumped_core)  = ($? >> 8,  $? & 127, $? & 128);
+
+    # If shell fails to execute, $?==-1.  If bash runs but fails to find
+    # the program, it returns 127.  If the program file is found but not executable
+    # bash returns 126.
+    if (($? == -1) or ($exit_value == 127) or ($exit_value == 126)) {
+        die "samweb failed to execute (\$? = $?):  $!\n";
+    }
+    elsif ($signal_num) {
+        die sprintf "sam_web_client died with signal $signal_num\n";
+    }
+
+    $res = 1 if($exit_value == 0); # the file is known to SAM
+
+    if($verbosity > 1) {
+        print "\tisDuplicated($fn) = $res\n";
+    }
+
+    return $res;
+}
+
+#================================================================
 sub processJobDir($) {
     my ($jobdir) = @_;
-    print "Processing $jobdir\n" if $verbosity;
+    print "Processing $jobdir\n" if $verbosity > 1;
 
     my $failed = 1;
     my @filesToUpload;
@@ -287,15 +334,27 @@ sub processJobDir($) {
             }
         }
 
+        #----------------
+        @filesToUpload = (@contentFiles, basename($logFileName));
+
+        # Detect duplicates
+        foreach my $fn (@filesToUpload) {
+            if(isDuplicated($fn)) {
+                print "\tDuplicated file $jobdir/$fn\n" if $verbosity;
+                moveFailedJob($jobdir, $faildir, DUPLICATE());
+                last CHECK;
+            }
+        }
+
+        #----------------
         # All checks passed
         $failed = 0;
         ++$jobStats{GOOD()};
-        @filesToUpload = (@contentFiles, basename($logFileName));
         uploadFiles($jobdir, \@filesToUpload);
         last CHECK;
     }
 
-    print "\t", ($failed ? "FAILED" : "OK"), ":\t$jobdir\n" if $verbosity;
+    print +($failed ? "FAILED" : "OK"), ":\t$jobdir\n" if $verbosity;
 }
 
 #================================================================
@@ -313,7 +372,7 @@ The supported options are
 
     --noverify-data     Do not compute and check a SHA-256 digest of data files.
     --dry-run           Analyze jobdirs, but do not move the files.
-    --verbosity=<int>   Verbosity level
+    --verbosity=<int>   Verbosity level.  The default is 1.
     --help              Print this message.
 
 The "faildir" directory should be on the same filesystem as the
