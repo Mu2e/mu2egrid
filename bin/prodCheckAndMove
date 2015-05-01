@@ -1,0 +1,363 @@
+#!/usr/bin/perl -w
+#
+# Checks output of "production" grid jobs (run with mu2eprodsys) and
+# moves them to either an appropriate FTS dropbox, or to a "failed"
+# directory.
+#
+# A.Gaponenko, 2015
+#
+
+use strict;
+use File::Basename;
+use File::Path;
+use File::stat;
+use Getopt::Long;
+use Digest;
+use Data::Dumper;
+
+my $faildir;
+my $verbosity=0;
+my $dryrun=0;
+my %opt = ( faildir=>\$faildir, 'verify-data'=>0, verbosity=>\$verbosity, 'dry-run'=>\$dryrun, help=>0 );
+
+# constant strings used as keys in the jobStats hash
+use constant GOOD => 'good';
+use constant NOLOG => 'no unique log file';
+use constant LOGCHECK => 'corrupted log file';
+use constant EXITSTAT => 'exit status';
+use constant DATASIZE => 'data or json file size';
+use constant METAPAIRED => 'a non-paired content or json file';
+use constant DATACHECK => 'corrupted data file';
+my %jobStats;
+
+#----------------
+# See http://mu2e.fnal.gov/atwork/computing/tapeUpload.shtml
+#
+my %fileFamilySuffixByTier =
+    (
+     cnf => 'etc',
+     sim => 'sim',
+     mix => 'sim',
+     dig => 'sim',
+     mcs => 'sim',
+     nts => 'nts',
+    );
+
+my $ftsTopDir = '/pnfs/mu2e/scratch/fts';
+
+#================================================================
+sub getLogFileName($) {
+    my ($jobdir) = @_;
+    my @list = glob "$jobdir/*.log";
+    return ($#list == 0) ? $list[0] : "";
+}
+
+#================================================================
+sub verifyDigest($$) {
+    my ($fn, $expectedDigest) = @_;
+    my $dig = Digest->new('SHA-256');
+
+    my $ret = 0;
+
+    if(open(my $fh, '<', $fn)) {
+        $dig->addfile($fh);
+        if($dig->hexdigest eq $expectedDigest) {
+            $ret = 1;
+        }
+    }
+
+    return $ret;
+}
+
+#================================================================
+sub processLogFile($) {
+    my ($logFileName) = @_;
+
+    my $exitok = 0;
+    my $manifest_selfhash='';
+
+    # Note: dynamic determination of hash alg would need two passes over $logFileName
+    # We've always been using sha256sum on worker nodes
+    my $loghash = Digest->new('SHA-256');
+
+    my %workerFileSize;
+    my %workerFileDigest;
+
+    if(open(my $logfh, $logFileName)) {
+
+        my $manifest_started = 0;
+
+        while(my $line = <$logfh>) {
+
+            if($line =~ m/^mu2egrid exit status 0$/) {
+                $exitok = 1;
+            }
+
+            if($manifest_started) {
+                if($line =~ m/^#/) {
+                    # extract file size information from the "ls -l" output
+                    my @fields = split(/\s+/, $line);
+                    if($#fields == 9) {
+                        my $filename = $fields[9];
+                        my $filesize = $fields[5];
+                        $workerFileSize{$filename} = $filesize;
+                    }
+                }
+                else {
+                    # manifest lines not starting with '#' must list dataset files
+                    if($line =~ m/^([[:xdigit:]]+)\s+([^\s]+)$/) {
+                        my $digest = $1;
+                        my $filename = $2;
+                        $workerFileDigest{$filename} = $digest;
+                    }
+                    else {
+                        ++$jobStats{LOGCHECK};
+                        print "\tError parsing manifest line \"$line\" in $logFileName\n" if $verbosity;
+                        # returning empty list will mark this job as failed
+                        return;
+                    }
+                }
+            }
+
+            if($line =~ m/^# mu2egrid manifest *$/) {
+                $manifest_started = 1;
+            }
+
+            if($line =~ m/^# mu2egrid manifest selfcheck: ([[:xdigit:]]+) *- *$/) {
+                $manifest_selfhash = $1;
+            }
+            else {
+                $loghash->add($line);
+            }
+        }
+
+        return ($manifest_selfhash, $loghash->hexdigest, \%workerFileSize, \%workerFileDigest, $exitok);
+    }
+    else {
+        ++$jobStats{LOGCHECK};
+        print "\tError opening log file $logFileName\n" if $verbosity;
+    }
+}
+
+#================================================================
+sub maybe_rename($$) {
+    my ($src, $dst) = @_;
+    print "\t", ($dryrun ? "Would move":"Moving" ) ,": $src ====> $dst\n" if $verbosity > 1;
+    if(!$dryrun) {
+        rename($src, $dst) or die "Error in rename($src, $dst): $!\n";
+    }
+}
+
+#================================================================
+sub moveDir($$) {
+    (my $srcdir, my $dsttop) = @_;
+    my $dstdir = $dsttop . '/' . basename($srcdir);
+
+    if(!$dryrun) {
+        # We create new dir instead of renaming existing one to fix the ownership
+        mkpath($dstdir) or die "Can't create output directory $dstdir: $!\n";
+    }
+
+    my $DIR;
+    opendir(DIR, $srcdir) or die "Can't opendir($srcdir): $!\n";
+    while(my $d = readdir(DIR)) {
+        next if $d =~ /^\./;
+        maybe_rename("$srcdir/$d", "$dstdir/$d");
+    }
+    closedir(DIR);
+
+    if(!$dryrun) {
+        rmdir($srcdir) or warn "Can't remove $srcdir: $!";
+    }
+}
+
+#================================================================
+# Move files to the FTS upload dropbox
+sub uploadFiles($$) {
+    (my $srcdir, my $filelist) = @_;
+
+    for my $datafn (@$filelist) {
+        # data_tier.owner.description.configuration.sequencer.file_format
+        my ($tier, $owner, $description, $conf, $seq, $ext, $extra) = split(/\./, $datafn);
+        die "Error parsing content file name $datafn: too many fields\n" if defined $extra;
+        die "Error parsing content file name $datafn: too few fields\n" if not defined $ext;
+
+        my $fileFamilyPrefix = ($owner eq 'mu2e') ? 'phy' : 'usr';
+        die "Unknown data tier \"$tier\" for file $datafn\n" unless defined  $fileFamilySuffixByTier{$tier};
+        my $fileFamily = $fileFamilyPrefix . '-' . $fileFamilySuffixByTier{$tier};
+
+        # the fts area has subdirectories to manage large
+        # numbers of files.  Pick a 2-digit subdir based on file's name
+        my $dig = Digest->new('SHA-256');
+        $dig->add($datafn);
+        my $twodigit = sprintf '%02d', unpack('%32L', $dig->digest) % 100;
+
+        my $dstdir = join('/', ($ftsTopDir, $fileFamily, $twodigit ));
+
+        maybe_rename("$srcdir/$datafn", "$dstdir/$datafn");
+        maybe_rename("$srcdir/$datafn.json", "$dstdir/$datafn.json");
+    }
+
+    if(!$dryrun) {
+        rmdir($srcdir) or warn "Can't remove $srcdir: $!";
+    }
+}
+
+#================================================================
+sub processJobDir($) {
+    my ($jobdir) = @_;
+    print "Processing $jobdir\n" if $verbosity;
+
+    my $failed = 1;
+    my @filesToUpload;
+
+  CHECK: # put all the checks into a fake loop
+    # then use loop control "last" to avoid mutiple nested "if"-s.
+    while(1) {
+
+        my $logFileName = getLogFileName($jobdir);
+        if(!$logFileName) {
+            ++$jobStats{NOLOG};
+            print "\tNo unique log file for $jobdir\n" if $verbosity;
+            last CHECK;
+        }
+
+        my ($manifest_selfhash, $logfilehash, $workerFileSize, $workerFileDigest, $exitok)
+            = processLogFile($logFileName);
+
+        # relevant stats are filled inside processLogFile
+        last CHECK unless defined $exitok;
+
+        if($manifest_selfhash ne $logfilehash) {
+            ++$jobStats{LOGCHECK};
+            print "\tLog file checksum mismatch for $jobdir\n" if $verbosity;
+            last CHECK;
+        }
+
+        if(!$exitok) {
+            ++$jobStats{EXITSTAT};
+            print "\tJob did not run correctly in $jobdir\n" if $verbosity;
+            last CHECK;
+        }
+
+        # Look at the files listed in the manifest:
+        # Make sure each file is paired with its json
+        my $jsonpattern = '\.json$';
+        my @contentFiles = grep { ! /$jsonpattern/ } keys %$workerFileDigest;
+        my @metaFiles = grep {  /$jsonpattern/ } keys %$workerFileDigest;
+        if($#contentFiles != $#metaFiles) {
+            ++$jobStats{METAPAIRED};
+            print "\tNumber of content and json files does not agree for $jobdir\n" if $verbosity;
+            last CHECK;
+        }
+        foreach my $f (@contentFiles) {
+            my $found = grep { m"$f.json" } @metaFiles;
+            if(!$found) {
+                ++$jobStats{METAPAIRED};
+                print "\tNumber of content and json files does not agree for $jobdir\n" if $verbosity;
+                last CHECK;
+            }
+        }
+
+        # Verify integrity of files listed in the manifest:
+        foreach my $fn (keys %$workerFileDigest) {
+            my $st = stat($jobdir.'/'. $fn);
+
+            if(!$st or $st->size != $$workerFileSize{$fn}) {
+                ++$jobStats{DATASIZE};
+                print "\tError stat-ing file $jobdir/$fn\n" if $verbosity;
+                last CHECK;
+            }
+
+            if($opt{'verify-data'}) {
+                if(!verifyDigest($jobdir.'/'.$fn, $$workerFileDigest{$fn})) {
+                    ++$jobStats{DATACHECK};
+                    print "\tDigest mismatch for $jobdir/$fn\n" if $verbosity;
+                    last CHECK;
+                }
+            }
+        }
+
+        # All checks passed
+        $failed = 0;
+        ++$jobStats{GOOD};
+        @filesToUpload = (@contentFiles, basename($logFileName));
+        last CHECK;
+    }
+
+    print "\t", ($failed ? "FAILED" : "OK"), ":\t$jobdir\n" if $verbosity;
+    if($failed) {
+        moveDir($jobdir, $faildir);
+    }
+    else {
+        uploadFiles($jobdir, \@filesToUpload);
+    }
+}
+
+#================================================================
+sub usage() {
+    my $self = basename($0);
+    return <<EOF
+Usage:
+        $self [options] --faildir=/path/dir jobdir1 jobdir2 ...
+
+OR (useful to avoid command line overflows)
+
+        $self [options] --faildir=/path/dir --stdin
+
+The supported options are
+
+    --verify-data       Verify the SHA-256 digest of all files.
+    --dry-run           Analyze jobdirs, but do not move the files.
+    --verbosity=<int>   Verbosity level
+    --help              Print this message.
+
+The "faildir" directory should be on the same filesystem as the
+jobdirs, so that failed job outputs can be moved (not copied) into it.
+EOF
+;
+}
+
+#================================================================
+# Process command line opts.
+GetOptions(\%opt,
+           "faildir=s",
+           "verify-data",
+           "verbosity=i",
+           "dry-run",
+           "stdin",
+           "help",
+           )
+    or die "\nError processing command line options.\n";
+
+if($opt{'help'}) {
+    print usage();
+    exit 0;
+}
+
+die "The --faildir parameter must be provided. Try the --help option.\n"
+    unless defined $faildir;
+
+die "The --stdin switch should not be used when jobdirs are given as command line arguments\n"
+    if ($#ARGV >= 0 and defined $opt{'stdin'});
+
+die "No jobsidr are provided on the command line, and no --stdin switch is given. Nothing to do. Try the --help option.\n"
+    if ($#ARGV < 0 and not defined $opt{'stdin'});
+
+if(defined $opt{'stdin'}) {
+    while(my $dir = <STDIN>) {
+        chomp $dir;
+        processJobDir($dir) if $dir;
+    }
+}
+else {
+    foreach my $dir (@ARGV) {
+        processJobDir($dir);
+    }
+}
+
+print "Summary: ", join(', ', (map { " $_: $jobStats{$_}" } keys %jobStats )), "\n";
+
+exit 0;
+
+#================================================================
