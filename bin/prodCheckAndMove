@@ -18,7 +18,7 @@ use Data::Dumper;
 my $faildir;
 my $verbosity=0;
 my $dryrun=0;
-my %opt = ( faildir=>\$faildir, 'verify-data'=>0, verbosity=>\$verbosity, 'dry-run'=>\$dryrun, help=>0 );
+my %opt = ( faildir=>\$faildir, 'verify-data'=>1, verbosity=>\$verbosity, 'dry-run'=>\$dryrun, help=>0 );
 
 # constant strings used as keys in the jobStats hash
 use constant GOOD => '0good'; # make it sort first in the summary output.  That string is not exposed.
@@ -305,7 +305,7 @@ OR (useful to avoid command line overflows)
 
 The supported options are
 
-    --verify-data       Verify the SHA-256 digest of all files.
+    --noverify-data     Do not compute and check a SHA-256 digest of data files.
     --dry-run           Analyze jobdirs, but do not move the files.
     --verbosity=<int>   Verbosity level
     --help              Print this message.
@@ -320,7 +320,7 @@ EOF
 # Process command line opts.
 GetOptions(\%opt,
            "faildir=s",
-           "verify-data",
+           "verify-data!",
            "verbosity=i",
            "dry-run",
            "stdin",
