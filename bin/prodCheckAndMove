@@ -21,14 +21,26 @@ my $dryrun=0;
 my %opt = ( faildir=>\$faildir, 'verify-data'=>0, verbosity=>\$verbosity, 'dry-run'=>\$dryrun, help=>0 );
 
 # constant strings used as keys in the jobStats hash
-use constant GOOD => 'good';
-use constant NOLOG => 'no unique log file';
-use constant LOGCHECK => 'corrupted log file';
-use constant EXITSTAT => 'exit status';
-use constant DATASIZE => 'data or json file size';
-use constant METAPAIRED => 'a non-paired content or json file';
-use constant DATACHECK => 'corrupted data file';
+use constant GOOD => '0good'; # make it sort first in the summary output.  That string is not exposed.
+# the rest of the strings are used as directory names for failed jobs
+use constant NOLOG => 'nolog';
+use constant LOGCHECK => 'logcheck';
+use constant EXITSTAT => 'exitstat';
+use constant DATASIZE => 'datasize';
+use constant METAPAIRED => 'metapaired';
+use constant DATACHECK => 'datacheck';
 my %jobStats;
+
+# A more readable description for the summary output
+my %errorCodes = (
+    GOOD() => 'Good',
+    NOLOG() => 'no unique log file',
+    LOGCHECK() => 'corrupted log file',
+    EXITSTAT() => 'exit status',
+    DATASIZE() => 'data or json file size',
+    METAPAIRED() => 'a non-paired content or json file',
+    DATACHECK() => 'corrupted data file',
+    );
 
 #----------------
 # See http://mu2e.fnal.gov/atwork/computing/tapeUpload.shtml
@@ -111,7 +123,6 @@ sub processLogFile($) {
                         $workerFileDigest{$filename} = $digest;
                     }
                     else {
-                        ++$jobStats{LOGCHECK};
                         print "\tError parsing manifest line \"$line\" in $logFileName\n" if $verbosity;
                         # returning empty list will mark this job as failed
                         return;
@@ -134,7 +145,6 @@ sub processLogFile($) {
         return ($manifest_selfhash, $loghash->hexdigest, \%workerFileSize, \%workerFileDigest, $exitok);
     }
     else {
-        ++$jobStats{LOGCHECK};
         print "\tError opening log file $logFileName\n" if $verbosity;
     }
 }
@@ -149,26 +159,17 @@ sub maybe_rename($$) {
 }
 
 #================================================================
-sub moveDir($$) {
-    (my $srcdir, my $dsttop) = @_;
-    my $dstdir = $dsttop . '/' . basename($srcdir);
+sub moveFailedJob($$$) {
+    (my $srcdir, my $dsttop, my $reason) = @_;
 
-    if(!$dryrun) {
-        # We create new dir instead of renaming existing one to fix the ownership
-        mkpath($dstdir) or die "Can't create output directory $dstdir: $!\n";
+    ++$jobStats{$reason};
+
+    my $subdir = "$dsttop/$reason";
+    if(!-d $subdir and not $dryrun) {
+        mkdir $subdir or die "Error creating directory $subdir: $!\n";
     }
 
-    my $DIR;
-    opendir(DIR, $srcdir) or die "Can't opendir($srcdir): $!\n";
-    while(my $d = readdir(DIR)) {
-        next if $d =~ /^\./;
-        maybe_rename("$srcdir/$d", "$dstdir/$d");
-    }
-    closedir(DIR);
-
-    if(!$dryrun) {
-        rmdir($srcdir) or warn "Can't remove $srcdir: $!";
-    }
+    maybe_rename($srcdir, $subdir .'/'. basename($srcdir));
 }
 
 #================================================================
@@ -217,26 +218,28 @@ sub processJobDir($) {
 
         my $logFileName = getLogFileName($jobdir);
         if(!$logFileName) {
-            ++$jobStats{NOLOG};
             print "\tNo unique log file for $jobdir\n" if $verbosity;
+            moveFailedJob($jobdir, $faildir, NOLOG());
             last CHECK;
         }
 
         my ($manifest_selfhash, $logfilehash, $workerFileSize, $workerFileDigest, $exitok)
             = processLogFile($logFileName);
 
-        # relevant stats are filled inside processLogFile
-        last CHECK unless defined $exitok;
+        if(not defined $exitok) {
+            moveFailedJob($jobdir, $faildir, LOGCHECK());
+            last CHECK;
+        }
 
         if($manifest_selfhash ne $logfilehash) {
-            ++$jobStats{LOGCHECK};
             print "\tLog file checksum mismatch for $jobdir\n" if $verbosity;
+            moveFailedJob($jobdir, $faildir, LOGCHECK());
             last CHECK;
         }
 
         if(!$exitok) {
-            ++$jobStats{EXITSTAT};
             print "\tJob did not run correctly in $jobdir\n" if $verbosity;
+            moveFailedJob($jobdir, $faildir, EXITSTAT());
             last CHECK;
         }
 
@@ -246,15 +249,15 @@ sub processJobDir($) {
         my @contentFiles = grep { ! /$jsonpattern/ } keys %$workerFileDigest;
         my @metaFiles = grep {  /$jsonpattern/ } keys %$workerFileDigest;
         if($#contentFiles != $#metaFiles) {
-            ++$jobStats{METAPAIRED};
             print "\tNumber of content and json files does not agree for $jobdir\n" if $verbosity;
+            moveFailedJob($jobdir, $faildir, METAPAIRED());
             last CHECK;
         }
         foreach my $f (@contentFiles) {
             my $found = grep { m"$f.json" } @metaFiles;
             if(!$found) {
-                ++$jobStats{METAPAIRED};
                 print "\tNumber of content and json files does not agree for $jobdir\n" if $verbosity;
+                moveFailedJob($jobdir, $faildir, METAPAIRED());
                 last CHECK;
             }
         }
@@ -264,15 +267,15 @@ sub processJobDir($) {
             my $st = stat($jobdir.'/'. $fn);
 
             if(!$st or $st->size != $$workerFileSize{$fn}) {
-                ++$jobStats{DATASIZE};
                 print "\tError stat-ing file $jobdir/$fn\n" if $verbosity;
+                moveFailedJob($jobdir, $faildir, DATASIZE());
                 last CHECK;
             }
 
             if($opt{'verify-data'}) {
                 if(!verifyDigest($jobdir.'/'.$fn, $$workerFileDigest{$fn})) {
-                    ++$jobStats{DATACHECK};
                     print "\tDigest mismatch for $jobdir/$fn\n" if $verbosity;
+                    moveFailedJob($jobdir, $faildir, DATACHECK());
                     last CHECK;
                 }
             }
@@ -280,18 +283,13 @@ sub processJobDir($) {
 
         # All checks passed
         $failed = 0;
-        ++$jobStats{GOOD};
+        ++$jobStats{GOOD()};
         @filesToUpload = (@contentFiles, basename($logFileName));
+        uploadFiles($jobdir, \@filesToUpload);
         last CHECK;
     }
 
     print "\t", ($failed ? "FAILED" : "OK"), ":\t$jobdir\n" if $verbosity;
-    if($failed) {
-        moveDir($jobdir, $faildir);
-    }
-    else {
-        uploadFiles($jobdir, \@filesToUpload);
-    }
 }
 
 #================================================================
@@ -356,7 +354,7 @@ else {
     }
 }
 
-print "Summary: ", join(', ', (map { " $_: $jobStats{$_}" } keys %jobStats )), "\n";
+print "Summary: ", join(', ', (map { " $errorCodes{$_}: $jobStats{$_}" } sort keys %jobStats )), "\n";
 
 exit 0;
 
