@@ -166,7 +166,8 @@ sub moveFailedJob($$$) {
 
     my $subdir = "$dsttop/$reason";
     if(!-d $subdir and not $dryrun) {
-        mkdir $subdir or die "Error creating directory $subdir: $!\n";
+        File::Path::make_path($subdir)
+            or die "Error creating directory $subdir: $!\n";
     }
 
     maybe_rename($srcdir, $subdir .'/'. basename($srcdir));
