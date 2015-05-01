@@ -231,7 +231,7 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
 
     # Transfer the results.  There were cases when jobs failed after
     # creating the outstage directory, and were automatically restarted by
-    # condor.  I also observed cased when more than one instance of the
+    # condor.  I also observed cases when more than one instance of the
     # same job, duplicated by some glitches in the grid system, completed
     # and transferred files back.  To prevent data corruption we write to
     # a unique tmp dir, than rename it to the final name.
