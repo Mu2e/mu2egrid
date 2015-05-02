@@ -213,7 +213,7 @@ sub validate_file_list($) {
     if(open(my $fh, $fn)) {
         while(my $line = <$fh>) {
             ++$numlines;
-            chop($line);
+            chomp($line);
             die "Error: not an absolute file name: \"$line\" in file $fn\n" unless $line =~ m{^/};
             die "Error: line contains white spaces or other non-printable characters: \"$line\" in file $fn\n" unless $line =~ /^\p{IsGraph}+$/
         }
