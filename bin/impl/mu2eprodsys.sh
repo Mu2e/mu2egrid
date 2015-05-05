@@ -84,7 +84,7 @@ mu2eprodsys_payload() {
 
     sed -e "s/MU2EGRIDDSOWNER/$MU2EGRID_DSOWNER/g" -e "s/MU2EGRIDDSCONF/$MU2EGRID_DSCONF/g" $localFCL > $localFCL.tmp
 
-    mv $localFCL.tmp $localFCL
+    mv -f $localFCL.tmp $localFCL
     # include the edited copy of the fcl into the log?
 
     # FIXME: pre-stage input data files - not needed for stage 1
@@ -214,8 +214,10 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
 
         # set current user and version info to obtain the name of this job
         jobname=$(basename $origFCL .fcl | awk -F . '{OFS="."; $2="'${MU2EGRID_DSOWNER:?"Error: MU2EGRID_DSOWNER is not set"}'"; $4="'${MU2EGRID_DSCONF}'"; print $0;}')
-        mv $logFileName "${jobname}.log"
-        export logFileName="${jobname}.log"
+        newLogFileName=$(echo $jobname|awk -F . '{OFS="."; $1="log"; print $0;}').log
+        mv "$logFileName" "$newLogFileName"
+        export logFileName=$newLogFileName
+        echo "Updated jobname = $jobname   logFileName = $logFileName"
 
         export localFCL="./$jobname.fcl"
 
