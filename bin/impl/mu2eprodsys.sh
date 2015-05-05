@@ -140,10 +140,6 @@ mu2eprodsys_payload() {
             rm tmpspec
         done
 
-        echo "#================================================================" >> $localFCL
-        echo "# code added by mu2eprodys" >> $localFCL
-        cat localFileDefs >> $localFCL
-
         echo "$(date) # Starting to pre-stage input files"
         type ifdh
         tstart=$(date +%s)
@@ -151,7 +147,13 @@ mu2eprodsys_payload() {
         t2=$(date +%s)
         echo "$(date) # Total stage-in time: $((t2-tstart)) seconds, status $ret"
 
-        #================================================================
+        echo "#----------------------------------------------------------------" >> $localFCL
+        echo "# code added by mu2eprodys" >> $localFCL
+
+        # set input file names
+
+        cat localFileDefs >> $localFCL
+
         # set output file names
 
         for key in $(fhicl-getpar --strlist mu2emetadata.fcl.outkeys $localFCL ); do
@@ -160,7 +162,16 @@ mu2eprodsys_payload() {
             echo "$key : \"$newname\"" >> $localFCL
         done
 
-        # include the edited copy of the fcl into the log?
+        echo "# end code added by mu2eprodys" >> $localFCL
+        echo "#----------------------------------------------------------------" >> $localFCL
+
+        #================================================================
+        # include the edited copy of the fcl into the log
+        echo "################################################################"
+        echo "# The content of the final fcl file begin"
+        cat $localFCL
+        echo "# The content of the final fcl file end"
+        echo "################################################################"
 
         #================================================================
         # Run the job
