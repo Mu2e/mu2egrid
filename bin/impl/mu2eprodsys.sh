@@ -82,16 +82,12 @@ mu2eprodsys_payload() {
     echo "Copying in $origFCL"
     ifdh cp $origFCL $localFCL
 
-    sed -e "s/MU2EGRIDDSOWNER/$MU2EGRID_DSOWNER/g" -e "s/MU2EGRIDDSCONF/$MU2EGRID_DSCONF/g" $localFCL > $localFCL.tmp
-
-    mv -f $localFCL.tmp $localFCL
-    # include the edited copy of the fcl into the log?
-
-    # FIXME: pre-stage input data files - not needed for stage 1
+    #================================================================
 
     if source "${MU2EGRID_USERSETUP:?Error: MU2EGRID_USERSETUP: not defined}"; then
 
         setup mu2ebintools -q "${MU2E_UPS_QUALIFIERS}"
+        setup sam_web_client
 
         echo "#================================================================"
         echo "After package setup, the environment is:"
@@ -114,6 +110,55 @@ mu2eprodsys_payload() {
             if $mu2etime true > /dev/null 2>&1; then timecmd=$mu2etime; fi
         fi
 
+        #================================================================
+        # Pre-stage input data files, and write their SAM names
+        # to the "parents" file for later use
+
+        mkdir mu2egridInDir
+        for key in $(fhicl-getpar --strlist mu2emetadata.fcl.inkeys $localFCL ); do
+            echo "Processing input fcl key $key"
+
+            for rfn in $(fhicl-getpar --strlist $key $localFCL ); do
+                # copy it to mu2egridInDir
+                bn="$(basename $rfn)"
+                lfn="mu2egridInDir/$bn"
+
+                # leave alone absolute path names, but expand SAM file names for ifdh
+                if [[ $rfn != '/'* ]]; then
+                    rfn="$(samweb get-file-access-url $rfn)"
+                fi
+
+                echo $rfn $lfn >> tmpspec
+                echo $bn >> parents
+            done
+
+            echo "$key : [" >> localFileDefs
+            awk 'BEGIN{first=1}; {if(!first) {cm=",";} else {first=0; cm=" ";}; print "    "cm"\""$2"\""}' tmpspec >> localFileDefs
+            echo "]" >> localFileDefs
+
+            cat tmpspec >> prestage_spec
+            rm tmpspec
+        done
+
+        echo "#================================================================" >> $localFCL
+        echo "# code added by mu2eprodys" >> $localFCL
+        cat localFileDefs >> $localFCL
+
+        echo "$(date) # Starting to pre-stage input files"
+        type ifdh
+        tstart=$(date +%s)
+        ifdh cp -f prestage_spec
+        t2=$(date +%s)
+        echo "$(date) # Total stage-in time: $((t2-tstart)) seconds, status $ret"
+
+        #================================================================
+        # set output file names
+        sed -e "s/MU2EGRIDDSOWNER/$MU2EGRID_DSOWNER/g" -e "s/MU2EGRIDDSCONF/$MU2EGRID_DSCONF/g" $localFCL > $localFCL.tmp
+
+        mv -f $localFCL.tmp $localFCL
+        # include the edited copy of the fcl into the log?
+
+        #================================================================
         # Run the job
         echo "Running the command: $timecmd mu2e -c $localFCL"
         $timecmd mu2e -c $localFCL
@@ -128,8 +173,7 @@ mu2eprodsys_payload() {
             *)     ffprefix=usr ;;
         esac
 
-        # FIXME: add  all parents using the pre-stage information
-        echo $(basename $origFCL) > parents
+        echo $(basename $origFCL) >> parents
 
         shopt -u failglob
         shopt -s nullglob
@@ -217,7 +261,6 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
         newLogFileName=$(echo $jobname|awk -F . '{OFS="."; $1="log"; print $0;}').log
         mv "$logFileName" "$newLogFileName"
         export logFileName=$newLogFileName
-        echo "Updated jobname = $jobname   logFileName = $logFileName"
 
         export localFCL="./$jobname.fcl"
 
@@ -228,7 +271,6 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
         ret=$?
 
         outfiles=( $logFileName *.art *.root *.json )
-
     fi
 
     # Transfer the results.  There were cases when jobs failed after
