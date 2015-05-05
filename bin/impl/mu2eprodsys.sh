@@ -115,8 +115,8 @@ mu2eprodsys_payload() {
         # to the "parents" file for later use
 
         mkdir mu2egridInDir
-        for key in $(fhicl-getpar --strlist mu2emetadata.fcl.inkeys $localFCL ); do
-            echo "Processing input fcl key $key"
+        touch localFileDefs
+        for key in $(fhicl-getpar --strlist mu2emetadata.fcl.inkeys $localFCL); do
 
             for rfn in $(fhicl-getpar --strlist $key $localFCL ); do
                 # copy it to mu2egridInDir
@@ -153,9 +153,13 @@ mu2eprodsys_payload() {
 
         #================================================================
         # set output file names
-        sed -e "s/MU2EGRIDDSOWNER/$MU2EGRID_DSOWNER/g" -e "s/MU2EGRIDDSCONF/$MU2EGRID_DSCONF/g" $localFCL > $localFCL.tmp
 
-        mv -f $localFCL.tmp $localFCL
+        for key in $(fhicl-getpar --strlist mu2emetadata.fcl.outkeys $localFCL ); do
+            oldname=$(fhicl-getpar --string $key $localFCL)
+            newname=$(echo $oldname| awk -F . '{OFS="."; $2="'${MU2EGRID_DSOWNER:?"Error: MU2EGRID_DSOWNER is not set"}'"; $4="'${MU2EGRID_DSCONF}'"; print $0;}')
+            echo "$key : \"$newname\"" >> $localFCL
+        done
+
         # include the edited copy of the fcl into the log?
 
         #================================================================
