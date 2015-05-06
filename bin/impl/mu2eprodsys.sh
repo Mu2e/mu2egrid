@@ -140,19 +140,20 @@ mu2eprodsys_payload() {
             rm tmpspec
         done
 
-        echo "$(date) # Starting to pre-stage input files"
-        type ifdh
-        tstart=$(date +%s)
-        ifdh cp -f prestage_spec
-        t2=$(date +%s)
-        echo "$(date) # Total stage-in time: $((t2-tstart)) seconds, status $ret"
+        if [[ -e prestage_spec ]]; then
+            echo "$(date) # Starting to pre-stage input files"
+            type ifdh
+            tstart=$(date +%s)
+            ifdh cp -f prestage_spec
+            t2=$(date +%s)
+            echo "$(date) # Total stage-in time: $((t2-tstart)) seconds, status $ret"
 
-        echo "#----------------------------------------------------------------" >> $localFCL
-        echo "# code added by mu2eprodys" >> $localFCL
+            echo "#----------------------------------------------------------------" >> $localFCL
+            echo "# code added by mu2eprodys" >> $localFCL
 
-        # set input file names
-
-        cat localFileDefs >> $localFCL
+            # set input file names
+            cat localFileDefs >> $localFCL
+        fi
 
         # set output file names
 
