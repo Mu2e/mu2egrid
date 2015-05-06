@@ -50,6 +50,7 @@ my %errorCodes = (
 my %fileFamilySuffixByTier =
     (
      cnf => 'etc',
+     log => 'etc',
      sim => 'sim',
      mix => 'sim',
      dig => 'sim',
