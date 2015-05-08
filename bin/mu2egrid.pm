@@ -35,7 +35,7 @@ sub default_ifdh_helper() {
     my $ver;
     # The same env var is used by the jobsub wrapper.
     $ver = $ENV{'IFDH_VERSION'} if(defined($ENV{'IFDH_VERSION'}));
-    $ver = 'v1_8_2' unless defined($ver);
+    $ver = '' unless defined($ver);
     return ('ifdh-version' => $ver);
 }
 
@@ -136,7 +136,7 @@ sub commonOptDoc2 {
 
     --ifdh-version=<version> exports the requested IFDH_VERSION to the
       worker node.  It is used by both jobsub wrapper scripts and
-      mu2egrid.  The default is $default_ifdh_version.
+      mu2egrid.  The default is '$default_ifdh_version'.
 
     - Outstage should be one of the following registered locations:
            $formattedOutstage
