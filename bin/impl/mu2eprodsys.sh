@@ -242,6 +242,9 @@ export mu2eprodsys_payload
 #================================================================
 # Execution starts here
 
+# Print this into the condor .out file; unlike the printinfo() output that goes into mu2e logs.
+echo "Starting on host $(hostname) on $(date) -- $(date +%s) seconds since epoch"
+
 umask 002
 
 # TMPDIR is defined and created by Condor.
