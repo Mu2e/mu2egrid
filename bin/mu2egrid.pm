@@ -66,7 +66,7 @@ our %commonOptDefaults = (
                           'jobsub-server' => 'https://fifebatch.fnal.gov:8443',
                           'disk' => '30000', # MB
                           'memory' => '2048', # MB
-                          'OS' => 'SL5,SL6',
+                          'OS' => 'SL6',
                           'mu2e-setup' => '/cvmfs/mu2e.opensciencegrid.org/setupmu2e-art.sh',
                           default_ifdh_helper(),
                           'resource-provides' => 'usage_model=OPPORTUNISTIC,DEDICATED',
