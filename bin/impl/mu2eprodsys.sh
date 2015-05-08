@@ -336,6 +336,9 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
 
 else
     echo "Error sourcing setup script ${MU2EGRID_MU2ESETUP}: status code $?"
+    delay=$((30*60))
+    echo "Sleeping for $delay seconds"
+    sleep $delay
 fi
 
 exit $ret
