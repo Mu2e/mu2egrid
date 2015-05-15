@@ -101,20 +101,23 @@ mu2eprodsys_payload() {
         /usr/bin/printenv
         echo "#================================================================"
 
+        # The version of GNU time in SLF6 (/usr/bin/time) does not
+        # properly report when the supervised process is terminated by
+        # a signal.  We use a patched version instead.
+
+        # FIXME: package mu2e_time as a UPS product.
+        #
+        # There is a copy of GNU time on CVMFS, but not as a UPS
+        # package.  We'd need to re-implement a part of UPS to
+        # select the correct binary to run on the current node.
+        # Instead just try to run the SL6 version and use it if
+        # successful.
+
         timecmd=time  # shell builtin is the fallback option
-        if [ -x /usr/bin/time ]; then
-            # our first choice: GNU time provided by the system
-            timecmd=/usr/bin/time
-        else
-            # FIXME: package time as a UPS product.
-            #
-            # There is a copy of GNU time on CVMFS, but not as a UPS
-            # package.  We'd need to re-implement a part of UPS to
-            # select the correct binary to run on the current node.
-            # Instead just try to run the SL6 version and use it if
-            # successful.
-            mu2etime=/cvmfs/mu2e.opensciencegrid.org/bin/SLF6/time
-            if $mu2etime true > /dev/null 2>&1; then timecmd=$mu2etime; fi
+
+        mu2etime=/cvmfs/mu2e.opensciencegrid.org/bin/SLF6/mu2e_time
+        if $mu2etime true > /dev/null 2>&1; then
+            timecmd=$mu2etime;
         fi
 
         #================================================================
