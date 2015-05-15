@@ -304,6 +304,8 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
 
             ret=$?
 
+            shopt -u failglob
+            shopt -s nullglob
             outfiles=( $logFileName *.art *.root *.json )
         fi
 
