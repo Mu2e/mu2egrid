@@ -277,6 +277,16 @@ sub processJobDir($) {
             last CHECK;
         }
 
+        # make sure the .log.json file is there.
+        # this is the only check we can do on that file, because it is not
+        # listed in the manifest
+        my $logJsonFileName = $logFileName . ".json";
+        if(not -s $logJsonFileName) {
+            print "\tNo valid .log.json file in $jobdir\n" if $verbosity;
+            moveFailedJob($jobdir, $faildir, DATASIZE());
+            last CHECK;
+        }
+
         my ($manifest_selfhash, $logfilehash, $workerFileSize, $workerFileDigest, $payload_started, $payload_ok)
             = processLogFile($logFileName);
 
