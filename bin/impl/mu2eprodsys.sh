@@ -7,13 +7,14 @@
 # Andrei Gaponenko, 2014, 2015
 #
 
+error_delay=$((30*60))
+
 #================================================================
 printinfo() {
-    echo Starting on host `uname -a` on `date`
+    echo ${1:-Starting} on host `uname -a` on `date`
     echo running as user `id`
     echo "current work dir is $(/bin/pwd)"
     echo OS version `cat /etc/redhat-release`
-    echo "job arguments: $@"
     echo "#================================================================"
     echo "Visible disk space:"
     df -P
@@ -22,6 +23,9 @@ printinfo() {
     ls -alR "$TMPDIR"
     echo "TMPDIR: df -h"
     df -h "$TMPDIR"
+    echo "#================================================================"
+    echo "cat /proc/cpuinfo"
+    cat /proc/cpuinfo
 }
 #================================================================
 # Extract the name of the fcl file to work on from the file list
@@ -74,8 +78,11 @@ ifdh_mkdir_p() {
 mu2eprodsys_payload() {
 
     mu2epseh() {
-        echo "Error from $BASH_COMMAND: exit code $?"
-        exit $?
+        ret=$?
+        echo "Error from $BASH_COMMAND: exit code $ret"
+        echo "Sleeping for $error_delay seconds"
+        sleep $error_delay
+        exit $ret
     }
     trap mu2epseh ERR
 
@@ -90,7 +97,7 @@ mu2eprodsys_payload() {
         setup sam_web_client
 
         echo "#================================================================"
-        echo "After package setup, the environment is:"
+        echo "# After package setup, the environment is:"
         /usr/bin/printenv
         echo "#================================================================"
 
@@ -235,6 +242,9 @@ mu2eprodsys_payload() {
 
     else
         echo "Error sourcing setup script ${MU2EGRID_USERSETUP}: status code $?"
+        echo "Sleeping for $error_delay seconds"
+        sleep $error_delay
+        exit 21
     fi
 }
 export mu2eprodsys_payload
@@ -268,77 +278,105 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
 
     setup ifdhc $IFDH_VERSION
 
-    printinfo >> $logFileName 2>&1
+    if type ifdh 2> /dev/null; then
 
-    masterlist="$CONDOR_DIR_INPUT/${MU2EGRID_INPUTLIST:?MU2EGRID_INPUTLIST environment variable is not set}";
-    export origFCL=$(getFCLFileName $masterlist ${PROCESS:?PROCESS environment variable is not set}) 2>> $logFileName
+        printinfo >> $logFileName 2>&1
 
-    if [ -n "$origFCL" ]; then
+        masterlist="$CONDOR_DIR_INPUT/${MU2EGRID_INPUTLIST:?MU2EGRID_INPUTLIST environment variable is not set}";
+        export origFCL=$(getFCLFileName $masterlist ${PROCESS:?PROCESS environment variable is not set}) 2>> $logFileName
+
+        if [ -n "$origFCL" ]; then
 
         # set current user and version info to obtain the name of this job
-        jobname=$(basename $origFCL .fcl | awk -F . '{OFS="."; $2="'${MU2EGRID_DSOWNER:?"Error: MU2EGRID_DSOWNER is not set"}'"; $4="'${MU2EGRID_DSCONF}'"; print $0;}')
-        newLogFileName=$(echo $jobname|awk -F . '{OFS="."; $1="log"; print $0;}').log
-        mv "$logFileName" "$newLogFileName"
-        export logFileName=$newLogFileName
+            jobname=$(basename $origFCL .fcl | awk -F . '{OFS="."; $2="'${MU2EGRID_DSOWNER:?"Error: MU2EGRID_DSOWNER is not set"}'"; $4="'${MU2EGRID_DSCONF}'"; print $0;}')
+            newLogFileName=$(echo $jobname|awk -F . '{OFS="."; $1="log"; print $0;}').log
+            mv "$logFileName" "$newLogFileName"
+            export logFileName=$newLogFileName
 
-        export localFCL="./$jobname.fcl"
+            export localFCL="./$jobname.fcl"
 
-        finalOutDir="/pnfs/mu2e/scratch/outstage/${MU2EGRID_SUBMITTER:?Error: MU2EGRID_SUBMITTER is not set}/$cluster/$jobname"
+            finalOutDir="/pnfs/mu2e/scratch/outstage/${MU2EGRID_SUBMITTER:?Error: MU2EGRID_SUBMITTER is not set}/$cluster/$jobname"
 
-        ( mu2eprodsys_payload ) 3>&1 4>&2 1>> $logFileName 2>&1
+            ( mu2eprodsys_payload ) 3>&1 4>&2 1>> $logFileName 2>&1
 
-        ret=$?
+            ret=$?
 
-        outfiles=( $logFileName *.art *.root *.json )
-    fi
+            outfiles=( $logFileName *.art *.root *.json )
+        fi
 
-    # Transfer the results.  There were cases when jobs failed after
-    # creating the outstage directory, and were automatically restarted by
-    # condor.  I also observed cases when more than one instance of the
-    # same job, duplicated by some glitches in the grid system, completed
-    # and transferred files back.  To prevent data corruption we write to
-    # a unique tmp dir, than rename it to the final name.
+        # Transfer the results.  There were cases when jobs failed after
+        # creating the outstage directory, and were automatically restarted by
+        # condor.  I also observed cases when more than one instance of the
+        # same job, duplicated by some glitches in the grid system, completed
+        # and transferred files back.  To prevent data corruption we write to
+        # a unique tmp dir, than rename it to the final name.
 
-    # Create the "cluster level" output directory.
-    ifdh_mkdir_p "$(dirname ${finalOutDir})" --force=expftp
+        # Create the "cluster level" output directory.
+        ifdh_mkdir_p "$(dirname ${finalOutDir})" --force=expftp
 
-    # There is no "mktemp" in ifdh.  Imitate it by hand
-    tmpOutDir=''
-    numTries=0
-    while [ $((numTries+=1)) -le 5 ]; do
-        tmpOutDir="${finalOutDir}.$(od -A n -N 4 -t x4 /dev/urandom|sed -e 's/ //g')"
-
-        if ifdh mkdir "$tmpOutDir" --force=expftp ; then break; fi
-
-        echo "Attemtp to make tmpOutDir = $tmpOutDir failed"
+        # There is no "mktemp" in ifdh.  Imitate it by hand
         tmpOutDir=''
-    done
+        numTries=0
+        while [ $((numTries+=1)) -le 5 ]; do
+            tmpOutDir="${finalOutDir}.$(od -A n -N 4 -t x4 /dev/urandom|sed -e 's/ //g')"
 
-    if [ x"$tmpOutDir" != x ]; then
+            if ifdh mkdir "$tmpOutDir" --force=expftp ; then break; fi
 
-        ifdh chmod 0755 "${tmpOutDir}" --force=expftp
-
-        t1=$(date +%s)
-
-        ifdh cp --force=expftp -D "${outfiles[@]}" "${tmpOutDir}"  || ret=2
-        ifdh rename "${tmpOutDir}" "${finalOutDir}" --force=expftp
-
-        t2=$(date +%s)
-        echo "$(date) # Total outstage lock and copy time: $((t2-t1)) seconds"
-
-        for i in "${outfiles[@]}"; do
-            ifdh pin $f $((3600*24*7)) #  pin for a week
+            echo "Attemtp to make tmpOutDir = $tmpOutDir failed"
+            tmpOutDir=''
         done
 
-        t3=$(date +%s)
-        echo "$(date) # Total outstage pin time: $((t3-t2)) seconds"
-    fi
+        if [ x"$tmpOutDir" != x ]; then
 
+            ifdh chmod 0755 "${tmpOutDir}" --force=expftp
+
+            t1=$(date +%s)
+
+            ifdh cp --force=expftp -D "${outfiles[@]}" "${tmpOutDir}"
+            ifdhret=$?
+            if [[ ( $ret -eq 0 ) && ( $ifdhret -ne 0 ) ]]; then
+                echo "ifdh cp failed: exit code $ifdhret" >&2
+                ret=23
+            fi
+
+            ifdh rename "${tmpOutDir}" "${finalOutDir}" --force=expftp
+
+            t2=$(date +%s)
+            echo "$(date) # Total outstage lock and copy time: $((t2-t1)) seconds"
+
+            for i in "${outfiles[@]}"; do
+                ifdh pin $f $((3600*24*7)) #  pin for a week
+            done
+
+            t3=$(date +%s)
+            echo "$(date) # Total outstage pin time: $((t3-t2)) seconds"
+        fi
+
+    else
+        savederr=$?
+        exec 1>&2
+        printinfo "Error report"
+        echo "#================================================================"
+        echo "# The environment is:"
+        /usr/bin/printenv
+        echo "#================================================================"
+        echo "Error when setting up ifdh: exit code $savederr"
+        echo "Sleeping for $error_delay seconds"
+        sleep $error_delay
+        ret=19
+    fi
 else
-    echo "Error sourcing setup script ${MU2EGRID_MU2ESETUP}: status code $?"
-    delay=$((30*60))
-    echo "Sleeping for $delay seconds"
-    sleep $delay
+    savederr=$?
+    exec 1>&2
+    printinfo "Error report"
+    echo "#================================================================"
+    echo "# The environment is:"
+    /usr/bin/printenv
+    echo "#================================================================"
+    echo "Error sourcing setup script ${MU2EGRID_MU2ESETUP}: status code $savederr"
+    echo "Sleeping for $error_delay seconds"
+    sleep $error_delay
+    ret=18
 fi
 
 exit $ret
