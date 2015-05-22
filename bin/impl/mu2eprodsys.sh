@@ -269,11 +269,12 @@ test -x $CVMFSHACK && $CVMFSHACK /cvmfs/mu2e.opensciencegrid.org
 
 ret=1
 cluster=$(printf %06d ${CLUSTER:-0})
+clustername="$cluster${MU2EGRID_CLUSTERNAME:+.$MU2EGRID_CLUSTERNAME}"
 
 jobname=failedjob
 export logFileName="${jobname}.log"
 declare -a outfiles=( $logFileName )
-finalOutDir="/pnfs/mu2e/scratch/outstage/${MU2EGRID_SUBMITTER:?Error: MU2EGRID_SUBMITTER is not set}/$cluster/$jobname.${PROCESS}"
+finalOutDir="/pnfs/mu2e/scratch/outstage/${MU2EGRID_SUBMITTER:?Error: MU2EGRID_SUBMITTER is not set}/$clustername/$jobname.${PROCESS}"
 
 #================================================================
 # Set up Mu2e environment and make ifdh available
@@ -298,7 +299,7 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
 
             export localFCL="./$jobname.fcl"
 
-            finalOutDir="/pnfs/mu2e/scratch/outstage/${MU2EGRID_SUBMITTER:?Error: MU2EGRID_SUBMITTER is not set}/$cluster/$jobname"
+            finalOutDir="/pnfs/mu2e/scratch/outstage/${MU2EGRID_SUBMITTER:?Error: MU2EGRID_SUBMITTER is not set}/$clustername/$jobname"
 
             ( mu2eprodsys_payload ) 3>&1 4>&2 1>> $logFileName 2>&1
 

@@ -26,20 +26,27 @@ Usage:
         --fcllist=<fcl-file-list> \\
         --dsconf=<output-dataset-version-string> \\
         [--dsowner=<name>] \\
+        [--clustername=<name>] \\
 EOF
         . mu2egrid::commonOptDoc1(%features) . <<EOF
 
         - The --setup argument must point to the setup.sh script in a user
         Offline area.
 
-        - The set of fcl files specified via --fcllist will be processed
-        by Mu2e Offline, one fcl file per job.
+        - The set of fcl files specified via --fcllist will be
+        processed by Mu2e Offline, one fcl file per job.  The file
+        must remain intact until all the jobs are done.
 
         - The configuration field in the names of output files should be
         specified via --dsconf.
 
         - The --dsowner option specifies the username field in the names
         of output files.  The default is the username of the submitter.
+
+        - The --clustername option can be used to alter the name of
+        the cluster level outstage directory.  For example, with
+        --clustername=foo the outstage directory will be named like
+        1884300.foo (where 1884300 is the condor cluster number)
 
 EOF
 . mu2egrid::commonOptDoc2(%features)
@@ -67,6 +74,7 @@ GetOptions(\%opt,
     'fcllist=s',
     'dsconf=s',
     'dsowner=s',
+    'clustername=s',
     grep {!/prestage-spec/} @mu2egrid::commonOptList)
     or die "\nError processing command line options.\n";
 
@@ -100,6 +108,7 @@ $ENV{'MU2EGRID_OUTSTAGE'} = $outstage;
 
 $ENV{'MU2EGRID_SUBMITTER'} = $whoami;
 $ENV{'MU2EGRID_DSOWNER'} = $opt{'dsowner'};
+$ENV{'MU2EGRID_CLUSTERNAME'} = $opt{'clustername'};
 
 $ENV{'MU2EGRID_DSCONF'} = $opt{'dsconf'};
 
