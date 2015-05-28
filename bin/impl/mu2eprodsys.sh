@@ -126,9 +126,12 @@ mu2eprodsys_payload() {
 
         mkdir mu2egridInDir
         touch localFileDefs
-        for key in $(fhicl-getpar --strlist mu2emetadata.fcl.inkeys $localFCL); do
+        # invoke fhicl-getpar as a separate command outside of for...done so that errors are trapped
+        keys=( $(fhicl-getpar --strlist mu2emetadata.fcl.inkeys $localFCL) )
+        for key in "${keys[@]}"; do
 
-            for rfn in $(fhicl-getpar --strlist $key $localFCL ); do
+            rfns=( $(fhicl-getpar --strlist $key $localFCL ) )
+            for rfn in "${rfns[@]}"; do
                 # copy it to mu2egridInDir
                 bn="$(basename $rfn)"
                 lfn="mu2egridInDir/$bn"
@@ -167,7 +170,8 @@ mu2eprodsys_payload() {
 
         # set output file names
 
-        for key in $(fhicl-getpar --strlist mu2emetadata.fcl.outkeys $localFCL ); do
+        keys=( $(fhicl-getpar --strlist mu2emetadata.fcl.outkeys $localFCL ) )
+        for key in "${keys[@]}"; do
             oldname=$(fhicl-getpar --string $key $localFCL)
             newname=$(echo $oldname| awk -F . '{OFS="."; $2="'${MU2EGRID_DSOWNER:?"Error: MU2EGRID_DSOWNER is not set"}'"; $4="'${MU2EGRID_DSCONF}'"; print $0;}')
             echo "$key : \"$newname\"" >> $localFCL
@@ -204,13 +208,17 @@ mu2eprodsys_payload() {
         shopt -u failglob
         shopt -s nullglob
 
+        generator_type=$(fhicl-getpar --string mu2emetadata.mc.generator_type $localFCL)
+        simulation_stage=$(fhicl-getpar --int    mu2emetadata.mc.simulation_stage $localFCL)
+        primary_particle=$(fhicl-getpar --string mu2emetadata.mc.primary_particle $localFCL)
+
         for i in *.art; do
             ${MU2E_BASE_RELEASE}/Tools/DH/jsonMaker.py \
                 -f ${ffprefix}-sim \
                 -a parents \
-                -i mc.generator_type=$(fhicl-getpar --string mu2emetadata.mc.generator_type $localFCL) \
-                -i mc.simulation_stage=$(fhicl-getpar --int    mu2emetadata.mc.simulation_stage $localFCL) \
-                -i mc.primary_particle=$(fhicl-getpar --string mu2emetadata.mc.primary_particle $localFCL) \
+                -i mc.generator_type=$generator_type \
+                -i mc.simulation_stage=$simulation_stage \
+                -i mc.primary_particle=$primary_particle \
                 -x \
                 $i
         done
@@ -219,9 +227,9 @@ mu2eprodsys_payload() {
             ${MU2E_BASE_RELEASE}/Tools/DH/jsonMaker.py \
                 -f ${ffprefix}-nts \
                 -a parents \
-                -i mc.generator_type=$(fhicl-getpar --string mu2emetadata.mc.generator_type $localFCL) \
-                -i mc.simulation_stage=$(fhicl-getpar --int    mu2emetadata.mc.simulation_stage $localFCL) \
-                -i mc.primary_particle=$(fhicl-getpar --string mu2emetadata.mc.primary_particle $localFCL) \
+                -i mc.generator_type=$generator_type \
+                -i mc.simulation_stage=$simulation_stage \
+                -i mc.primary_particle=$primary_particle \
                 -x \
                 $i
         done
@@ -236,9 +244,9 @@ mu2eprodsys_payload() {
             ${MU2E_BASE_RELEASE}/Tools/DH/jsonMaker.py \
                 -f ${ffprefix}-etc \
                 -a parents \
-                -i mc.generator_type=$(fhicl-getpar --string mu2emetadata.mc.generator_type $localFCL) \
-                -i mc.simulation_stage=$(fhicl-getpar --int    mu2emetadata.mc.simulation_stage $localFCL) \
-                -i mc.primary_particle=$(fhicl-getpar --string mu2emetadata.mc.primary_particle $localFCL) \
+                -i mc.generator_type=$generator_type \
+                -i mc.simulation_stage=$simulation_stage \
+                -i mc.primary_particle=$primary_particle \
                 -x \
                 $i >&3 2>&4
         done
