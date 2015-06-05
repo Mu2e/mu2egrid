@@ -6,17 +6,19 @@
 #
 use strict;
 use Getopt::Long;
+use File::Basename;
 
 #================================================================
 sub usage() {
+    my $self = basename($0);
     return <<EOF
 Usage:
 
-        condor_clusters [--brief] [--user=username]
+        $self [--brief] [--user=username]
 
 will display a list of all active condor clusters for the user and job
 count in each cluster.  If the '--brief' options is given, just cluster
-numbers are printed.
+IDs are printed.
 
 EOF
 ;
@@ -84,7 +86,7 @@ else {
 
     foreach my $cn (sort(keys %$clusters)) {
         if($brief) {
-            print "$cn\n";
+            print "$cn\@$$clusters{$cn}[2]\n";
         }
         else {
             print "$cn.0\@$$clusters{$cn}[2]\t\t$$clusters{$cn}[0]\t$$clusters{$cn}[1]\n";
