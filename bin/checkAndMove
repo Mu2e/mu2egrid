@@ -123,7 +123,11 @@ sub classifyJobs($$) {
             $$stats{'decision'} = FAILED;
             ++$$summary{FAILED};
         }
-        elsif($jobdir =~ m|/[^/]+\.|) { # old instance of a job restarted by condor
+        elsif(basename($jobdir) !~ /\d+/) {
+            # Jobs write to a NNNNN.randomstring directories, then
+            # rename outputs to NNNNN.  If there is an existing NNNNN
+            # directory the rename will fail, but that means that
+            # we've got successfully renamed copy of the same job.
             $$stats{'decision'} = RERUN;
             ++$$summary{RERUN};
         }
