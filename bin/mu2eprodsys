@@ -14,7 +14,7 @@ use Data::Dumper; # for debugging
 use lib dirname($0);
 use mu2egrid;
 
-my $prodsysDefaultOutstage = '/pnfs/mu2e/scratch/outstage';
+my $prodsysDefaultOutstage = '/pnfs/mu2e/persistent/outstage';
 my %features = ( prestageIsSupported => 0, defaultOutstage => $prodsysDefaultOutstage);
 
 #================================================================
