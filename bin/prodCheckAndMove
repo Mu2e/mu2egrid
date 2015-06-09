@@ -197,10 +197,10 @@ sub ftsDropDir($) {
     my $fileFamily = $fileFamilyPrefix . '-' . $fileFamilySuffixByTier{$tier};
 
     # the fts area has subdirectories to manage large
-    # numbers of files.  Pick a 2-digit subdir based on file's name
+    # numbers of files.  Pick a 3-digit subdir based on file's name
     my $dig = Digest->new('SHA-256');
     $dig->add($datafn);
-    my $twodigit = sprintf '%02d', unpack('%32L', $dig->digest) % 100;
+    my $twodigit = sprintf '%03d', unpack('%32L', $dig->digest) % 100;
 
     return join('/', ($ftsTopDir, $fileFamily, $twodigit ));
 }
