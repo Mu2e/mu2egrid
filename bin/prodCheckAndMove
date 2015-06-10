@@ -68,16 +68,16 @@ sub ftsTopDir($) {
     my $res;
 
   SWITCH: {
-      if ($jobdir =~ m|^/pnfs/mu2e/scratch|) {
+      if ($inpath =~ m|^/pnfs/mu2e/scratch|) {
           $res = '/pnfs/mu2e/scratch/fts';
           last SWITCH;
       }
-      if ($jobdir =~ m|^/pnfs/mu2e/persistent|) {
+      if ($inpath =~ m|^/pnfs/mu2e/persistent|) {
           $res = '/pnfs/mu2e/persistent/fts';
           last SWITCH;
       }
     }
-    die "ERROR: FTS directory for input path $jobdir is not defined\n"
+    die "ERROR: FTS directory for input path $inpath is not defined\n"
         unless defined $res;
 
     return $res;
