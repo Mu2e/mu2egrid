@@ -28,15 +28,16 @@ EOF
 sub getUserClusters($) {
     my $username = shift;
 
-    open OLDERR,     ">&", \*STDERR or die "Can't dup STDERR: $!";
-    close STDERR;
-
-    open(CQ, '-|', 'jobsub_q', '--user', $username)
-        or die "Can not read jobsub_q output: $!\n";
+    open OLDERR,     ">&", \*STDERR or die "Can't dup STDERR: $!\n";
+    open STDERR, '>', '/dev/null' or die "Can't redirect STDERR: $!\n";
+    my $ret = open(my $CQ, '-|', 'jobsub_q', '--user', $username);
+    my $savedmsg = $!;
+    open STDERR,     ">&", \*OLDERR or die "Can't restor STDERR: $!\n";
+    die "Error opening jobsub_q pipe: $savedmsg\n" unless $ret;
 
     my %clusters;
 
-    while(my $line = <CQ>) {
+    while(my $line = <$CQ>) {
         chomp($line);
         my @fields = split(' ', $line);
 #       print "got username = $username, fields = ". join('#', @fields) . "\n";
@@ -59,9 +60,8 @@ sub getUserClusters($) {
         }
     }
 
-    close CQ;
-
-    open STDERR,     ">&", \*OLDERR or die "Can't restor STDERR: $!";
+    close $CQ
+        or die "Error when running jobsub_q.  Exit code ", $?>>8, ", signal ", 0xFF&$? ,".\n";
 
     return \%clusters;
 }
