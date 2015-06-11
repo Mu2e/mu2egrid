@@ -110,12 +110,23 @@ EOF
 
 sub commonOptDoc2 {
     my %features = @_;
-    # legacy default
-    my $prestageIsSupported = $features{'prestageIsSupported'} // 1;
-    my $docOutstage = $features{'defaultOutstage'} // $mu2eDefaultOutstage;
 
     my $default_ifdh_version = (default_ifdh_helper())[1];
+
+    # legacy default
+
+    my $prestageIsSupported = $features{'prestageIsSupported'} // 1;
+
     my $formattedOutstage = join("\n\t\t", ('', @mu2egrid::knownOutstage));
+    my $outstageDocString = $features{'outstageDocString'} //<<EOF
+
+    - Outstage should be one of the following registered locations:
+           $formattedOutstage
+
+      by default $mu2eDefaultOutstage is used.
+EOF
+;
+
     my $res= <<EOF
     - The --group, --role, --jobsub-server, --disk, --memory, --OS,
       --resource-provides, and --site options are passed to jobsub_submit.
@@ -138,13 +149,10 @@ sub commonOptDoc2 {
     --ifdh-version=<version> exports the requested IFDH_VERSION to the
       worker node.  It is used by both jobsub wrapper scripts and
       mu2egrid.  The default is '$default_ifdh_version'.
-
-    - Outstage should be one of the following registered locations:
-           $formattedOutstage
-
-      by default $docOutstage  is used.
 EOF
 ;
+    $res .= $outstageDocString;
+
     if($prestageIsSupported) {
         $res .= <<EOF
 

@@ -14,8 +14,22 @@ use Data::Dumper; # for debugging
 use lib dirname($0);
 use mu2egrid;
 
-my $prodsysDefaultOutstage = '/pnfs/mu2e/persistent/outstage';
-my %features = ( prestageIsSupported => 0, defaultOutstage => $prodsysDefaultOutstage);
+my $prodsysDefaultProductionOutstage = '/pnfs/mu2e/persistent/outstage';
+my $prodsysDefaultUserOutstage = '/pnfs/mu2e/scratch/outstage';
+
+my $formattedOutstage = join("\n\t\t", ('', @mu2egrid::knownOutstage));
+
+my $outstageDocString =<<EOF
+
+    - Outstage should be one of the following registered locations:
+           $formattedOutstage
+
+      by default $prodsysDefaultProductionOutstage is used for --role=Production
+      and $prodsysDefaultUserOutstage otherwise.
+EOF
+    ;
+
+my %features = ( prestageIsSupported => 0, outstageDocString => $outstageDocString);
 
 #================================================================
 sub usage() {
@@ -23,30 +37,30 @@ sub usage() {
     return <<EOF
 Usage:
         $self --setup=<script-to-source.sh> \\
-        --fcllist=<fcl-file-list> \\
-        --dsconf=<output-dataset-version-string> \\
-        [--dsowner=<name>] \\
-        [--clustername=<name>] \\
+              --fcllist=<fcl-file-list> \\
+              --dsconf=<output-dataset-version-string> \\
+              [--dsowner=<name>] \\
+              [--clustername=<name>] \\
 EOF
         . mu2egrid::commonOptDoc1(%features) . <<EOF
 
-        - The --setup argument must point to the setup.sh script in a user
-        Offline area.
+    - The --setup argument must point to the setup.sh script in a user
+      Offline area.
 
-        - The set of fcl files specified via --fcllist will be
-        processed by Mu2e Offline, one fcl file per job.  The file
-        must remain intact until all the jobs are done.
+    - The set of fcl files specified via --fcllist will be
+      processed by Mu2e Offline, one fcl file per job.  The file
+      must remain intact until all the jobs are done.
 
-        - The configuration field in the names of output files should be
-        specified via --dsconf.
+    - The configuration field in the names of output files should be
+      specified via --dsconf.
 
-        - The --dsowner option specifies the username field in the names
-        of output files.  The default is the username of the submitter.
+    - The --dsowner option specifies the username field in the names
+      of output files.  The default is the username of the submitter.
 
-        - The --clustername option can be used to alter the name of
-        the cluster level outstage directory.  For example, with
-        --clustername=foo the outstage directory will be named like
-        1884300.foo (where 1884300 is the condor cluster number)
+    - The --clustername option can be used to alter the name of
+      the cluster level outstage directory.  For example, with
+      --clustername=foo the outstage directory will be named like
+      1884300.foo (where 1884300 is the condor cluster number)
 
 EOF
 . mu2egrid::commonOptDoc2(%features)
@@ -66,7 +80,7 @@ my %opt =
     );
 
 @opt{keys %mu2egrid::commonOptDefaults}  =  values %mu2egrid::commonOptDefaults;
-$opt{'outstage'} = $prodsysDefaultOutstage;
+$opt{'outstage'} = '';
 
 # Process command line opts.
 GetOptions(\%opt,
@@ -90,6 +104,17 @@ print "Final set of options:\n", Dumper( \%opt ), "\n"
 # Check that all of the required args are present:
 foreach my $k ('setup', 'mu2e-setup', 'fcllist', 'dsconf', 'dsowner') {
     defined $opt{$k} or die "Error: --$k must be specified.  Try the --help option.\n";
+}
+
+#----------------
+# Decide what outstage to use, unless one is specified by user
+if($opt{'outstage'} eq '') {
+    if(defined($opt{'role'}) and ($opt{'role'} eq 'Production')) {
+        $opt{'outstage'} = $prodsysDefaultProductionOutstage;
+    }
+    else {
+        $opt{'outstage'} = $prodsysDefaultUserOutstage;
+    }
 }
 
 #----------------
