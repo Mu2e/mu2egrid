@@ -223,7 +223,7 @@ sub ftsDropDir($$) {
     # numbers of files.  Pick a 3-digit subdir based on file's name
     my $dig = Digest->new('SHA-256');
     $dig->add($datafn);
-    my $twodigit = sprintf '%03d', unpack('%32L', $dig->digest) % 100;
+    my $twodigit = sprintf '%03d', unpack('%32L', $dig->digest) % 1000;
 
     return join('/', (ftsTopDir($srcjobdir), $fileFamily, $twodigit ));
 }
