@@ -54,7 +54,6 @@ my @files_to_transfer;
 
 my %opt = (
     'outdirfmt' => '%d/run_%03d',
-    'setup' => '',
     'no-group-check' => 0,
     );
 
@@ -96,8 +95,8 @@ mu2egrid::assert_known_outstage($outstage);
 
 my $njobs = $opt{'njobs'};
 
-my $setup = '';
-if(defined $opt{'setup'}) {
+my $setup = $opt{'setup'} // '';
+if($setup ne '') {
     $setup = mu2egrid::find_file($opt{'setup'});
 }
 
