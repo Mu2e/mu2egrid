@@ -133,7 +133,7 @@ $ENV{'MU2EGRID_OUTSTAGE'} = $outstage;
 
 $ENV{'MU2EGRID_SUBMITTER'} = $whoami;
 $ENV{'MU2EGRID_DSOWNER'} = $opt{'dsowner'};
-$ENV{'MU2EGRID_CLUSTERNAME'} = $opt{'clustername'};
+$ENV{'MU2EGRID_CLUSTERNAME'} = $opt{'clustername'} // '';
 
 $ENV{'MU2EGRID_DSCONF'} = $opt{'dsconf'};
 
