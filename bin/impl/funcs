@@ -129,8 +129,7 @@ stageIn() {
         tstart=$(date +%s)
 
         # Get the lock and copy files
-        # We have to force the use of gridftp to handle a mix of bluearc and pnfs files (INC000000418568)
-        IFDH_FORCE=gridftp ifdh cp -f "$totalspec"
+        ifdh cp -f "$totalspec"
         ret=$?
 
         # Do not delete the prestage-merged file - it is useful, e.g. to re-run an exact job.
