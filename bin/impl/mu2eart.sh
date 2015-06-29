@@ -181,10 +181,21 @@ if source "${MU2EGRID_USERSETUP:?Error: MU2EGRID_USERSETUP: not defined}"; then
 
             # Run the Offline job.
         if [ "$ret" -eq 0 ]; then
+
+            # The version of GNU time in SLF6 (/usr/bin/time) does not
+            # properly report when the supervised process is terminated by
+            # a signal.  We use a patched version instead.
+            timecmd=time  # shell builtin is the fallback option
+            mu2etime=/cvmfs/mu2e.opensciencegrid.org/bin/SLF6/mu2e_time
+            if $mu2etime true > /dev/null 2>&1; then
+                timecmd=$mu2etime;
+            fi
+
             echo "Starting on host $(uname -a) on $(date)"
             echo "Running the command: mu2e ${args[@]}"
             echo "mu2egrid random seed $SEED"
-            /usr/bin/time mu2e "${args[@]}"
+            set +e
+            $timecmd mu2e "${args[@]}"
             ret=$?
             echo "mu2egrid exit status $ret"
             if [ "$ret" -eq 0 ]; then
