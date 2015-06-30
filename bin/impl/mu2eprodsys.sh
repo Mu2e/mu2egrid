@@ -95,6 +95,7 @@ mu2eprodsys_payload() {
 
         setup mu2ebintools -q "${MU2E_UPS_QUALIFIERS}"
         setup sam_web_client
+        setup dhtools
 
         echo "#================================================================"
         echo "# After package setup, the environment is:"
@@ -213,7 +214,7 @@ mu2eprodsys_payload() {
         primary_particle=$(fhicl-getpar --string mu2emetadata.mc.primary_particle $localFCL)
 
         for i in *.art; do
-            ${MU2E_BASE_RELEASE}/Tools/DH/jsonMaker.py \
+            jsonMaker.py \
                 -f ${ffprefix}-sim \
                 -a parents \
                 -i mc.generator_type=$generator_type \
@@ -224,7 +225,7 @@ mu2eprodsys_payload() {
         done
 
         for i in *.root; do
-            ${MU2E_BASE_RELEASE}/Tools/DH/jsonMaker.py \
+            jsonMaker.py \
                 -f ${ffprefix}-nts \
                 -a parents \
                 -i mc.generator_type=$generator_type \
@@ -241,7 +242,7 @@ mu2eprodsys_payload() {
         addManifest $logFileName "${manifestfiles[@]}" >&3 2>&4
 
         for i in $logFileName; do
-            ${MU2E_BASE_RELEASE}/Tools/DH/jsonMaker.py \
+            jsonMaker.py \
                 -f ${ffprefix}-etc \
                 -a parents \
                 -i mc.generator_type=$generator_type \
