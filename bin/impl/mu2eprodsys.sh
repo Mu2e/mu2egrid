@@ -93,9 +93,9 @@ mu2eprodsys_payload() {
 
     if source "${MU2EGRID_USERSETUP:?Error: MU2EGRID_USERSETUP: not defined}"; then
 
-        setup mu2ebintools -q "${MU2E_UPS_QUALIFIERS}"
-        setup sam_web_client
-        setup dhtools
+        setup mu2ebintools "${MU2EGRID_MU2EBINTOOLS_VERSION:?Error: MU2EGRID_MU2EBINTOOLS_VERSION is not set}" -q "${MU2E_UPS_QUALIFIERS}"
+        setup sam_web_client "${MU2EGRID_SAM_WEB_CLIENT_VERSION:?Error: MU2EGRID_SAM_WEB_CLIENT_VERSION is not set}"
+        setup dhtools "${MU2EGRID_DHTOOLS_VERSION:?Error: MU2EGRID_DHTOOLS_VERSION is not set}"
 
         echo "#================================================================"
         echo "# After package setup, the environment is:"
