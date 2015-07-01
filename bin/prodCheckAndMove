@@ -17,9 +17,10 @@ use Digest;
 use Data::Dumper;
 
 my $faildir;
+my $usefts = 1;
 my $verbosity=1;
 my $dryrun=0;
-my %opt = ( faildir=>\$faildir, 'verify-data'=>1, verbosity=>\$verbosity, 'dry-run'=>\$dryrun, help=>0 );
+my %opt = ( faildir=>\$faildir, 'verify-data'=>1, fts =>\$usefts, verbosity=>\$verbosity, 'dry-run'=>\$dryrun, help=>0 );
 
 # constant strings used as keys in the jobStats hash
 use constant GOOD => '0good'; # make it sort first in the summary output.  That string is not exposed.
@@ -207,25 +208,29 @@ sub moveFailedJob($$$) {
 #================================================================
 # Use on content files, not on json!
 sub ftsDropDir($$) {
-
     (my $srcjobdir, my $datafn) = @_;
 
-    # data_tier.owner.description.configuration.sequencer.file_format
-    my ($tier, $owner, $description, $conf, $seq, $ext, $extra) = split(/\./, $datafn);
-    die "Error parsing content file name $datafn: too many fields\n" if defined $extra;
-    die "Error parsing content file name $datafn: too few fields\n" if not defined $ext;
+    if($usefts) {
+        # data_tier.owner.description.configuration.sequencer.file_format
+        my ($tier, $owner, $description, $conf, $seq, $ext, $extra) = split(/\./, $datafn);
+        die "Error parsing content file name $datafn: too many fields\n" if defined $extra;
+        die "Error parsing content file name $datafn: too few fields\n" if not defined $ext;
 
-    my $fileFamilyPrefix = ($owner eq 'mu2e') ? 'phy' : 'usr';
-    die "Unknown data tier \"$tier\" for file $datafn\n" unless defined  $fileFamilySuffixByTier{$tier};
-    my $fileFamily = $fileFamilyPrefix . '-' . $fileFamilySuffixByTier{$tier};
+        my $fileFamilyPrefix = ($owner eq 'mu2e') ? 'phy' : 'usr';
+        die "Unknown data tier \"$tier\" for file $datafn\n" unless defined  $fileFamilySuffixByTier{$tier};
+        my $fileFamily = $fileFamilyPrefix . '-' . $fileFamilySuffixByTier{$tier};
 
-    # the fts area has subdirectories to manage large
-    # numbers of files.  Pick a 3-digit subdir based on file's name
-    my $dig = Digest->new('SHA-256');
-    $dig->add($datafn);
-    my $twodigit = sprintf '%03d', unpack('%32L', $dig->digest) % 1000;
+        # the fts area has subdirectories to manage large
+        # numbers of files.  Pick a 3-digit subdir based on file's name
+        my $dig = Digest->new('SHA-256');
+        $dig->add($datafn);
+        my $twodigit = sprintf '%03d', unpack('%32L', $dig->digest) % 1000;
 
-    return join('/', (ftsTopDir($srcjobdir), $fileFamily, $twodigit ));
+        return join('/', (ftsTopDir($srcjobdir), $fileFamily, $twodigit ));
+    }
+    else {
+        return "$faildir/good/" . basename($srcjobdir);
+    }
 }
 
 #================================================================
@@ -233,14 +238,27 @@ sub ftsDropDir($$) {
 sub uploadFiles($$) {
     (my $srcdir, my $filelist) = @_;
 
-    for my $datafn (@$filelist) {
-        my $dstdir = ftsDropDir($srcdir, $datafn);
-        maybe_rename("$srcdir/$datafn", "$dstdir/$datafn");
-        maybe_rename("$srcdir/$datafn.json", "$dstdir/$datafn.json");
-    }
+    if($usefts) {
+        for my $datafn (@$filelist) {
+            my $dstdir = ftsDropDir($srcdir, $datafn);
+            maybe_rename("$srcdir/$datafn", "$dstdir/$datafn");
+            maybe_rename("$srcdir/$datafn.json", "$dstdir/$datafn.json");
+        }
 
-    if(!$dryrun) {
-        rmdir($srcdir) or warn "Can't remove $srcdir: $!";
+        if(!$dryrun) {
+            rmdir($srcdir) or warn "Can't remove $srcdir: $!";
+        }
+    }
+    else {
+        my $dstdir = ftsDropDir($srcdir, $srcdir);
+        if(!$dryrun) {
+            my $gooddir = dirname($dstdir);
+            if(not -d $gooddir) {
+                File::Path::make_path($gooddir)
+                    or die "Error creating directory $gooddir: $!\n";
+            }
+        }
+        maybe_rename($srcdir, $dstdir);
     }
 }
 
@@ -405,8 +423,17 @@ OR (useful to avoid command line overflows)
 The supported options are
 
     --noverify-data     Do not compute and check a SHA-256 digest of data files.
+
+    --topdir            An alias for --faildir, which makes more sense
+                        when --no-fts is used.
+
+    --no-fts            Move good job directories into a "good" subdir under --topdir
+                        instead of placing good files into the FTS input tree.
+
     --dry-run           Analyze jobdirs, but do not move the files.
+
     --verbosity=<int>   Verbosity level.  The default is 1.
+
     --help              Print this message.
 
 The "faildir" directory should be on the same filesystem as the
@@ -418,8 +445,9 @@ EOF
 #================================================================
 # Process command line opts.
 GetOptions(\%opt,
-           "faildir=s",
+           "faildir|topdir=s",
            "verify-data!",
+           "fts!",
            "verbosity=i",
            "dry-run",
            "stdin",
