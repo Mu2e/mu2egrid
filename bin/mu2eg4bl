@@ -154,10 +154,10 @@ push @args, ('--OS', $opt{'OS'});
 push @args, ('--resource-provides', $opt{'resource-provides'});
 push @args, @extra_jobsub_args;
 
-# IFDH_VERSION is interpreded by both jobsub and our worker node scripts
-if(defined($opt{'ifdh-version'}) and ($opt{'ifdh-version'} ne '')) {
-    $ENV{'IFDH_VERSION'} = $opt{'ifdh-version'};
-}
+# IFDH_VERSION in the environment is used by both jobsub and our worker node scripts.
+# This is why we don't use the MU2EGRID_ prefix for this var.
+$ENV{'IFDH_VERSION'} = $opt{'ifdh-version'} // $ENV{'IFDH_VERSION'} // mu2egrid::default_package_version($opt{'mu2e-setup'}, 'ifdhc', '');
+print "Will use ifdh version $ENV{IFDH_VERSION}\n";
 
 # Export the EXPERIMENT variable for ifdh
 push @args, ('-e', 'EXPERIMENT');

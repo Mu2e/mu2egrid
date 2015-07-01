@@ -32,12 +32,18 @@ sub default_group_helper() {
     return ('group' => $group);
 }
 
-sub default_ifdh_helper() {
-    my $ver;
-    # The same env var is used by the jobsub wrapper.
-    $ver = $ENV{'IFDH_VERSION'} if(defined($ENV{'IFDH_VERSION'}));
-    $ver = '' unless defined($ver);
-    return ('ifdh-version' => $ver);
+sub mu2e_ups_qualifiers($$) {
+    my ($mu2esetup, $setup) = @_;
+    my $qual = `source $mu2esetup >/dev/null; source $setup >/dev/null; echo \$MU2E_UPS_QUALIFIERS`;
+    chomp $qual;
+    return $qual;
+}
+
+sub default_package_version($$$) {
+    my ($mu2esetup, $package, $qualifiers) = @_;
+    my $ver = `source $mu2esetup >/dev/null; ups list -K version $package -q '$qualifiers'|head -1`;
+    chomp $ver;
+    return $ver;
 }
 
 our $jobsub = 'jobsub_submit';
@@ -69,7 +75,6 @@ our %commonOptDefaults = (
                           'memory' => '2048', # MB
                           'OS' => 'SL6',
                           'mu2e-setup' => '/cvmfs/mu2e.opensciencegrid.org/setupmu2e-art.sh',
-                          default_ifdh_helper(),
                           'resource-provides' => 'usage_model=OPPORTUNISTIC,DEDICATED',
                           'outstage' => $mu2egrid::mu2eDefaultOutstage,
                           'dry-run' => 0,
@@ -111,8 +116,6 @@ EOF
 sub commonOptDoc2 {
     my %features = @_;
 
-    my $default_ifdh_version = (default_ifdh_helper())[1];
-
     # legacy default
 
     my $prestageIsSupported = $features{'prestageIsSupported'} // 1;
@@ -147,8 +150,10 @@ EOF
       UPS area set up by the script.
 
     --ifdh-version=<version> exports the requested IFDH_VERSION to the
-      worker node.  It is used by both jobsub wrapper scripts and
-      mu2egrid.  The default is '$default_ifdh_version'.
+      worker node.  It is used by both jobsub package scripts and
+      mu2egrid.  If the IFDH_VERSION environment variable is set, it
+      will be used.  Otherwise the version seen by the submission
+      process as the UPS "current" best match will be used.
 EOF
 ;
     $res .= $outstageDocString;
@@ -216,7 +221,7 @@ sub find_file($) {
 sub validate_file_list($) {
     my $fn = shift;
 
-    die "--prestage-spec is not a regular file: $fn\n" unless (-f $fn or -l $fn);
+    die "File list not a regular file: $fn\n" unless (-f $fn or -l $fn);
 
     my $numlines = 0;
     if(open(my $fh, $fn)) {
