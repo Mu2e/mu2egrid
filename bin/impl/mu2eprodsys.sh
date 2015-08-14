@@ -286,7 +286,7 @@ clustername="$cluster${MU2EGRID_CLUSTERNAME:+.$MU2EGRID_CLUSTERNAME}"
 jobname=failedjob
 export logFileName="${jobname}.log"
 declare -a outfiles=( $logFileName )
-finalOutDir="${MU2EGRID_OUTSTAGE:?Error: MU2EGRID_OUTSTAGE is not set}/${MU2EGRID_SUBMITTER:?Error: MU2EGRID_SUBMITTER is not set}/$clustername/$jobname.${PROCESS}"
+finalOutDir="${MU2EGRID_OUTSTAGE:?Error: MU2EGRID_OUTSTAGE is not set}/${MU2EGRID_SUBMITTER:?Error: MU2EGRID_SUBMITTER is not set}/$clustername/$(printf %05d ${PROCESS:-0})"
 
 #================================================================
 # Set up Mu2e environment and make ifdh available
@@ -310,8 +310,6 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
             export logFileName=$newLogFileName
 
             export localFCL="./$jobname.fcl"
-
-            finalOutDir="${MU2EGRID_OUTSTAGE:?Error: MU2EGRID_OUTSTAGE is not set}/${MU2EGRID_SUBMITTER:?Error: MU2EGRID_SUBMITTER is not set}/$clustername/$jobname"
 
             ( mu2eprodsys_payload ) 3>&1 4>&2 1>> $logFileName 2>&1
 
