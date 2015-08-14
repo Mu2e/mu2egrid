@@ -10,6 +10,8 @@
 # Andrei Gaponenko, 2014, 2015
 #
 
+errfile=$TMPDIR/ifdh_mkdir_p_errmsg.$$
+
 #================================================================
 printinfo() {
     echo Starting on host `uname -a` on `date`
@@ -65,13 +67,21 @@ ifdh_mkdir_p() {
 
     #### "ifdh ls" exits with 0 even for non-existing dirs.
     ## if ifdh ls $dir 0 $force > /dev/null
-    if [ $(ifdh ls $dir 0 $force  2>/dev/null |wc -l) -gt 0 ]
+    if [ $(ifdh ls $dir 0 $force  2>$errfile |wc -l) -gt 0 ]
     then
         : # done
     else
+        if [ x"$dir" == x/ ]; then # protection against an infinite loop
+            echo "ifdh_mkdir_p: error from ifdh ls / 0" >&2
+            echo "The error message was:"
+            cat $errfile
+            exit 1
+        fi
+
         ifdh_mkdir_p $(dirname $dir) $force
         ifdh mkdir $dir $force
         ifdh chmod 0755 $dir $force
+
     fi
 }
 #================================================================

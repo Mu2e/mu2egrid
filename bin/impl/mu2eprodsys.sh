@@ -8,6 +8,7 @@
 #
 
 error_delay=$((30*60))
+errfile=$TMPDIR/mu2eprodsys_errmsg.$$
 
 #================================================================
 printinfo() {
@@ -56,12 +57,14 @@ ifdh_mkdir_p() {
 
     #### "ifdh ls" exits with 0 even for non-existing dirs.
     ## if ifdh ls $dir 0 $force > /dev/null
-    if [ $(ifdh ls $dir 0 $force  2>/dev/null |wc -l) -gt 0 ]
+    if [ $(ifdh ls $dir 0 $force  2>$errfile |wc -l) -gt 0 ]
     then
         : # done
     else
         if [ x"$dir" == x/ ]; then # protection against an infinite loop
             echo "ifdh_mkdir_p: error from ifdh ls / 0" >&2
+            echo "The error message was:"
+            cat $errfile
             exit 1
         fi
 
@@ -291,7 +294,7 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
 
     setup ifdhc $IFDH_VERSION
 
-    if type ifdh 2> /dev/null; then
+    if type ifdh 2> $errfile; then
 
         printinfo >> $logFileName 2>&1
 
@@ -376,6 +379,9 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
         /usr/bin/printenv
         echo "#================================================================"
         echo "Error when setting up ifdh: exit code $savederr"
+        echo "The error message was:"
+        cat $errfile
+        echo ""
         echo "Sleeping for $error_delay seconds"
         sleep $error_delay
         ret=19
