@@ -25,6 +25,7 @@ Usage:
               --njobs=<M> \\
               --events-per-job=<N> \\
               [--jobname=<name>] \\
+              [--g4bl-add-args=<string>] \\
 EOF
 . mu2egrid::commonOptDoc1() . <<EOF
 
@@ -64,6 +65,7 @@ GetOptions(\%opt,
     "tar=s",
     "g4bl-version=s",
     "jobname=s",
+    "g4bl-add-args=s",
     "njobs=i",
     "events-per-job=i",
     @mu2egrid::commonOptList)
@@ -111,6 +113,7 @@ $ENV{'MU2EGRID_OUTDIRFMT'} = "$jobname.%d/%05d";
 $ENV{'MU2EGRID_OUTSTAGE'} = $outstage;
 $ENV{'MU2EGRID_NCLUSTERJOBS'} = $njobs;
 $ENV{'MU2EGRID_G4BLVERSION'} = $opt{'g4bl-version'};
+$ENV{'MU2EGRID_G4BL_ADD_ARGS'} = $opt{'g4bl-add-args'};
 
 $ENV{'MU2EGRID_MASTERIN'} = basename($in);
 push @files_to_transfer, $in;

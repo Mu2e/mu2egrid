@@ -41,6 +41,7 @@ if setup G4beamline "${MU2EGRID_G4BLVERSION:?Error: MU2EGRID_G4BLVERSION not set
         Num_Events=${MU2EGRID_EVENTS_PER_JOB:?Error: both MU2EGRID_EVENTS_PER_JOB and MU2EGRID_INPUTLIST not set}
         First_Event=$(($Num_Events *  $process))
         args+=(First_Event=$First_Event Num_Events=$Num_Events)
+        args+=($MU2EGRID_G4BL_ADD_ARGS)
     else
             # There are input files specified.
             # Need to append something like
