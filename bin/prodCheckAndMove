@@ -20,7 +20,12 @@ my $faildir;
 my $usefts = 1;
 my $verbosity=1;
 my $dryrun=0;
-my %opt = ( faildir=>\$faildir, 'verify-data'=>1, fts =>\$usefts, verbosity=>\$verbosity, 'dry-run'=>\$dryrun, help=>0 );
+my $rangestr;
+# the following two are set from the --dirrange option. Here are the defaults:
+my $dirmin = 0;
+my $dirrange = 1000;
+my $dirmax  = $dirmin+$dirrange-1;
+my %opt = ( faildir=>\$faildir, 'verify-data'=>1, fts =>\$usefts, verbosity=>\$verbosity, 'dry-run'=>\$dryrun, 'dirrange' => \$rangestr, help=>0 );
 
 # constant strings used as keys in the jobStats hash
 use constant GOOD => '0good'; # make it sort first in the summary output.  That string is not exposed.
@@ -59,6 +64,23 @@ my %fileFamilySuffixByTier =
      mcs => 'sim',
      nts => 'nts',
     );
+
+#================================================================
+sub parseDirRangeOption() {
+    if(defined $rangestr) {
+        $rangestr =~ /^(\d+):(\d+)$/
+            or die "Error: --dirrange arg should be in the form  number:number\n";
+        $dirmin = $1;
+        die "Error: dirmin = $dirmin is out of the 0-999 range\n" if($dirmin < 0 or $dirmin > 999);
+
+        $dirmax = $2;
+        die "Error: dirmax = $dirmax is out of the 0-999 range\n" if($dirmax < 0 or $dirmax > 999);
+
+        die "Error: dirmin=$dirmin is greater than dirmax=$dirmax\n" unless ($dirmin <= $dirmax);
+
+        $dirrange = $dirmax - $dirmin + 1;
+    }
+}
 
 #================================================================
 # selects between scratch and persistent FTS tree based on
@@ -224,7 +246,8 @@ sub ftsDropDir($$) {
         # numbers of files.  Pick a 3-digit subdir based on file's name
         my $dig = Digest->new('SHA-256');
         $dig->add($datafn);
-        my $twodigit = sprintf '%03d', unpack('%32L', $dig->digest) % 1000;
+#        my $twodigit = sprintf '%03d', unpack('%32L', $dig->digest) % 1000;
+        my $twodigit = sprintf '%03d', $dirmin + (unpack('%32L', $dig->digest) % $dirrange);
 
         return join('/', (ftsTopDir($srcjobdir), $fileFamily, $twodigit ));
     }
@@ -430,6 +453,9 @@ The supported options are
     --no-fts            Move good job directories into a "good" subdir under --topdir
                         instead of placing good files into the FTS input tree.
 
+    --dirrange=min:max  Specify a range of FTS numeric subdirectories to use.
+                        The default range is $dirmin:$dirmax
+
     --dry-run           Analyze jobdirs, but do not move the files.
 
     --verbosity=<int>   Verbosity level.  The default is 1.
@@ -450,6 +476,7 @@ GetOptions(\%opt,
            "fts!",
            "verbosity=i",
            "dry-run",
+           "dirrange=s",
            "stdin",
            "help",
            )
@@ -465,6 +492,8 @@ die "The --faildir parameter must be provided. Try the --help option.\n"
 
 die "The --stdin switch should not be used when jobdirs are given as command line arguments\n"
     if ($#ARGV >= 0 and defined $opt{'stdin'});
+
+parseDirRangeOption();
 
 die "No jobsidr are provided on the command line, and no --stdin switch is given. Nothing to do. Try the --help option.\n"
     if ($#ARGV < 0 and not defined $opt{'stdin'});
