@@ -59,18 +59,24 @@ ifdh_mkdir_p() {
     ## if ifdh ls $dir 0 $force > /dev/null
     if [ $(ifdh ls $dir 0 $force  2>$errfile |wc -l) -gt 0 ]
     then
-        : # done
+        return 0 # done
     else
         if [ x"$dir" == x/ ]; then # protection against an infinite loop
-            echo "ifdh_mkdir_p: error from ifdh ls / 0" >&2
-            echo "The error message was:"
-            cat $errfile
-            exit 1
+            echo "ifdh_mkdir_p on $(date): error from ifdh ls / 0 $force" >&2
+            echo "The error message was:" >&2
+            cat $errfile >&2
+            return 1
         fi
 
-        ifdh_mkdir_p $(dirname $dir) $force
-        ifdh mkdir $dir $force
-        ifdh chmod 0755 $dir $force
+        if  ifdh_mkdir_p $(dirname $dir) $force; then
+            ifdh mkdir $dir $force
+            ifdh chmod 0755 $dir $force
+        else
+            echo "Error from: ifdh_mkdir_p $(dirname $dir) $force  on $(date)" >&2
+            echo "Re-running ifdh ls $dir 0 $force with debug=10" >&2
+            IFDH_DEBUG=10 ifdh ls $dir 0 $force >&2
+            return 1
+        fi
 
     fi
 }
