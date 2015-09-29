@@ -51,36 +51,6 @@ addManifest() {
     echo "# mu2egrid manifest selfcheck: $sc" >> $manifest
 }
 #================================================================
-ifdh_mkdir_p() {
-    local dir="$1"
-    local force="$2"
-
-    #### "ifdh ls" exits with 0 even for non-existing dirs.
-    ## if ifdh ls $dir 0 $force > /dev/null
-    if [ $(ifdh ls $dir 0 $force  2>$errfile |wc -l) -gt 0 ]
-    then
-        return 0 # done
-    else
-        if [ x"$dir" == x/ ]; then # protection against an infinite loop
-            echo "ifdh_mkdir_p on $(date): error from ifdh ls / 0 $force" >&2
-            echo "The error message was:" >&2
-            cat $errfile >&2
-            return 1
-        fi
-
-        if  ifdh_mkdir_p $(dirname $dir) $force; then
-            ifdh mkdir $dir $force
-            ifdh chmod 0755 $dir $force
-        else
-            echo "Error from: ifdh_mkdir_p $(dirname $dir) $force  on $(date)" >&2
-            echo "Re-running ifdh ls $dir 0 $force with debug=10" >&2
-            IFDH_DEBUG=10 ifdh ls $dir 0 $force >&2
-            return 1
-        fi
-
-    fi
-}
-#================================================================
 # Run the framework jobs and create json files for the outputs
 # Running it inside a function makes it easier to exit on error
 # during the "payload" part, but still transfer the log file back.
@@ -292,7 +262,7 @@ clustername="$cluster${MU2EGRID_CLUSTERNAME:+.$MU2EGRID_CLUSTERNAME}"
 jobname=failedjob
 export logFileName="${jobname}.log"
 declare -a outfiles=( $logFileName )
-finalOutDir="${MU2EGRID_OUTSTAGE:?Error: MU2EGRID_OUTSTAGE is not set}/${MU2EGRID_SUBMITTER:?Error: MU2EGRID_SUBMITTER is not set}/$clustername/$(printf %05d ${PROCESS:-0})"
+finalOutDir="${MU2EGRID_OUTSTAGE:?Error: MU2EGRID_OUTSTAGE is not set}/${MU2EGRID_SUBMITTER:?Error: MU2EGRID_SUBMITTER is not set}/$clustername/$(printf %02d $((${PROCESS:-0}/1000)))/$(printf %05d ${PROCESS:-0})"
 
 #================================================================
 # Set up Mu2e environment and make ifdh available
@@ -333,38 +303,32 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
         # and transferred files back.  To prevent data corruption we write to
         # a unique tmp dir, than rename it to the final name.
 
-        # Create the "cluster level" output directory.
-        ifdh_mkdir_p "$(dirname ${finalOutDir})" --force=expftp
+        tmpOutDir="${finalOutDir}.$(od -A n -N 4 -t x4 /dev/urandom|sed -e 's/ //g')"
 
-        # There is no "mktemp" in ifdh.  Imitate it by hand
-        tmpOutDir=''
-        numTries=0
-        while [ $((numTries+=1)) -le 5 ]; do
-            tmpOutDir="${finalOutDir}.$(od -A n -N 4 -t x4 /dev/urandom|sed -e 's/ //g')"
 
-            if ifdh mkdir "$tmpOutDir" --force=expftp ; then break; fi
+        t1=$(date +%s)
+        # the -cd option causes gridftp to create all required directories in the output  path
+        IFDH_GRIDFTP_EXTRA='-cd' ifdh cp --force=expftp -D "${outfiles[@]}" "${tmpOutDir}"
+        ifdhret=$?
 
-            echo "Attemtp to make tmpOutDir = $tmpOutDir failed"
-            tmpOutDir=''
-        done
-
-        if [ x"$tmpOutDir" != x ]; then
-
-            ifdh chmod 0755 "${tmpOutDir}" --force=expftp
-
-            t1=$(date +%s)
-
-            ifdh cp --force=expftp -D "${outfiles[@]}" "${tmpOutDir}"
+        if [[ $ifdhret -ne 0 ]]; then
+            echo "The command: IFDH_GRIDFTP_EXTRA='-cd' ifdh cp --force=expftp -D ${outfiles[@]} ${tmpOutDir}" >&2
+            echo "has failed on $(date) with status code $ifdhret.  Re-running with IFDH_DEBUG=10." >&2
+            IFDH_DEBUG=10 IFDH_GRIDFTP_EXTRA='-cd' ifdh cp --force=expftp -D "${outfiles[@]}" "${tmpOutDir}" >&2
             ifdhret=$?
-            if [[ ( $ret -eq 0 ) && ( $ifdhret -ne 0 ) ]]; then
-                echo "ifdh cp failed: exit code $ifdhret" >&2
-                ret=23
-            fi
+        fi
 
+        if [[ ( $ret -eq 0 ) && ( $ifdhret -ne 0 ) ]]; then
+            echo "ifdh cp failed on $(date): exit code $ifdhret" >&2
+            ret=23
+        fi
+
+        if [[ $ifdhret -eq 0 ]]; then
+            # ignore exit codes here - we've got the files
             ifdh rename "${tmpOutDir}" "${finalOutDir}" --force=expftp
 
             t2=$(date +%s)
-            echo "$(date) # Total outstage lock and copy time: $((t2-t1)) seconds"
+            echo "$(date) # Total outstage time: $((t2-t1)) seconds"
 
             for i in "${outfiles[@]}"; do
                 ifdh pin $f $((3600*24*7)) #  pin for a week
