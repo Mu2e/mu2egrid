@@ -65,6 +65,7 @@ if setup G4beamline "${MU2EGRID_G4BLVERSION:?Error: MU2EGRID_G4BLVERSION not set
     if [ "$ret" == 0 ]; then
         echo "Starting on host $(uname -a) on $(date)"
         echo "Running the command: g4bl ${args[@]}"
+        export G4BEAMLINE="$G4BL_DIR/bin/g4beamline_novis"
         /cvmfs/mu2e.opensciencegrid.org/bin/SLF6/mu2e_time g4bl "${args[@]}"
         ret=$?
         echo "mu2egrid exit status $ret"
