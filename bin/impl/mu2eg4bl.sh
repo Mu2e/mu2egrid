@@ -69,6 +69,10 @@ if setup G4beamline "${MU2EGRID_G4BLVERSION:?Error: MU2EGRID_G4BLVERSION not set
         /cvmfs/mu2e.opensciencegrid.org/bin/SLF6/mu2e_time g4bl "${args[@]}"
         ret=$?
         echo "mu2egrid exit status $ret"
+	if [ "$ret" -eq 0 ]; then
+                    # clean up
+	    rm -f "$MU2EGRID_PRESTAGE"
+	fi
     else
         echo "Aborting the job because pre-staging of input files failed: stageIn '$MU2EGRID_PRESTAGE'"
     fi
