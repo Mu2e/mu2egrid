@@ -133,7 +133,7 @@ mu2eprodsys_payload() {
             rm tmpspec
         done
 
-        if [[ -e prestage_spec ]]; then
+        if [[ -e prestage_spec ]] && [[ x"$MU2EGRID_NO_PRESTAGE" == x ]]; then
             echo "$(date) # Starting to pre-stage input files"
             type ifdh
             tstart=$(date +%s)
