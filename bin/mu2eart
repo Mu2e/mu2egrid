@@ -38,9 +38,7 @@ EOF
       files to be processed by the job.  This is mutually exclusive
       with --events-per-job, the latter being used for jobs that
       generate new events.  Each process pre-stages its subset of
-      input files to a local disk on the worker node.  The total
-      available local disk space for all inputs and outputs is usually
-      40 GB.
+      input files to a local disk on the worker node.
 
     - For new event generation one may specify the run number, the
       default is the Condor cluster number.

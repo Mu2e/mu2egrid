@@ -52,7 +52,7 @@ our @commonOptList = (
                       'group=s',
                       'role=s',
                       'jobsub-server=s',
-                      'disk=i',
+                      'disk=s',
                       'memory=i',
                       'OS=s',
                       'mu2e-setup=s',
@@ -71,7 +71,7 @@ our @commonOptList = (
 our %commonOptDefaults = (
                           default_group_helper(),
                           'jobsub-server' => 'https://fifebatch.fnal.gov:8443',
-                          'disk' => '30000', # MB
+                          'disk' => '30GB',
                           'memory' => '2048', # MB
                           'OS' => 'SL6',
                           'mu2e-setup' => '/cvmfs/mu2e.opensciencegrid.org/setupmu2e-art.sh',
@@ -93,7 +93,7 @@ sub commonOptDoc1 {
               [--group=<name>] \\
               [--role=<name>] \\
               [--jobsub-server=<URL>] \\
-              [--disk=<size_MB>] \\
+              [--disk=<SizeUnits>] \\
               [--memory=<size_MB>] \\
               [--OS=<comma_separated_list>] \\
               [--resource-provides=<spec>] \\
