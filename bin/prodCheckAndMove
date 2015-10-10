@@ -225,7 +225,19 @@ sub moveFailedJob($$$) {
         -d $subdir or die "Error creating directory $subdir: $!\n";
     }
 
-    maybe_rename($srcdir, $subdir .'/'. basename($srcdir));
+    my $dstname = $subdir .'/'. basename($srcdir);
+    my $done = 0;
+    my $numtries = 0;
+    do {
+        eval { maybe_rename($srcdir, $dstname); };
+        if($@) {
+            die $@ if(++$numtries > 99);
+            $dstname = $subdir .'/'. basename($srcdir) . '.fail' . sprintf('%02d', $numtries);
+        }
+        else {
+            $done = 1;
+        }
+    } until $done;
 }
 
 #================================================================
