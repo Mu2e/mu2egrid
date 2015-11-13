@@ -22,9 +22,14 @@ createJobFCL() {
 
 addSeeds() {
     fcl=${1:?addSeeds: arg1 missing}
-    echo "services.user.SeedService.policy           :  autoIncrement"                >> "$fcl"
-    echo "services.user.SeedService.maxUniqueEngines :  $SeedServiceMaxEngines"       >> "$fcl"
-    echo "services.user.SeedService.baseSeed         :  ${2:?addSeeds: arg2 missing}" >> "$fcl"
+    if [[ x"$MU2EGRID_USERSERVICES" == x1 ]]; then
+        svcname="services.user.SeedService"
+    else
+        svcname="services.SeedService"
+    fi
+    echo "$svcname.policy           :  autoIncrement"                >> "$fcl"
+    echo "$svcname.maxUniqueEngines :  $SeedServiceMaxEngines"       >> "$fcl"
+    echo "$svcname.baseSeed         :  ${2:?addSeeds: arg2 missing}" >> "$fcl"
 }
 
 addEventID() {

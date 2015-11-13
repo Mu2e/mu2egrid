@@ -24,6 +24,7 @@ Usage:
               --njobs=<M> \\
               {--inputs=<filelist>|--events-per-job=<N> [--run-number=<R>]} \\
               [--jobname=<name>] \\
+              [--[no]user-services] \\
               [--TFileService=<name>] \\
               [--geometry=<name>] \\
               [--fclinput=[numFiles:]<fclVarName>:<filelist>] \\
@@ -46,6 +47,10 @@ EOF
     - The jobname argument defines the name of the top level output
       directory.  If this parameter is not specified, a name will be
       derived from the fcl file name.
+
+    - the --user-services option toggles between the use
+      of services.user.SeedService and services.SeedService for
+      random seed fcl injection.
 
     - The --TFileService option sets the output histogram filename.
       Given filename will be passed over to Offline mu2e as the
@@ -93,6 +98,7 @@ my @files_to_transfer;
 my %opt =
     ('fclinput' => \@fclinputs,
     'jobsub-arg' => \@extra_jobsub_args,
+    'user-services' => 1
     );
 
 @opt{keys %mu2egrid::commonOptDefaults}  =  values %mu2egrid::commonOptDefaults;
@@ -104,6 +110,7 @@ GetOptions(\%opt,
     'njobs=i',
     'inputs=s', 'events-per-job=i', 'run-number=i',
     'jobname=s',
+    'user-services!',
     'TFileService=s',
     'geometry=s',
     'fclinput=s',
@@ -153,6 +160,8 @@ $ENV{'MU2EGRID_MU2ESETUP'} = $mu2esetup;
 $ENV{'MU2EGRID_OUTDIRFMT'} = "$jobname.%d/%05d";
 $ENV{'MU2EGRID_OUTSTAGE'} = $outstage;
 $ENV{'MU2EGRID_NCLUSTERJOBS'} = $njobs;
+
+$ENV{'MU2EGRID_USERSERVICES'} = $opt{'user-services'};
 
 $ENV{'MU2EGRID_MASTERFHICL'} = basename($fcl);
 push @files_to_transfer, $fcl;
