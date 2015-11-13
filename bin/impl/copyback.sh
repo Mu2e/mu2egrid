@@ -10,8 +10,6 @@
 # Andrei Gaponenko, 2014, 2015
 #
 
-errfile=$TMPDIR/ifdh_mkdir_p_errmsg.$$
-
 #================================================================
 printinfo() {
     echo Starting on host `uname -a` on `date`
@@ -61,30 +59,6 @@ createManifest() {
     echo manifest
 }
 #================================================================
-ifdh_mkdir_p() {
-    local dir="$1"
-    local force="$2"
-
-    #### "ifdh ls" exits with 0 even for non-existing dirs.
-    ## if ifdh ls $dir 0 $force > /dev/null
-    if [ $(ifdh ls $dir 0 $force  2>$errfile |wc -l) -gt 0 ]
-    then
-        : # done
-    else
-        if [ x"$dir" == x/ ]; then # protection against an infinite loop
-            echo "ifdh_mkdir_p: error from ifdh ls / 0" >&2
-            echo "The error message was:"
-            cat $errfile
-            exit 1
-        fi
-
-        ifdh_mkdir_p $(dirname $dir) $force
-        ifdh mkdir $dir $force
-        ifdh chmod 0755 $dir $force
-
-    fi
-}
-#================================================================
 transferOutFiles() {
     echo "$(date) # Starting to transfer output files"
     type ifdh
@@ -94,13 +68,14 @@ transferOutFiles() {
 
     MANIFEST=$(createManifest "$@")
 
-    t1=$(date +%s)
-
     if [[ "$EXPERIMENT" == "marsmu2e" ]]; then
         voms-proxy-init -rfc -noregen -limited -bits 1024 -valid 24:00 -voms fermilab:/fermilab/mars/mu2e/Role=Analysis
     fi
 
-    ifdh cp --force=expftp -D  "$MANIFEST" "$@" ${OUTDIR}
+    t1=$(date +%s)
+
+    # the -cd option causes gridftp to create all required directories in the output  path
+    IFDH_GRIDFTP_EXTRA='-cd' ifdh cp --force=expftp -D  "$MANIFEST" "$@" ${OUTDIR}
 
     t2=$(date +%s)
     echo "$(date) # Total outstage lock and copy time: $((t2-t1)) seconds"
@@ -147,30 +122,11 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
     # a unique tmp dir, than rename it to the final name.
 
     finalOutDir="${outstagebase}/$user/$(printf $outfmt  ${CLUSTER:-1} ${PROCESS:-0})"
+    tmpOutDir="${finalOutDir}.$(od -A n -N 4 -t x4 /dev/urandom|sed -e 's/ //g')"
 
-    # Create the "cluster level" output directory.
-    ifdh_mkdir_p "$(dirname ${finalOutDir})" --force=expftp
-
-    # There is no "mktemp" in ifdh.  Imitate it by hand
-    tmpOutDir=''
-    numTries=0
-    while [ $((numTries+=1)) -le 5 ]; do
-        tmpOutDir="${finalOutDir}.$(od -A n -N 4 -t x4 /dev/urandom|sed -e 's/ //g')"
-
-        echo "Trying to create tmpOutDir = $tmpOutDir"
-        if ifdh mkdir "$tmpOutDir" --force=expftp ; then break; fi
-
-        echo "Attemtp to make tmpOutDir = $tmpOutDir failed"
-        tmpOutDir=''
-    done
-
-    echo "Got tmpOutDir = $tmpOutDir"
-
-    if [ x"$tmpOutDir" != x ]; then
-        ifdh chmod 0755 "${tmpOutDir}" --force=expftp
-        transferOutFiles "${tmpOutDir}" $(filterOutProxy $(selectFiles *) )
-        ifdh rename "${tmpOutDir}" "${finalOutDir}" --force=expftp
-    fi
+    transferOutFiles "${tmpOutDir}" $(filterOutProxy $(selectFiles *) )
+    ifdh chmod 0755 "${tmpOutDir}" --force=expftp
+    ifdh rename "${tmpOutDir}" "${finalOutDir}" --force=expftp
 
 else
     echo "Error sourcing setup script ${MU2EGRID_MU2ESETUP}: status code $?"
