@@ -6,7 +6,6 @@
 #
 use File::Basename;
 use Getopt::Long;
-use Cwd 'abs_path';
 use POSIX qw(ceil);
 
 use Data::Dumper;
