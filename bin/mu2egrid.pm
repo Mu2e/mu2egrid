@@ -49,38 +49,54 @@ sub default_package_version($$$) {
 our $jobsub = 'jobsub_submit';
 
 our @commonOptList = (
-                      'group=s',
-                      'role=s',
-                      'jobsub-server=s',
-                      'disk=s',
-                      'memory=i',
-                      'OS=s',
-                      'mu2e-setup=s',
-                      'ifdh-version=s',
-                      'resource-provides=s',
-                      'site=s',
-                      'jobsub-arg=s@',
-                      'outstage=s',
-                      "prestage-spec=s",
-                      'dry-run',
-                      'verbose',
-                      'help',
-                      );
+
+# Mu2e specific things
+
+    'mu2e-setup=s',
+    'ifdh-version=s',
+    'jobsub-arg=s@',
+    'outstage=s',
+    "prestage-spec=s",
+    'dry-run',
+    'verbose',
+    'help',
+
+#  Some frequently used jobsub_submit settings
+
+    'group=s',
+    'role=s',
+    'jobsub-server=s',
+    'disk=s',
+    'memory=s',
+    'expected-lifetime=s',
+    'OS=s',
+    'resource-provides=s',
+    'site=s',
+    );
 
 # those that are not defaulted must be tested with exists($opt{'option'}) before accessing their values
-our %commonOptDefaults = (
-                          default_group_helper(),
-                          'jobsub-server' => 'https://fifebatch.fnal.gov:8443',
-                          'disk' => '30GB',
-                          'memory' => '2048', # MB
-                          'OS' => 'SL6',
-                          'mu2e-setup' => '/cvmfs/mu2e.opensciencegrid.org/setupmu2e-art.sh',
-                          'resource-provides' => 'usage_model=OPPORTUNISTIC,DEDICATED',
-                          'outstage' => $mu2egrid::mu2eDefaultOutstage,
-                          'dry-run' => 0,
-                          'verbose' => 0,
-                          'help' => 0,
-                          );
+our %commonOptDefaultsMu2e = (
+    'mu2e-setup' => '/cvmfs/mu2e.opensciencegrid.org/setupmu2e-art.sh',
+    'outstage' => $mu2egrid::mu2eDefaultOutstage,
+    'dry-run' => 0,
+    'verbose' => 0,
+    'help' => 0,
+    );
+
+# We want all keys to be present in the map, even those that do not
+# have defaults.  This is important to not miss any explicitly
+# specified options used when building jobsub_submit cmdline.
+our %commonOptDefaultsJobsub = (
+    default_group_helper(),
+    'role' => undef,
+    'jobsub-server' => 'https://fifebatch.fnal.gov:8443',
+    'disk' => '30GB',
+    'memory' => '2048MB',
+    'expected-lifetime' => '86400', # 24 hours, but jobsub v1_1_9 wants an int
+    'OS' => 'SL6',
+    'resource-provides' => 'usage_model=OPPORTUNISTIC,DEDICATED',
+    'site' => undef,
+    );
 
 sub commonOptDoc1 {
     my %features = @_;
@@ -94,7 +110,8 @@ sub commonOptDoc1 {
               [--role=<name>] \\
               [--jobsub-server=<URL>] \\
               [--disk=<SizeUnits>] \\
-              [--memory=<size_MB>] \\
+              [--memory=<SizeUnits>] \\
+              [--expected-lifetime=<spec>] \\
               [--OS=<comma_separated_list>] \\
               [--resource-provides=<spec>] \\
               [--site=<site1,site2,...>] \\
@@ -131,18 +148,20 @@ EOF
 ;
 
     my $res= <<EOF
-    - The --group, --role, --jobsub-server, --disk, --memory, --OS,
-      --resource-provides, and --site options are passed to jobsub_submit.
-      Arbitrary other jobsub_submit options can be passed using
-      --jobsub-arg.  Their default values are
+    - The --group, --role, --jobsub-server, --disk, --memory, --expected-lifetime,
+      --OS, --resource-provides, and --site options are passed to jobsub_submit.
+      Run \"jobsub_submit -h\" for details. Arbitrary jobsub_submit options
+      can be passed using --jobsub-arg.
+      The default values are
 
-          --group              from the GROUP environment variable
+          --group              $ENV{GROUP} (the GROUP environment variable, if set)
           --role               none
-          --jobsub-server      $commonOptDefaults{'jobsub-server'}
-          --disk               $commonOptDefaults{'disk'}
-          --memory             $commonOptDefaults{'memory'}
-          --OS                 $commonOptDefaults{'OS'}
-          --resource-provides  $commonOptDefaults{'resource-provides'}
+          --jobsub-server      $commonOptDefaultsJobsub{'jobsub-server'}
+          --disk               $commonOptDefaultsJobsub{'disk'}
+          --memory             $commonOptDefaultsJobsub{'memory'}
+          --expected-lifetime  $commonOptDefaultsJobsub{'expected-lifetime'}
+          --OS                 $commonOptDefaultsJobsub{'OS'}
+          --resource-provides  $commonOptDefaultsJobsub{'resource-provides'}
           --site               none
 
     --mu2e-setup arg is optional, by default the current official mu2e
@@ -276,9 +295,11 @@ BEGIN {
     # as well as any optionally exported functions
     @EXPORT_OK   = qw(
                       $impldir
-                      @knownOutstage $mu2eDefaultOutstage
-                      $jobsub @commonOptList %commonOptDefaults &commonOptDoc1 &commonOptDoc2
-                      &assert_known_outstage &find_file &validate_file_list &validate_prestage_spec
+                      @knownOutstage $mu2eDefaultOutstage @commonOptList
+                      $jobsub %commonOptDefaultsMu2e %commonOptDefaultsJobsub
+                      &commonOptDoc1 &commonOptDoc2
+                      &assert_known_outstage &find_file &validate_file_list
+                      &validate_prestage_spec
                       );
 }
 our @EXPORT_OK;

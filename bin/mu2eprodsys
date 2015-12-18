@@ -86,7 +86,8 @@ my %opt =
     'dsowner' => $whoami,
     );
 
-@opt{keys %mu2egrid::commonOptDefaults}  =  values %mu2egrid::commonOptDefaults;
+@opt{keys %mu2egrid::commonOptDefaultsMu2e}  =  values %mu2egrid::commonOptDefaultsMu2e;
+@opt{keys %mu2egrid::commonOptDefaultsJobsub}  =  values %mu2egrid::commonOptDefaultsJobsub;
 $opt{'outstage'} = '';
 
 # Process command line opts.
@@ -148,15 +149,13 @@ $ENV{'MU2EGRID_DSCONF'} = $opt{'dsconf'};
 
 #----------------------------------------------------------------
 my @args;
+for my $key (keys %mu2egrid::commonOptDefaultsJobsub) {
+    if(defined $opt{$key}) {
+        print "Adding jobsub_submit option: --$key $opt{$key}\n" if $opt{'verbose'};
+        push @args, ("--$key", $opt{$key});
+    }
+}
 
-push @args, ('--group', $opt{'group'});
-push @args, ('--role', $opt{'role'}) if defined $opt{'role'};
-push @args, ('--jobsub-server', $opt{'jobsub-server'});
-push @args, ('--disk', $opt{'disk'});
-push @args, ('--memory', $opt{'memory'});
-push @args, ('--OS', $opt{'OS'});
-push @args, ('--resource-provides', $opt{'resource-provides'});
-push @args, ('--site', $opt{'site'}) if defined $opt{'site'};
 push @args, @extra_jobsub_args;
 
 # Export the EXPERIMENT variable for ifdh

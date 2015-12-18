@@ -57,7 +57,8 @@ my %opt = (
     'no-group-check' => 0,
     );
 
-@opt{keys %mu2egrid::commonOptDefaults}  =  values %mu2egrid::commonOptDefaults;
+@opt{keys %mu2egrid::commonOptDefaultsMu2e}  =  values %mu2egrid::commonOptDefaultsMu2e;
+@opt{keys %mu2egrid::commonOptDefaultsJobsub}  =  values %mu2egrid::commonOptDefaultsJobsub;
 
 # Override the mu2egrid.pm default
 $opt{'outstage'} = '/grid/data/marsmu2e/outstage';
@@ -126,17 +127,13 @@ if(defined($opt{'prestage-spec'})) {
 
 #----------------
 my @args;
-
-push @args, ('--group', $opt{'group'});
-if(defined($opt{'role'})) {
-    push @args, ('--role', $opt{'role'});
+for my $key (keys %mu2egrid::commonOptDefaultsJobsub) {
+    if(defined $opt{$key}) {
+        print "Adding jobsub_submit option: --$key $opt{$key}\n" if $opt{'verbose'};
+        push @args, ("--$key", $opt{$key});
+    }
 }
 
-push @args, ('--jobsub-server', $opt{'jobsub-server'});
-push @args, ('--disk', $opt{'disk'});
-push @args, ('--memory', $opt{'memory'});
-push @args, ('--OS', $opt{'OS'});
-push @args, ('--resource-provides', $opt{'resource-provides'});
 push @args, @extra_jobsub_args;
 
 # IFDH_VERSION in the environment is used by both jobsub and our worker node scripts.
