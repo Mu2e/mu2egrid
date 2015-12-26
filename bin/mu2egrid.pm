@@ -10,6 +10,7 @@ package mu2egrid;
 use strict;
 use Cwd 'abs_path';
 use File::Basename;
+use POSIX qw(ceil);
 
 our $impldir;
 $impldir = abs_path(dirname($0) . '/impl');
@@ -255,6 +256,8 @@ sub validate_file_list($) {
         die "Error: can not open  file \"$fn\": $!\n";
     }
 
+    die "Error: empty file $fn\n" unless $numlines > 0;
+
     return $numlines;
 }
 
@@ -276,6 +279,23 @@ sub validate_prestage_spec($) {
     }
     else {
         die "Error: can not open  file \"$fn\": $!\n";
+    }
+}
+
+#================================================================
+sub validate_njobs($$) {
+    my ($nfiles,$njobs) = @_;
+
+    die "Invalid njobs = $njobs\n" unless $njobs > 0;
+
+    my $chunkSize = ceil($nfiles/$njobs);
+    my $numRequiredJobs = ceil($nfiles/$chunkSize);
+
+    if($numRequiredJobs != $njobs) {
+        die "Error: The number of input files to process is $nfiles. ".
+            "Splitting them into $njobs jobs will leave some jobs with no inputs. ".
+            "Please adjust --njobs (try $numRequiredJobs).\n"
+            ;
     }
 }
 

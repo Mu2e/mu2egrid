@@ -181,20 +181,10 @@ if(defined $opt{'inputs'}) {
     }
 
     my $inputs = mu2egrid::find_file($opt{'inputs'});
-    mu2egrid::validate_file_list($inputs);
-
-    $ENV{'MU2EGRID_INPUTLIST'} = basename($inputs);
-    push @files_to_transfer, $inputs;
-
-    my $nlines =  `cat $inputs | wc -l`;
-    chomp($nlines);
+    my $nlines = mu2egrid::validate_file_list($inputs);
     print "nlines = $nlines in file $inputs\n" if $opt{'verbose'};
-
-    if($nlines < $njobs) {
-        die "Error too many requested jobs = $njobs.  The input file list has only $nlines lines: $inputs\n";
-    }
+    mu2egrid::validate_njobs($nlines, $njobs);
     $ENV{'MU2EGRID_CHUNKSIZE'} = ceil($nlines/$njobs);
-
 }
 else {
     if(!defined($opt{'events-per-job'})) {
