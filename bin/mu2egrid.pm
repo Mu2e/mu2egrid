@@ -101,10 +101,12 @@ our %commonOptDefaultsJobsub = (
 
 sub commonOptDoc1 {
     my %features = @_;
-    # legacy default
-    my $prestageIsSupported = $features{'prestageIsSupported'} // 1;
 
+    my $prestageIsSupported = $features{'prestageIsSupported'} // 1;
     my $prestagestr = $prestageIsSupported ? "              [--prestage-spec=<file>] \\\n" : "";
+
+    my $outstageIsSupported = $features{'outstageIsSupported'} // 1;
+    my $outstagestr = $outstageIsSupported ? "              [--outstage=<dir>] \\\n" : "";
 
     return <<EOF
               [--group=<name>] \\
@@ -119,8 +121,9 @@ sub commonOptDoc1 {
               [--jobsub-arg=string1] [--jobsub-arg=string2] [...] \\
               [--mu2e-setup=<setupmu2e-art.sh>] \\
               [--ifdh-version=<version>] \\
-              [--outstage=<dir>] \\
 EOF
+.
+    $outstagestr
 .
     $prestagestr
 .    <<EOF
@@ -137,16 +140,17 @@ sub commonOptDoc2 {
     # legacy default
 
     my $prestageIsSupported = $features{'prestageIsSupported'} // 1;
+    my $outstageIsSupported = $features{'outstageIsSupported'} // 1;
 
     my $formattedOutstage = join("\n\t\t", ('', @mu2egrid::knownOutstage));
-    my $outstageDocString = $features{'outstageDocString'} //<<EOF
+    my $outstageDocString = $outstageIsSupported ? <<EOF
 
     - Outstage should be one of the following registered locations:
            $formattedOutstage
 
       by default $mu2eDefaultOutstage is used.
 EOF
-;
+: '';
 
     my $res= <<EOF
     - The --group, --role, --jobsub-server, --disk, --memory, --expected-lifetime,

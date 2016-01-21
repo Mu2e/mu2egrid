@@ -5,6 +5,7 @@
 # A.Gaponenko, 2012, 2015
 #
 use File::Basename;
+use File::Path;
 use Getopt::Long;
 use POSIX qw(ceil);
 
@@ -13,22 +14,13 @@ use Data::Dumper; # for debugging
 use lib dirname($0);
 use mu2egrid;
 
-my $prodsysDefaultProductionOutstage = '/pnfs/mu2e/persistent/outstage';
-my $prodsysDefaultUserOutstage = '/pnfs/mu2e/scratch/outstage';
+my $submitter = `whoami`;
+chomp($submitter);
 
-my $formattedOutstage = join("\n\t\t", ('', @mu2egrid::knownOutstage));
+my $defaultProductionWFTop = '/pnfs/mu2e/persistent/users';
+my $defaultUserWFTop = '/pnfs/mu2e/scratch/users';
 
-my $outstageDocString =<<EOF
-
-    - Outstage should be one of the following registered locations:
-           $formattedOutstage
-
-      by default $prodsysDefaultProductionOutstage is used for --role=Production
-      and $prodsysDefaultUserOutstage otherwise.
-EOF
-    ;
-
-my %features = ( prestageIsSupported => 0, outstageDocString => $outstageDocString);
+my %features = ( prestageIsSupported => 0, outstageIsSupported => 0);
 
 #================================================================
 sub usage() {
@@ -39,6 +31,8 @@ Usage:
               --fcllist=<fcl-file-list> \\
               --dsconf=<output-dataset-version-string> \\
               [--dsowner=<name>] \\
+              [--wftop=<directory>] \\
+              [--wfproject=<name>] \\
               [--clustername=<name>] \\
               [--mu2ebintools-version=<string>] \\
               [--sam_web_client-version=<string>] \\
@@ -58,6 +52,17 @@ EOF
 
     - The --dsowner option specifies the username field in the names
       of output files.  The default is the username of the submitter.
+
+    - The --wftop and --wfproject options determine the location of
+      output files in the "workflow" directory structure.
+      Grid jobs will write their outputs under
+
+      \$wftop/\$USER/workflow/\$wfproject/outstage
+
+      where \$USER is the name of the submitter (here: "$submitter").
+      By default \$wftop=$defaultProductionWFTop
+      for --role=Production and $defaultUserWFTop otherwise.
+      The default \$wfproject is "default".
 
     - The --clustername option can be used to alter the name of
       the cluster level outstage directory.  For example, with
@@ -88,7 +93,8 @@ my %opt =
 
 @opt{keys %mu2egrid::commonOptDefaultsMu2e}  =  values %mu2egrid::commonOptDefaultsMu2e;
 @opt{keys %mu2egrid::commonOptDefaultsJobsub}  =  values %mu2egrid::commonOptDefaultsJobsub;
-$opt{'outstage'} = '';
+$opt{'wftop'} = '';
+$opt{'wfproject'} = 'default';
 
 # Process command line opts.
 GetOptions(\%opt,
@@ -96,11 +102,13 @@ GetOptions(\%opt,
     'fcllist=s',
     'dsconf=s',
     'dsowner=s',
+    'wftop=s',
+    'wfproject=s',
     'clustername=s',
     'mu2ebintools-version=s',
     'sam_web_client-version=s',
     'dhtools-version=s',
-    grep {!/prestage-spec/} @mu2egrid::commonOptList)
+    grep {!/prestage-spec/ and !/outstage/} @mu2egrid::commonOptList)
     or die "\nError processing command line options.\n";
 
 if($opt{'help'}) {
@@ -118,14 +126,21 @@ foreach my $k ('setup', 'mu2e-setup', 'fcllist', 'dsconf', 'dsowner') {
 
 #----------------
 # Decide what outstage to use, unless one is specified by user
-if($opt{'outstage'} eq '') {
+if($opt{'wftop'} eq '') {
     if(defined($opt{'role'}) and ($opt{'role'} eq 'Production')) {
-        $opt{'outstage'} = $prodsysDefaultProductionOutstage;
+        $opt{'wftop'} = $defaultProductionWFTop;
     }
     else {
-        $opt{'outstage'} = $prodsysDefaultUserOutstage;
+        $opt{'wftop'} = $defaultUserWFTop;
     }
 }
+
+my $wfoutstage = $opt{'wftop'} . '/' . $submitter . '/workflow/' . $opt{'wfproject'} . '/outstage';
+
+File::Path::make_path( $wfoutstage, { verbose=>1 } ) # this Carps on errors
+    unless $opt{'dry-run'};
+
+print "Will use the outstage directory = $wfoutstage\n";
 
 #----------------
 # All file args are to be passed to the worker node script using full path names.
@@ -137,11 +152,9 @@ my $fcllist = mu2egrid::find_file($opt{'fcllist'});
 my $njobs = mu2egrid::validate_file_list($fcllist);
 $ENV{'MU2EGRID_INPUTLIST'} = basename($fcllist); # use jobsub_client's -f, the worker node only needs the basename
 
-my $outstage = $opt{'outstage'};
-mu2egrid::assert_known_outstage($outstage);
-$ENV{'MU2EGRID_OUTSTAGE'} = $outstage;
+$ENV{'MU2EGRID_WFOUTSTAGE'} = $wfoutstage;
 
-$ENV{'MU2EGRID_SUBMITTER'} = $whoami;
+$ENV{'MU2EGRID_SUBMITTER'} = $submitter;
 $ENV{'MU2EGRID_DSOWNER'} = $opt{'dsowner'};
 $ENV{'MU2EGRID_CLUSTERNAME'} = $opt{'clustername'} // '';
 
