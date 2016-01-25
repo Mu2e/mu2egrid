@@ -1,0 +1,12 @@
+FILE=table
+Product=mu2egrid
+
+Flavor=ANY
+Qualifiers=""
+
+Action=setup
+    prodDir()
+    setupEnv()
+    setupRequired( jobsub_client  )
+    setupRequired( sam_web_client  )
+    pathPrepend(PATH, ${UPS_PROD_DIR}/bin)
