@@ -277,9 +277,11 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
         masterlist="$CONDOR_DIR_INPUT/${MU2EGRID_INPUTLIST:?MU2EGRID_INPUTLIST environment variable is not set}";
         export origFCL=$(getFCLFileName $masterlist ${PROCESS:?PROCESS environment variable is not set}) 2>> $logFileName
 
+        echo "mu2eprodsys origFCL = $origFCL" >> $logFileName 2>&1
+
         if [ -n "$origFCL" ]; then
 
-        # set current user and version info to obtain the name of this job
+            # set current user and version info to obtain the name of this job
             jobname=$(basename $origFCL .fcl | awk -F . '{OFS="."; $2="'${MU2EGRID_DSOWNER:?"Error: MU2EGRID_DSOWNER is not set"}'"; $4="'${MU2EGRID_DSCONF}'"; print $0;}')
             newLogFileName=$(echo $jobname|awk -F . '{OFS="."; $1="log"; print $0;}').log
             mv "$logFileName" "$newLogFileName"
