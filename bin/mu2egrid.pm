@@ -93,7 +93,7 @@ our %commonOptDefaultsJobsub = (
     'jobsub-server' => 'https://fifebatch.fnal.gov:8443',
     'disk' => '30GB',
     'memory' => '2048MB',
-    'expected-lifetime' => '86400', # 24 hours, but jobsub v1_1_9 wants an int
+    'expected-lifetime' => '24h',
     'OS' => 'SL6',
     'resource-provides' => 'usage_model=OPPORTUNISTIC,DEDICATED',
     'site' => undef,
