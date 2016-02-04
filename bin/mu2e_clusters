@@ -8,6 +8,69 @@ use strict;
 use Getopt::Long;
 use File::Basename;
 
+
+use Class::Struct Mu2eClusterStats => { total=>'$', running=>'$', held=>'$', idle=>'$' };
+
+sub Mu2eClusterStats::add {
+    my ($self, $other) = @_;
+
+    my %union;
+    foreach my $i (keys %$self, keys %$other) {
+        $union{$i}++
+    }
+    my @union = keys %union;
+
+    foreach my $k (@union) {
+        my $sum = ($self->{$k} // 0) + ($other->{$k}//0);
+        $self->{$k} = $sum;
+    }
+}
+
+#================================================================
+sub jobinfo($) {
+    my ($fields) = @_;
+    my $code = $$fields[5];
+    my %codeToName = ('H' => 'held', 'R' => 'running', 'I'=>'idle');
+    my $state = $codeToName{$code} // 'unknown';
+    my %keys = ('total'=>1, $state=>1);
+    my $res = Mu2eClusterStats->new(%keys);
+}
+#================================================================
+sub getUserClusters($) {
+    my $username = shift;
+
+    open OLDERR,     ">&", \*STDERR or die "Can't dup STDERR: $!\n";
+    open STDERR, '>', '/dev/null' or die "Can't redirect STDERR: $!\n";
+    my $ret = open(my $CQ, '-|', 'jobsub_q', '--user', $username);
+    my $savedmsg = $!;
+    open STDERR,     ">&", \*OLDERR or die "Can't restor STDERR: $!\n";
+    die "Error opening jobsub_q pipe: $savedmsg\n" unless $ret;
+
+    my %clusters;
+
+    while(my $line = <$CQ>) {
+        chomp($line);
+        my @fields = split(' ', $line);
+        if(($#fields > 5) && ($fields[1] eq $username)) {
+
+            my $cn = $fields[0];
+            $cn =~ s/\.\d*@/@/;
+
+            my $current = jobinfo(\@fields);
+
+            if(!defined($clusters{$cn})) {
+                $clusters{$cn} = Mu2eClusterStats->new(total=>0, running=>0, held=>0, idle=>0);
+            }
+            $clusters{$cn}->add($current);
+        }
+    }
+
+    close $CQ
+        or die "Error when running jobsub_q.  Exit code ", $?>>8, ", signal ", 0xFF&$? ,".\n";
+
+    return \%clusters;
+}
+
 #================================================================
 sub usage() {
     my $self = basename($0);
@@ -25,48 +88,6 @@ EOF
 }
 
 #================================================================
-sub getUserClusters($) {
-    my $username = shift;
-
-    open OLDERR,     ">&", \*STDERR or die "Can't dup STDERR: $!\n";
-    open STDERR, '>', '/dev/null' or die "Can't redirect STDERR: $!\n";
-    my $ret = open(my $CQ, '-|', 'jobsub_q', '--user', $username);
-    my $savedmsg = $!;
-    open STDERR,     ">&", \*OLDERR or die "Can't restor STDERR: $!\n";
-    die "Error opening jobsub_q pipe: $savedmsg\n" unless $ret;
-
-    my %clusters;
-
-    while(my $line = <$CQ>) {
-        chomp($line);
-        my @fields = split(' ', $line);
-#       print "got username = $username, fields = ". join('#', @fields) . "\n";
-        if(($#fields > 5) && ($fields[1] eq $username)) {
-            my $cn = $fields[0];
-            $cn =~ s/\..*$//;
-            my $cserver = $fields[0];
-            $cserver =~ s/^.*@//;
-
-            if(!defined($clusters{$cn})) {
-                $clusters{$cn} = [0,0, $cserver];
-            }
-
-            # total job count
-            ++$clusters{$cn}[0];
-            # running jobs count
-            if($fields[5] eq 'R') {
-                ++$clusters{$cn}[1];
-            }
-        }
-    }
-
-    close $CQ
-        or die "Error when running jobsub_q.  Exit code ", $?>>8, ", signal ", 0xFF&$? ,".\n";
-
-    return \%clusters;
-}
-
-#================================================================
 my $user = `whoami`;
 chomp $user;
 my %opt = (help => 0, brief => 0, user => \$user );
@@ -81,15 +102,20 @@ else {
     my $clusters = getUserClusters($user);
 
     if(!$brief) {
-        print "Cluster  \t\t\t\tnjobs\trunning\n";
+        print "Cluster  \t\t\t\tnjobs\trunning\tidle\theld\n";
     }
 
     foreach my $cn (sort(keys %$clusters)) {
         if($brief) {
-            print "$cn\@$$clusters{$cn}[2]\n";
+            print "$cn\n";
         }
         else {
-            print "$cn.0\@$$clusters{$cn}[2]\t\t$$clusters{$cn}[0]\t$$clusters{$cn}[1]\n";
+            print
+                "$cn\t\t", $$clusters{$cn}->total,
+                "\t", $$clusters{$cn}->running,
+                "\t", $$clusters{$cn}->idle,
+                "\t", $$clusters{$cn}->held,
+                "\n";
         }
     }
 }
