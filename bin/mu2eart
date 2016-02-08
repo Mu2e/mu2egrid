@@ -273,6 +273,8 @@ for my $key (keys %mu2egrid::commonOptDefaultsJobsub) {
     }
 }
 
+push @args, ('-l', "priority=$opt{priority}");
+
 push @args, @extra_jobsub_args;
 
 # IFDH_VERSION in the environment is used by both jobsub and our worker node scripts.

@@ -169,6 +169,8 @@ for my $key (keys %mu2egrid::commonOptDefaultsJobsub) {
     }
 }
 
+push @args, ('-l', "priority=$opt{priority}");
+
 push @args, @extra_jobsub_args;
 
 # Export the EXPERIMENT variable for ifdh

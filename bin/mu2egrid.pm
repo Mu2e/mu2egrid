@@ -58,6 +58,7 @@ our @commonOptList = (
     'jobsub-arg=s@',
     'outstage=s',
     "prestage-spec=s",
+    'priority=i',
     'dry-run',
     'verbose',
     'help',
@@ -79,6 +80,7 @@ our @commonOptList = (
 our %commonOptDefaultsMu2e = (
     'mu2e-setup' => '/cvmfs/mu2e.opensciencegrid.org/setupmu2e-art.sh',
     'outstage' => $mu2egrid::mu2eDefaultOutstage,
+    'priority' => 0,
     'dry-run' => 0,
     'verbose' => 0,
     'help' => 0,
@@ -127,6 +129,7 @@ EOF
 .
     $prestagestr
 .    <<EOF
+              [--priority=<int>] \\
               [--dry-run] \\
               [--verbose] \\
               [--help]
@@ -200,6 +203,14 @@ EOF
     }
 
     $res .= <<EOF
+
+    --priority sets the priority of the cluster being submitted with
+      respect to your other jobs.  It does not affect the ranking of
+      your jobs compared to jobs by other users.  The argument is an
+      integer, with both positive and negative values allowed.  The
+      default is zero.  Jobs with higher priority will start first
+      even if they were submitted later than your other jobs in the
+      queue.
 
     - Use --dry-run to test the submission command without actually
       sending the jobs.  Usually used in conjunction with --verbose.
