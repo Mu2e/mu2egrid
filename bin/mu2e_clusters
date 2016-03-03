@@ -36,12 +36,20 @@ sub jobinfo($) {
     my $res = Mu2eClusterStats->new(%keys);
 }
 #================================================================
-sub getUserClusters($) {
-    my $username = shift;
+sub getUserClusters($$) {
+    my ($username, $groupname) = @_;
+
+    my @args;
+    if($username ne '') {
+        push @args, '--user', $username;
+    }
+    if($groupname ne '') {
+        push @args, '--group', $groupname;
+    }
 
     open OLDERR,     ">&", \*STDERR or die "Can't dup STDERR: $!\n";
     open STDERR, '>', '/dev/null' or die "Can't redirect STDERR: $!\n";
-    my $ret = open(my $CQ, '-|', 'jobsub_q', '--user', $username);
+    my $ret = open(my $CQ, '-|', 'jobsub_q', @args);
     my $savedmsg = $!;
     open STDERR,     ">&", \*OLDERR or die "Can't restor STDERR: $!\n";
     die "Error opening jobsub_q pipe: $savedmsg\n" unless $ret;
@@ -77,7 +85,7 @@ sub usage() {
     return <<EOF
 Usage:
 
-        $self [--brief] [--user=username]
+        $self [--brief] [--user=username] [--group=groupname]
 
 will display a list of all active condor clusters for the user and job
 count in each cluster.  If the '--brief' options is given, just cluster
@@ -90,8 +98,10 @@ EOF
 #================================================================
 my $user = `whoami`;
 chomp $user;
-my %opt = (help => 0, brief => 0, user => \$user );
-GetOptions(\%opt, "help", "brief", "user=s") or die "\nError processing command line options.\n";
+my $group = '';
+my %opt = (help => 0, brief => 0, user => \$user, group => \$group );
+GetOptions(\%opt, "help", "brief", "user=s", "group=s")
+    or die "\nError processing command line options.\n";
 
 if($opt{'help'} or ($#ARGV >= 0)) {
     print usage();
@@ -99,7 +109,7 @@ if($opt{'help'} or ($#ARGV >= 0)) {
 else {
     my $brief = $opt{'brief'};
 
-    my $clusters = getUserClusters($user);
+    my $clusters = getUserClusters($user, $group);
 
     if(!$brief) {
         print "Cluster  \t\t\t\tnjobs\trunning\tidle\theld\n";
