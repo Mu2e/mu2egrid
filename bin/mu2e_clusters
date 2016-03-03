@@ -56,20 +56,29 @@ sub getUserClusters($$) {
 
     my %clusters;
 
+  LINE:
     while(my $line = <$CQ>) {
+        next LINE unless $line =~ /^\d+\.\d+@/;
+
         chomp($line);
         my @fields = split(' ', $line);
-        if(($#fields > 5) && ($fields[1] eq $username)) {
+
+        my $jobuser = $fields[1];
+        if(($username eq '')||($jobuser eq $username)) {
 
             my $cn = $fields[0];
             $cn =~ s/\.\d*@/@/;
 
             my $current = jobinfo(\@fields);
 
-            if(!defined($clusters{$cn})) {
-                $clusters{$cn} = Mu2eClusterStats->new(total=>0, running=>0, held=>0, idle=>0);
+            if(!defined($clusters{$jobuser})) {
+                $clusters{$jobuser} = {};
             }
-            $clusters{$cn}->add($current);
+            if(!defined($clusters{$jobuser}->{$cn})) {
+                $clusters{$jobuser}->{$cn} = Mu2eClusterStats->new(total=>0, running=>0, held=>0, idle=>0);
+            }
+
+            $clusters{$jobuser}->{$cn}->add($current);
         }
     }
 
@@ -80,16 +89,51 @@ sub getUserClusters($$) {
 }
 
 #================================================================
+sub summarizeByUser($) {
+    my $uclusters = shift;
+
+    my $res = {};
+
+    my @users = sort(keys %$uclusters);
+    foreach my $u (@users) {
+        $res->{$u} = Mu2eClusterStats->new(total=>0, running=>0, held=>0, idle=>0);
+
+        my $clusters = $$uclusters{$u};
+        foreach my $cn (sort(keys %$clusters)) {
+            $res->{$u}->add($$clusters{$cn});
+        }
+    }
+
+    return $res;
+}
+
+#================================================================
 sub usage() {
     my $self = basename($0);
     return <<EOF
 Usage:
 
-        $self [--brief] [--user=username] [--group=groupname]
+        $self [options]
 
-will display a list of all active condor clusters for the user and job
-count in each cluster.  If the '--brief' options is given, just cluster
-IDs are printed.
+will summarize information obtained from jobsub_q and will display a
+list of all active condor clusters and job counts in the clusters.
+
+Options:
+
+    --user=<username>     Passed to jobsub_q to restict the output to jobs
+                          belonging to the given user.  The default is
+                          the user who runs mu2e_clusters.
+                          See also --allusers.
+
+    --group=<groupname>   Passed to jobsub_q.
+
+    --brief               Just cluster IDs are printed.
+
+    --allusers            Print out information about all users.  This
+                          overrides the --user options.
+
+    --summary             Instead of one line per cluster print one line per
+                          user with job counts.
 
 EOF
 ;
@@ -99,35 +143,76 @@ EOF
 my $user = `whoami`;
 chomp $user;
 my $group = '';
-my %opt = (help => 0, brief => 0, user => \$user, group => \$group );
-GetOptions(\%opt, "help", "brief", "user=s", "group=s")
+my $allusers  = 0;
+my $brief = 0;
+my $summary = 0;
+my %opt = (help => 0, brief => \$brief, user => \$user, group => \$group, allusers => \$allusers, summary=>\$summary);
+GetOptions(\%opt, "help", "brief", "user=s", "group=s", "allusers", "summary")
     or die "\nError processing command line options.\n";
 
 if($opt{'help'} or ($#ARGV >= 0)) {
     print usage();
 }
 else {
-    my $brief = $opt{'brief'};
+    die "Conflicting options --brief and --summary\n" if($brief and $summary);
 
-    my $clusters = getUserClusters($user, $group);
-
-    if(!$brief) {
-        print "Cluster  \t\t\t\tnjobs\trunning\tidle\theld\n";
+    if($allusers) {
+        $user = '';
     }
+    my $uclusters = getUserClusters($user, $group);
 
-    foreach my $cn (sort(keys %$clusters)) {
-        if($brief) {
-            print "$cn\n";
-        }
-        else {
+    if($summary) {
+        my $s = summarizeByUser($uclusters);
+        print "njobs\trunning\tidle\theld\tuser\n";
+
+        my @users = sort(keys %$s);
+        foreach my $u (@users) {
             print
-                "$cn\t\t", $$clusters{$cn}->total,
-                "\t", $$clusters{$cn}->running,
-                "\t", $$clusters{$cn}->idle,
-                "\t", $$clusters{$cn}->held,
+                $$s{$u}->total,
+                "\t", $$s{$u}->running,
+                "\t", $$s{$u}->idle,
+                "\t", $$s{$u}->held,
+                "\t", $u,
                 "\n";
         }
     }
+    else {
+
+        my $headers = $allusers ?
+            "Cluster  \t\t\t\tnjobs\trunning\tidle\theld\tuser\n" :
+            "Cluster  \t\t\t\tnjobs\trunning\tidle\theld\n";
+
+        print $headers unless $brief;
+
+        my @users = sort(keys %$uclusters);
+        foreach my $u (@users) {
+            my $clusters = $$uclusters{$u};
+
+            foreach my $cn (sort(keys %$clusters)) {
+                if($brief) {
+                    print "$cn\n";
+                }
+                elsif($allusers) {
+                    print
+                        "$cn\t\t", $$clusters{$cn}->total,
+                        "\t", $$clusters{$cn}->running,
+                        "\t", $$clusters{$cn}->idle,
+                        "\t", $$clusters{$cn}->held,
+                        "\t", $u,
+                        "\n";
+                }
+                else {
+                    print
+                        "$cn\t\t", $$clusters{$cn}->total,
+                        "\t", $$clusters{$cn}->running,
+                        "\t", $$clusters{$cn}->idle,
+                        "\t", $$clusters{$cn}->held,
+                        "\n";
+                }
+            }
+        }
+    }
+
 }
 
 exit 0;
