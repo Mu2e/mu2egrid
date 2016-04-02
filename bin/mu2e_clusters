@@ -9,7 +9,7 @@ use Getopt::Long;
 use File::Basename;
 
 
-use Class::Struct Mu2eClusterStats => { total=>'$', running=>'$', held=>'$', idle=>'$' };
+use Class::Struct Mu2eClusterStats => { total=>'$', running=>'$', held=>'$', idle=>'$', maxprio=>'$' };
 
 sub Mu2eClusterStats::add {
     my ($self, $other) = @_;
@@ -21,8 +21,14 @@ sub Mu2eClusterStats::add {
     my @union = keys %union;
 
     foreach my $k (@union) {
-        my $sum = ($self->{$k} // 0) + ($other->{$k}//0);
-        $self->{$k} = $sum;
+        if($k =~ /maxprio$/) {
+            $self->{$k} = $other->{$k} if(($self->{$k} // -99999) < ($other->{$k}//-99999));
+        }
+        else {
+            # cumulative
+            my $sum = ($self->{$k} // 0) + ($other->{$k}//0);
+            $self->{$k} = $sum;
+        }
     }
 }
 
@@ -30,9 +36,10 @@ sub Mu2eClusterStats::add {
 sub jobinfo($) {
     my ($fields) = @_;
     my $code = $$fields[5];
+    my $prio = $$fields[6];
     my %codeToName = ('H' => 'held', 'R' => 'running', 'I'=>'idle');
     my $state = $codeToName{$code} // 'unknown';
-    my %keys = ('total'=>1, $state=>1);
+    my %keys = (total=>1, $state=>1, maxprio=>$prio);
     my $res = Mu2eClusterStats->new(%keys);
 }
 #================================================================
@@ -135,6 +142,8 @@ Options:
     --summary             Instead of one line per cluster print one line per
                           user with job counts.
 
+   --showprio             Show max job priority in a cluster.
+
 EOF
 ;
 }
@@ -146,8 +155,9 @@ my $group = '';
 my $allusers  = 0;
 my $brief = 0;
 my $summary = 0;
-my %opt = (help => 0, brief => \$brief, user => \$user, group => \$group, allusers => \$allusers, summary=>\$summary);
-GetOptions(\%opt, "help", "brief", "user=s", "group=s", "allusers", "summary")
+my $showprio = 0;
+my %opt = (help => 0, brief => \$brief, user => \$user, group => \$group, allusers => \$allusers, summary=>\$summary, showprio=>\$showprio);
+GetOptions(\%opt, "help", "brief", "user=s", "group=s", "allusers", "summary", "showprio")
     or die "\nError processing command line options.\n";
 
 if($opt{'help'} or ($#ARGV >= 0)) {
@@ -178,9 +188,10 @@ else {
     }
     else {
 
-        my $headers = $allusers ?
-            "Cluster  \t\t\t\tnjobs\trunning\tidle\theld\tuser\n" :
-            "Cluster  \t\t\t\tnjobs\trunning\tidle\theld\n";
+        my $headers = "Cluster  \t\t\t\tnjobs\trunning\tidle\theld";
+        $headers .= "\tuser" if $allusers;
+        $headers .= "\tmaxprio" if $showprio;
+        $headers .= "\n";
 
         print $headers unless $brief;
 
@@ -192,22 +203,16 @@ else {
                 if($brief) {
                     print "$cn\n";
                 }
-                elsif($allusers) {
-                    print
-                        "$cn\t\t", $$clusters{$cn}->total,
-                        "\t", $$clusters{$cn}->running,
-                        "\t", $$clusters{$cn}->idle,
-                        "\t", $$clusters{$cn}->held,
-                        "\t", $u,
-                        "\n";
-                }
                 else {
                     print
                         "$cn\t\t", $$clusters{$cn}->total,
                         "\t", $$clusters{$cn}->running,
                         "\t", $$clusters{$cn}->idle,
-                        "\t", $$clusters{$cn}->held,
-                        "\n";
+                        "\t", $$clusters{$cn}->held;
+
+                    print "\t", $u if $allusers;
+                    print "\t", $$clusters{$cn}->maxprio if $showprio;
+                    print "\n";
                 }
             }
         }
