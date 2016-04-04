@@ -7,7 +7,7 @@
 # Andrei Gaponenko, 2014, 2015
 #
 
-error_delay=$((30*60))
+error_delay="${MU2EGRID_ERRORDELAY:?Error: MU2EGRID_ERRORDELAY is not defined}"
 errfile=$TMPDIR/mu2eprodsys_errmsg.$$
 
 #================================================================

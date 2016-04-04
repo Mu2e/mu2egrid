@@ -4,6 +4,7 @@
 #
 # A.Gaponenko, 2012, 2015
 #
+
 use File::Basename;
 use File::Path;
 use Getopt::Long;
@@ -16,6 +17,8 @@ use mu2egrid;
 
 my $submitter = `whoami`;
 chomp($submitter);
+
+my $default_error_delay = 30*60; # grid black hole node protection
 
 my $defaultProductionWFTop = '/pnfs/mu2e/persistent/users';
 my $defaultUserWFTop = '/pnfs/mu2e/scratch/users';
@@ -37,6 +40,7 @@ Usage:
               [--mu2ebintools-version=<string>] \\
               [--sam_web_client-version=<string>] \\
               [--dhtools-version=<string>] \\
+              [--error-delay=<int>] \\
 EOF
         . mu2egrid::commonOptDoc1(%features) . <<EOF
 
@@ -74,6 +78,12 @@ EOF
       the corresponding package to be used by the worker node process.
       By default the version seen by the submission process as the UPS
       "current" best match will be used.
+
+    - The --error-delay options sets the delay, in seconds, before
+      the worker node script will exit after a payload failure.
+      This helps to reduce batch queue drain by broken grid nodes.
+      The default value is $default_error_delay.
+
 EOF
 . mu2egrid::commonOptDoc2(%features)
     ;
@@ -108,6 +118,7 @@ GetOptions(\%opt,
     'mu2ebintools-version=s',
     'sam_web_client-version=s',
     'dhtools-version=s',
+    'error-delay=i',
     grep {!/prestage-spec/ and !/outstage/} @mu2egrid::commonOptList)
     or die "\nError processing command line options.\n";
 
@@ -193,6 +204,8 @@ print "Will use sam_web_client version $ENV{MU2EGRID_SAM_WEB_CLIENT_VERSION}\n";
 my $upsqual = mu2egrid::mu2e_ups_qualifiers($opt{'mu2e-setup'}, $opt{'setup'});
 $ENV{'MU2EGRID_MU2EBINTOOLS_VERSION'} = $opt{'mu2ebintools-version'} // mu2egrid::default_package_version($opt{'mu2e-setup'}, 'mu2ebintools', $upsqual);
 print "Will use mu2ebintools version $ENV{MU2EGRID_MU2EBINTOOLS_VERSION} -q $upsqual\n";
+
+$ENV{'MU2EGRID_ERRORDELAY'} = $opt{'error-delay'} // $default_error_delay;
 
 #----------------------------------------------------------------
 while( (my $key, my $value) = each(%ENV) ) {
