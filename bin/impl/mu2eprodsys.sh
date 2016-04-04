@@ -73,9 +73,9 @@ mu2eprodsys_payload() {
 
     if source "${MU2EGRID_USERSETUP:?Error: MU2EGRID_USERSETUP: not defined}"; then
 
-        setup mu2ebintools "${MU2EGRID_MU2EBINTOOLS_VERSION:?Error: MU2EGRID_MU2EBINTOOLS_VERSION is not set}" -q "${MU2E_UPS_QUALIFIERS}"
-        setup sam_web_client "${MU2EGRID_SAM_WEB_CLIENT_VERSION:?Error: MU2EGRID_SAM_WEB_CLIENT_VERSION is not set}"
-        setup dhtools "${MU2EGRID_DHTOOLS_VERSION:?Error: MU2EGRID_DHTOOLS_VERSION is not set}"
+        setup -B mu2ebintools "${MU2EGRID_MU2EBINTOOLS_VERSION:?Error: MU2EGRID_MU2EBINTOOLS_VERSION is not set}" -q "${MU2E_UPS_QUALIFIERS}"
+        setup -B sam_web_client "${MU2EGRID_SAM_WEB_CLIENT_VERSION:?Error: MU2EGRID_SAM_WEB_CLIENT_VERSION is not set}"
+        setup -B dhtools "${MU2EGRID_DHTOOLS_VERSION:?Error: MU2EGRID_DHTOOLS_VERSION is not set}"
 
         echo "#================================================================"
         echo "# After package setup, the environment is:"
@@ -269,7 +269,7 @@ finalOutDir="${MU2EGRID_WFOUTSTAGE:?Error: MU2EGRID_OUTSTAGE is not set}/$cluste
 # Set up Mu2e environment and make ifdh available
 if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
 
-    setup ifdhc $IFDH_VERSION
+    setup -B ifdhc $IFDH_VERSION
 
     if type ifdh 2> $errfile; then
 
