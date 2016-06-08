@@ -134,7 +134,40 @@ mu2eprodsys_payload() {
             rm tmpspec
         done
 
+        # Handle input files defined in fhicl prolog variables
+        touch prologFileDefs
+        keys=( $(fhicl-getpar --strlist mu2emetadata.fcl.prologkeys $localFCL) )
+        for key in "${keys[@]}"; do
+
+            rfns=( $(fhicl-getpar --strlist "mu2emetadata.fcl.prolog_values.$key" $localFCL ) )
+            for rfn in "${rfns[@]}"; do
+                # copy it to mu2egridInDir
+                bn="$(basename $rfn)"
+                lfn="mu2egridInDir/$bn"
+
+                # leave alone absolute path names, but expand SAM file names for ifdh
+                if [[ $rfn != '/'* ]]; then
+                    rfn="$(samweb get-file-access-url $rfn)"
+                fi
+
+                echo $rfn $lfn >> tmpspec
+                echo $bn >> parents
+            done
+
+            echo "BEGIN_PROLOG # by mu2eprodsys" >> prologFileDefs
+            echo "$key @protect_ignore: [" >> prologFileDefs
+            awk 'BEGIN{first=1}; {if(!first) {cm=",";} else {first=0; cm=" ";}; print "    "cm"\""$2"\""}' tmpspec >> prologFileDefs
+            echo "]" >> prologFileDefs
+            echo "END_PROLOG # by mu2eprodsys" >> prologFileDefs
+
+            cat tmpspec >> prestage_spec
+            rm tmpspec
+        done
+
         if [[ -e prestage_spec ]] && [[ x"$MU2EGRID_NO_PRESTAGE" == x ]]; then
+            echo "# prestage_spec follows:"
+            cat prestage_spec
+            echo "#----------------------------------------------------------------"
             echo "$(date) # Starting to pre-stage input files"
             type ifdh
             tstart=$(date +%s)
@@ -142,15 +175,24 @@ mu2eprodsys_payload() {
             t2=$(date +%s)
             echo "$(date) # Total stage-in time: $((t2-tstart)) seconds, status $ret"
 
-            echo "#----------------------------------------------------------------" >> $localFCL
-            echo "# code added by mu2eprodys" >> $localFCL
+
+            # Point fcl to pre-staged file -  only if we do prestage
+
+            # FIXME: remove 'sed' after https://cdcvs.fnal.gov/redmine/issues/12877
+            # is resolved.  Note that the workaround does not work
+            # on @protect_ignore in included files.  But it is still
+            # a useful hack for now.
+            sed -e 's/@protect_ignore:/:/g' $localFCL > ${localFCL}.tmp
+            cat prologFileDefs ${localFCL}.tmp > $localFCL
+            rm ${localFCL}.tmp
 
             # set input file names
+            echo "#----------------------------------------------------------------" >> $localFCL
+            echo "# code added by mu2eprodys" >> $localFCL
             cat localFileDefs >> $localFCL
         fi
 
         # set output file names
-
         keys=( $(fhicl-getpar --strlist mu2emetadata.fcl.outkeys $localFCL ) )
         for key in "${keys[@]}"; do
             oldname=$(fhicl-getpar --string $key $localFCL)
