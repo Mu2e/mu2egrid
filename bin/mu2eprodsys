@@ -77,7 +77,11 @@ EOF
       --dhtools-version options can be used to specify the version of
       the corresponding package to be used by the worker node process.
       By default the version seen by the submission process as the UPS
-      "current" best match will be used.
+      "current" best match will be used, except for the mu2ebintools
+      package.  The logic to set up mu2ebintools is more complicated.
+      If a version is not specified on the command line, mu2eprodsys
+      will rely on the mu2etools package to find a compatible
+      mu2ebintools version.
 
     - The --error-delay options sets the delay, in seconds, before
       the worker node script will exit after a payload failure.
@@ -201,9 +205,8 @@ print "Will use dhtools version $ENV{MU2EGRID_DHTOOLS_VERSION}\n";
 $ENV{'MU2EGRID_SAM_WEB_CLIENT_VERSION'} = $opt{'sam_web_client-version'} // mu2egrid::default_package_version($opt{'mu2e-setup'}, 'sam_web_client', '');
 print "Will use sam_web_client version $ENV{MU2EGRID_SAM_WEB_CLIENT_VERSION}\n";
 
-my $upsqual = mu2egrid::mu2e_ups_qualifiers($opt{'mu2e-setup'}, $opt{'setup'});
-$ENV{'MU2EGRID_MU2EBINTOOLS_VERSION'} = $opt{'mu2ebintools-version'} // mu2egrid::default_package_version($opt{'mu2e-setup'}, 'mu2ebintools', $upsqual);
-print "Will use mu2ebintools version $ENV{MU2EGRID_MU2EBINTOOLS_VERSION} -q $upsqual\n";
+$ENV{'MU2EGRID_MU2EBINTOOLS_VERSION'} = $opt{'mu2ebintools-version'} // mu2egrid::default_mu2ebintools_version($opt{'mu2e-setup'}, $opt{'setup'});
+print "Will use mu2ebintools version $ENV{MU2EGRID_MU2EBINTOOLS_VERSION}\n";
 
 $ENV{'MU2EGRID_ERRORDELAY'} = $opt{'error-delay'} // $default_error_delay;
 

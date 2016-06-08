@@ -33,11 +33,17 @@ sub default_group_helper() {
     return ('group' => $group);
 }
 
-sub mu2e_ups_qualifiers($$) {
+sub default_mu2ebintools_version($$) {
     my ($mu2esetup, $setup) = @_;
-    my $qual = `source $mu2esetup >/dev/null; source $setup >/dev/null; echo \$MU2E_UPS_QUALIFIERS`;
-    chomp $qual;
-    return $qual;
+    # The mu2etools package figures out and sets up the correct mu2ebintools
+    # version. Then we can print it.
+    my @out = `source $mu2esetup >/dev/null; source $setup >/dev/null; setup mu2etools; echo $?; echo \$MU2EBINTOOLS_VERSION`;
+    chomp @out;
+
+    die "Error determining a mu2ebintools version compatible with $setup\n"
+        unless $out[0] eq '0';
+
+    return $out[1];
 }
 
 sub default_package_version($$$) {
