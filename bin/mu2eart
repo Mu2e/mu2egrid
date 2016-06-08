@@ -21,7 +21,7 @@ Usage:
         $self --setup=<script-to-source.sh> \\
               --fcl=<file> \\
               --njobs=<M> \\
-              {--inputs=<filelist>|--events-per-job=<N> [--run-number=<R>]} \\
+              {--inputs=[numFiles:]<filelist>|--events-per-job=<N> [--run-number=<R>]} \\
               [--jobname=<name>] \\
               [--[no]user-services] \\
               [--TFileService=<name>] \\
@@ -38,7 +38,11 @@ EOF
       files to be processed by the job.  This is mutually exclusive
       with --events-per-job, the latter being used for jobs that
       generate new events.  Each process pre-stages its subset of
-      input files to a local disk on the worker node.
+      input files to a local disk on the worker node.  By default
+      all the listed files are processed.  One may prefix the
+      list filename with an integer numFiles to limit the number
+      of inputs processed by this submission.   numFiles must
+      be a multiple of njobs.
 
     - For new event generation one may specify the run number, the
       default is the Condor cluster number.
@@ -180,11 +184,32 @@ if(defined $opt{'inputs'}) {
         die "Arguments --inputs and --run-number are mutually exclusive.";
     }
 
-    my $inputs = mu2egrid::find_file($opt{'inputs'});
+    my $maxinputs = 0;
+    my $inputs = '';
+    if($opt{'inputs'} =~ /:/) {
+        ($maxinputs, $inputs) = split(':', $opt{'inputs'}, 2);
+        die "Error: numFiles in the --inputs specification must be an integer.  Got: '$maxinputs'\n"
+            unless $maxinputs =~/^\d+$/;
+        $maxinputs = 0 + $maxinputs;
+        die "Error: numFiles==$maxinputs in the --inputs specification is not a multiple of --njobs=$njobs\n"
+            if $maxinputs % $njobs;
+    }
+    else {
+        $inputs = $opt{'inputs'};
+    }
+
+    $inputs = mu2egrid::find_file($inputs);
     my $nlines = mu2egrid::validate_file_list($inputs);
     print "nlines = $nlines in file $inputs\n" if $opt{'verbose'};
-    mu2egrid::validate_njobs($nlines, $njobs);
-    $ENV{'MU2EGRID_CHUNKSIZE'} = ceil($nlines/$njobs);
+
+    die "Error: numFiles==$maxinputs in the --inputs specification exceeds the number of available inputs = $nlines in $inputs\n"
+        if $maxinputs >  $nlines;
+
+    my $ninputs = $maxinputs ? $maxinputs : $nlines;
+    print "ninputs = $ninputs\n" if $opt{'verbose'};
+
+    mu2egrid::validate_njobs($ninputs, $njobs);
+    $ENV{'MU2EGRID_CHUNKSIZE'} = ceil($ninputs/$njobs);
     $ENV{'MU2EGRID_INPUTLIST'} = basename($inputs);
     push @files_to_transfer, $inputs;
 }
