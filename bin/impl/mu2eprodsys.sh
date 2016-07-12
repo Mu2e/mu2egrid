@@ -135,8 +135,19 @@ mu2eprodsys_payload() {
         done
 
         # Handle input files defined in fhicl prolog variables
+
+        # Most CD3 fcl datasets do not have mu2emetadata.fcl.prologkeys defined.
+        # A workaround for backward compatibility: check that the variable is present
+        # before trying to query its value.
+        metalist=( $(fhicl-getpar --keys mu2emetadata.fcl $localFCL) )
+        keys=()
+        for i in "${metalist[@]}"; do
+            case $i in
+                prologkeys) keys=( $(fhicl-getpar --strlist mu2emetadata.fcl.prologkeys $localFCL) )
+            esac
+        done
+
         touch prologFileDefs
-        keys=( $(fhicl-getpar --strlist mu2emetadata.fcl.prologkeys $localFCL) )
         for key in "${keys[@]}"; do
 
             rfns=( $(fhicl-getpar --strlist "mu2emetadata.fcl.prolog_values.$key" $localFCL ) )
