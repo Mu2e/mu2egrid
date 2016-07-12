@@ -316,7 +316,7 @@ clustername="$cluster${MU2EGRID_CLUSTERNAME:+.$MU2EGRID_CLUSTERNAME}"
 jobname=failedjob
 export logFileName="${jobname}.log"
 declare -a outfiles=( $logFileName )
-finalOutDir="${MU2EGRID_WFOUTSTAGE:?Error: MU2EGRID_OUTSTAGE is not set}/$clustername/$(printf %02d $((${PROCESS:-0}/1000)))/$(printf %05d ${PROCESS:-0})"
+finalOutDir="${MU2EGRID_WFOUTSTAGE:?Error: MU2EGRID_WFOUTSTAGE is not set}/$clustername/$(printf %02d $((${PROCESS:-0}/1000)))/$(printf %05d ${PROCESS:-0})"
 
 #================================================================
 # Set up Mu2e environment and make ifdh available
