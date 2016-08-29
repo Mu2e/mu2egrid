@@ -17,8 +17,6 @@ $impldir = abs_path(dirname($0) . '/impl');
 
 our @knownOutstage = ('/mu2e/data/outstage',
                       '/mu2e/data2/outstage',
-                      '/grid/data/mu2e/outstage',
-                      '/grid/data/marsmu2e/outstage',
                       '/pnfs/mu2e/persistent/outstage',
                       '/pnfs/mu2e/scratch/outstage'
                       );
