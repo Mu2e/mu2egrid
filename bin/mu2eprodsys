@@ -94,6 +94,17 @@ EOF
 }
 
 #================================================================
+sub checkFilenameComponent {
+    my ($opt, $list) = @_;
+    foreach my $a (@$list) {
+        die "Error: parameter $a must be specified\n" unless defined $$opt{$a};
+        my $val = $$opt{$a};
+        die "Invalid value of parameter $a = '$val'"
+            unless $val =~ /^\w[-\w]*$/;
+    }
+}
+
+#================================================================
 my @extra_jobsub_args;
 
 my $whoami = `whoami`;
@@ -138,6 +149,9 @@ print "Final set of options:\n", Dumper( \%opt ), "\n"
 foreach my $k ('setup', 'mu2e-setup', 'fcllist', 'dsconf', 'dsowner') {
     defined $opt{$k} or die "Error: --$k must be specified.  Try the --help option.\n";
 }
+
+# Make sure components of Mu2e filenames are valid
+checkFilenameComponent(\%opt, ['dsconf', 'dsowner']);
 
 #----------------
 # Decide what outstage to use, unless one is specified by user
