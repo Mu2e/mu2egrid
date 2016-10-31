@@ -33,9 +33,20 @@ sub default_group_helper() {
 
 sub default_mu2ebintools_version($$) {
     my ($mu2esetup, $setup) = @_;
-    # The mu2etools package figures out and sets up the correct mu2ebintools
-    # version. Then we can print it.
-    my @out = `source $mu2esetup >/dev/null; source $setup >/dev/null; setup mu2etools; echo $?; echo \$MU2EBINTOOLS_VERSION`;
+
+    # We need a mu2ebintools package version that uses the same
+    # fhiclcpp library as Mu2e Offline.   Offline must be setup first
+    # then we setup mu2etools package that has the logic to figure out
+    # the correct mu2ebintools version.
+    #
+    # It is nice if grid submissions do not fail merely because Mu2e
+    # Offline is already setup in the same shell.  We locally unset
+    # vars like MU2E_BASE_RELEASE so that Offline/setup.sh does not
+    # exit early, and allows UPS to detect real package clashes, if
+    # any.
+
+    my @out = `unset MU2E_BASE_RELEASE; unset MU2E_SATELLITE_RELEASE; source $mu2esetup >/dev/null && source $setup >/dev/null && setup mu2etools; echo \$?; echo \$MU2EBINTOOLS_VERSION`;
+
     chomp @out;
 
     die "Error determining a mu2ebintools version compatible with $setup\n"
