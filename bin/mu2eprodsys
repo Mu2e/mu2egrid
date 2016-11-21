@@ -57,6 +57,7 @@ EOF
 
     - The --dsowner option specifies the username field in the names
       of output files.  The default is the username of the submitter.
+      For the mu2epro user the default --dsowner is mu2e.
 
     - The --wftop and --wfproject options determine the location of
       output files in the "workflow" directory structure.
@@ -114,6 +115,7 @@ my @extra_jobsub_args;
 
 my $whoami = `whoami`;
 chomp($whoami);
+$whoami =~ s/^mu2epro/mu2e/;
 
 my %opt =
     (
