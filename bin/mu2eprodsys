@@ -40,6 +40,7 @@ Usage:
               [--mu2ebintools-version=<string>] \\
               [--sam_web_client-version=<string>] \\
               [--dhtools-version=<string>] \\
+              [--transfer-all-files] \\
               [--error-delay=<int>] \\
 EOF
         . mu2egrid::commonOptDoc1(%features) . <<EOF
@@ -83,6 +84,10 @@ EOF
       will rely on the mu2etools package to find a compatible
       mu2ebintools version.
 
+    - The --transfer-all-files option requests to "ifdh cp" back
+      all files left in the working directory after the job is complete.
+      By default only *.art *.root *.json and the log file transferred.
+
     - The --error-delay options sets the delay, in seconds, before
       the worker node script will exit after a payload failure.
       This helps to reduce batch queue drain by broken grid nodes.
@@ -112,8 +117,9 @@ chomp($whoami);
 
 my %opt =
     (
-    'jobsub-arg' => \@extra_jobsub_args,
-    'dsowner' => $whoami,
+     'jobsub-arg' => \@extra_jobsub_args,
+     'dsowner' => $whoami,
+     'transfer-all-files' => 0,
     );
 
 @opt{keys %mu2egrid::commonOptDefaultsMu2e}  =  values %mu2egrid::commonOptDefaultsMu2e;
@@ -134,6 +140,7 @@ GetOptions(\%opt,
     'sam_web_client-version=s',
     'dhtools-version=s',
     'error-delay=i',
+    'transfer-all-files',
     grep {!/prestage-spec/ and !/outstage/} @mu2egrid::commonOptList)
     or die "\nError processing command line options.\n";
 
@@ -188,6 +195,8 @@ $ENV{'MU2EGRID_DSOWNER'} = $opt{'dsowner'};
 $ENV{'MU2EGRID_CLUSTERNAME'} = $opt{'clustername'} // '';
 
 $ENV{'MU2EGRID_DSCONF'} = $opt{'dsconf'};
+
+$ENV{'MU2EGRID_TRANSFER_ALL'} = $opt{'transfer-all-files'};
 
 #----------------------------------------------------------------
 my @args;

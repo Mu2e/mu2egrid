@@ -52,6 +52,25 @@ addManifest() {
     echo "# mu2egrid manifest selfcheck: $sc" >> $manifest
 }
 #================================================================
+# Ignores directories and other non-plain files
+selectFiles() {
+    for i in "$@"; do
+        [ -f "$i" ] && [ ! -h "$i" ] && echo "$i"
+    done
+}
+#================================================================
+filterOutProxy() {
+    for i in "$@"; do
+        case "$i" in
+            *.proxy)
+            # Don't expose security sensitive info
+                true;;
+            *)
+                echo "$i";;
+        esac
+    done
+}
+#================================================================
 # Run the framework jobs and create json files for the outputs
 # Running it inside a function makes it easier to exit on error
 # during the "payload" part, but still transfer the log file back.
@@ -350,6 +369,9 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
             shopt -u failglob
             shopt -s nullglob
             outfiles=( $logFileName *.art *.root *.json )
+            if [[ "x$MU2EGRID_TRANSFER_ALL" == "x1" ]]; then
+                outfiles=( $(filterOutProxy $(selectFiles *) ) )
+            fi
         fi
 
         # Transfer the results.  There were cases when jobs failed after
