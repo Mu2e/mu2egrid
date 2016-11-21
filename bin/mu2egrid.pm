@@ -11,6 +11,7 @@ use strict;
 use Cwd 'abs_path';
 use File::Basename;
 use POSIX qw(ceil);
+use English qw( -no_match_vars ) ; # Avoids regex performance penalty
 
 our $impldir;
 $impldir = abs_path(dirname($0) . '/impl');
@@ -29,6 +30,13 @@ sub default_group_helper() {
     $group = $ENV{'GROUP'} if(defined($ENV{'GROUP'}));
     $group = 'mu2e' unless defined($group);
     return ('group' => $group);
+}
+
+sub default_role_helper() {
+    my $role = undef;
+    my $user = getpwuid($EFFECTIVE_USER_ID);
+    $role = 'Production' if($user eq 'mu2epro');
+    return ('role' => $role);
 }
 
 sub default_mu2ebintools_version($$) {
@@ -106,7 +114,7 @@ our %commonOptDefaultsMu2e = (
 # specified options used when building jobsub_submit cmdline.
 our %commonOptDefaultsJobsub = (
     default_group_helper(),
-    'role' => undef,
+    default_role_helper(),
     'jobsub-server' => 'https://fifebatch.fnal.gov:8443',
     'disk' => '30GB',
     'memory' => '2048MB',
@@ -178,7 +186,7 @@ EOF
       The default values are
 
           --group              $ENV{GROUP} (the GROUP environment variable, if set)
-          --role               none
+          --role               Production for the mu2epro user, none otherwise
           --jobsub-server      $commonOptDefaultsJobsub{'jobsub-server'}
           --disk               $commonOptDefaultsJobsub{'disk'}
           --memory             $commonOptDefaultsJobsub{'memory'}
