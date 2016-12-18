@@ -261,17 +261,10 @@ mu2eprodsys_payload() {
         shopt -u failglob
         shopt -s nullglob
 
-        generator_type=$(fhicl-getpar --string mu2emetadata.mc.generator_type $localFCL)
-        simulation_stage=$(fhicl-getpar --int    mu2emetadata.mc.simulation_stage $localFCL)
-        primary_particle=$(fhicl-getpar --string mu2emetadata.mc.primary_particle $localFCL)
-
         for i in *.art; do
             jsonMaker.py \
                 -f ${ffprefix}-sim \
                 -a parents \
-                -i mc.generator_type=$generator_type \
-                -i mc.simulation_stage=$simulation_stage \
-                -i mc.primary_particle=$primary_particle \
                 -x \
                 $i
         done
@@ -280,9 +273,6 @@ mu2eprodsys_payload() {
             jsonMaker.py \
                 -f ${ffprefix}-nts \
                 -a parents \
-                -i mc.generator_type=$generator_type \
-                -i mc.simulation_stage=$simulation_stage \
-                -i mc.primary_particle=$primary_particle \
                 -x \
                 $i
         done
@@ -297,9 +287,6 @@ mu2eprodsys_payload() {
             jsonMaker.py \
                 -f ${ffprefix}-etc \
                 -a parents \
-                -i mc.generator_type=$generator_type \
-                -i mc.simulation_stage=$simulation_stage \
-                -i mc.primary_particle=$primary_particle \
                 -x \
                 $i >&3 2>&4
         done
