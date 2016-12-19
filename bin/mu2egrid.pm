@@ -117,7 +117,7 @@ our %commonOptDefaultsJobsub = (
     default_role_helper(),
     'jobsub-server' => 'https://fifebatch.fnal.gov:8443',
     'disk' => '30GB',
-    'memory' => '2048MB',
+    'memory' => '2000MB',
     'expected-lifetime' => '24h',
     'OS' => 'SL6',
     'resource-provides' => 'usage_model=OPPORTUNISTIC,DEDICATED',
