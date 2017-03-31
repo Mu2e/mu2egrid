@@ -61,7 +61,7 @@ my %opt = (
 @opt{keys %mu2egrid::commonOptDefaultsJobsub}  =  values %mu2egrid::commonOptDefaultsJobsub;
 
 # Override the mu2egrid.pm default
-$opt{'outstage'} = '/grid/data/marsmu2e/outstage';
+$opt{'outstage'} = '/pnfs/mars/marsmu2e/scratch';
 
 # Process command line opts.
 GetOptions(\%opt,
@@ -89,7 +89,7 @@ my $executable = mu2egrid::find_file($opt{'executable'});
 my $input = mu2egrid::find_file($opt{'input'});
 my $mu2esetup = mu2egrid::find_file($opt{'mu2e-setup'});
 my $outstage = mu2egrid::find_file($opt{'outstage'});
-mu2egrid::assert_known_outstage($outstage);
+##mu2egrid::assert_known_outstage($outstage);
 
 my $njobs = $opt{'njobs'};
 
