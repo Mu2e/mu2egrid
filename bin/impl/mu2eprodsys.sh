@@ -78,6 +78,13 @@ mu2eprodsys_payload() {
 
     mu2epseh() {
         ret=$?
+        if [ x"$MU2EGRID_ENV_PRINTED" == x ]; then
+            echo "Dumping the environment on error"
+            echo "#================================================================"
+            /usr/bin/printenv
+            echo "#================================================================"
+            echo "End of the environment dump."
+        fi
         echo "Error from $BASH_COMMAND: exit code $ret"
         echo "Sleeping for $error_delay seconds"
         sleep $error_delay
@@ -99,6 +106,7 @@ mu2eprodsys_payload() {
         echo "#================================================================"
         echo "# After package setup, the environment is:"
         /usr/bin/printenv
+        export MU2EGRID_ENV_PRINTED=1
         echo "#================================================================"
 
         # The version of GNU time in SLF6 (/usr/bin/time) does not
