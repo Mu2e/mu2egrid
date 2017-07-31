@@ -403,10 +403,6 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
             t2=$(date +%s)
             echo "$(date) # Total outstage time: $((t2-t1)) seconds"
 
-            for i in "${outfiles[@]}"; do
-                ifdh pin $f $((3600*24*7)) #  pin for a week
-            done
-
             t3=$(date +%s)
             echo "$(date) # Total outstage pin time: $((t3-t2)) seconds"
         fi
