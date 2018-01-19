@@ -192,7 +192,6 @@ $ENV{'MU2EGRID_INPUTLIST'} = basename($fcllist); # use jobsub_client's -f, the w
 
 $ENV{'MU2EGRID_WFOUTSTAGE'} = $wfoutstage;
 
-$ENV{'MU2EGRID_SUBMITTER'} = $submitter;
 $ENV{'MU2EGRID_DSOWNER'} = $opt{'dsowner'};
 $ENV{'MU2EGRID_CLUSTERNAME'} = $opt{'clustername'} // '';
 
