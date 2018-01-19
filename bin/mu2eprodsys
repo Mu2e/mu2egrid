@@ -241,7 +241,7 @@ while( (my $key, my $value) = each(%ENV) ) {
         # jobsub_client does not allow empty string as environment values
         if($value ne '') {
             push @args,  ('-e', $key);
-            print "Using: $key => $ENV{$key}\n" if $opt{'verbose'};
+            print "Using: $key => $ENV{$key}\n";
         }
 }
 }
