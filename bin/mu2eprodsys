@@ -30,7 +30,7 @@ sub usage() {
     my $self = basename($0);
     return <<EOF
 Usage:
-        $self --setup=<script-to-source.sh> \\
+        $self {--setup=<cvmfs-script-to-source.sh>|--code=/pnfs/path/to/tar-file} \\
               --fcllist=<fcl-file-list> \\
               --dsconf=<output-dataset-version-string> \\
               [--dsowner=<name>] \\
@@ -45,8 +45,19 @@ Usage:
 EOF
         . mu2egrid::commonOptDoc1(%features) . <<EOF
 
-    - The --setup argument must point to the setup.sh script in a user
-      Offline area.
+    - Exactly one of --setup or --code must be specified.
+
+      The --setup argument must point to the setup.sh script
+      in an Offline build on /cvmfs.
+
+      The --code option must point to a tarball in an ifdh-accessible
+      area like /pnfs.  The tarball will be extracted on the worker
+      node, and is expected to have a Code/setup.sh file, which will
+      be sourced to setup a release of Offline.  Note that you will
+      need sufficient disk space on the worker node to hold a copy of
+      the original tarball plus its extracted content.   The copy will
+      be deleted before the job is run, so that space can be reused
+      by input or output data files.
 
     - The set of fcl files specified via --fcllist will be
       processed by Mu2e Offline, one fcl file per job.  The file
@@ -132,6 +143,7 @@ $opt{'wfproject'} = 'default';
 # Process command line opts.
 GetOptions(\%opt,
     'setup=s',
+    'code=s',
     'fcllist=s',
     'dsconf=s',
     'dsowner=s',
@@ -155,8 +167,19 @@ print "Final set of options:\n", Dumper( \%opt ), "\n"
     if($opt{'verbose'});
 
 # Check that all of the required args are present:
-foreach my $k ('setup', 'mu2e-setup', 'fcllist', 'dsconf', 'dsowner') {
+foreach my $k ('mu2e-setup', 'fcllist', 'dsconf', 'dsowner') {
     defined $opt{$k} or die "Error: --$k must be specified.  Try the --help option.\n";
+}
+
+# Do we use a custom tarball or a CVMFS release?
+if(defined $opt{'setup'}) {
+    die "Error: both --code and --setup are specified.  Choose one.\n" if defined $opt{'code'};
+    $ENV{'MU2EGRID_USERSETUP'} = mu2egrid::find_file($opt{'setup'});
+}
+else {
+    die "Error: at least one of --setup or code should be specified.\n" unless defined $opt{'code'};
+    $ENV{'MU2EGRID_USERSETUP'} = 'Code/setup.sh'; # relative path per the tar file convention
+    $ENV{'MU2EGRID_CODE'} = mu2egrid::find_file($opt{'code'});
 }
 
 # Make sure components of Mu2e filenames are valid
@@ -184,7 +207,6 @@ print "Will use the outstage directory = $wfoutstage\n";
 # All file args are to be passed to the worker node script using full path names.
 
 $ENV{'MU2EGRID_MU2ESETUP'} = mu2egrid::find_file($opt{'mu2e-setup'});
-$ENV{'MU2EGRID_USERSETUP'} = mu2egrid::find_file($opt{'setup'});
 
 my $fcllist = mu2egrid::find_file($opt{'fcllist'});
 my $njobs = mu2egrid::validate_file_list($fcllist);
@@ -229,8 +251,13 @@ print "Will use dhtools version $ENV{MU2EGRID_DHTOOLS_VERSION}\n";
 $ENV{'MU2EGRID_SAM_WEB_CLIENT_VERSION'} = $opt{'sam_web_client-version'} // mu2egrid::default_package_version($opt{'mu2e-setup'}, 'sam_web_client', '');
 print "Will use sam_web_client version $ENV{MU2EGRID_SAM_WEB_CLIENT_VERSION}\n";
 
-$ENV{'MU2EGRID_MU2EBINTOOLS_VERSION'} = $opt{'mu2ebintools-version'} // mu2egrid::default_mu2ebintools_version($opt{'mu2e-setup'}, $opt{'setup'});
-print "Will use mu2ebintools version $ENV{MU2EGRID_MU2EBINTOOLS_VERSION}\n";
+if(!defined $opt{'code'}) {
+    $ENV{'MU2EGRID_MU2EBINTOOLS_VERSION'} = $opt{'mu2ebintools-version'} // mu2egrid::default_mu2ebintools_version($opt{'mu2e-setup'}, $opt{'setup'});
+    print "Will use mu2ebintools version $ENV{MU2EGRID_MU2EBINTOOLS_VERSION}\n";
+}
+else {
+    print "WARNING: Can not determine mu2ebintools version at submission time when --code is used.\n";
+}
 
 $ENV{'MU2EGRID_ERRORDELAY'} = $opt{'error-delay'} // ($njobs > 10 ?  $default_error_delay : 1);
 

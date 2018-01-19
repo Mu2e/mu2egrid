@@ -96,10 +96,25 @@ mu2eprodsys_payload() {
     ifdh cp $origFCL $localFCL
 
     #================================================================
+    # Retrieve the code if needed
+    if [ -n "$MU2EGRID_CODE" ]; then
+        localCode=$(basename $MU2EGRID_CODE)
+        ifdh cp "$MU2EGRID_CODE" $localCode
+        tar xvf $localCode
+        /bin/rm $localCode
+    fi
+
+    #================================================================
 
     if source "${MU2EGRID_USERSETUP:?Error: MU2EGRID_USERSETUP: not defined}"; then
 
-        setup -B mu2ebintools "${MU2EGRID_MU2EBINTOOLS_VERSION:?Error: MU2EGRID_MU2EBINTOOLS_VERSION is not set}" -q "${MU2E_UPS_QUALIFIERS}"
+        if [ -n "$MU2EGRID_MU2EBINTOOLS_VERSION" ]; then
+            setup -B mu2ebintools "${MU2EGRID_MU2EBINTOOLS_VERSION:?Error: MU2EGRID_MU2EBINTOOLS_VERSION is not set}" -q "${MU2E_UPS_QUALIFIERS}"
+        else
+            echo "MU2EGRID_MU2EBINTOOLS_VERSION not defined - will setup current mu2etools"
+            setup mu2etools
+        fi
+
         setup -B sam_web_client "${MU2EGRID_SAM_WEB_CLIENT_VERSION:?Error: MU2EGRID_SAM_WEB_CLIENT_VERSION is not set}"
         setup -B dhtools "${MU2EGRID_DHTOOLS_VERSION:?Error: MU2EGRID_DHTOOLS_VERSION is not set}"
 
