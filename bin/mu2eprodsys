@@ -233,7 +233,7 @@ print "Will use sam_web_client version $ENV{MU2EGRID_SAM_WEB_CLIENT_VERSION}\n";
 $ENV{'MU2EGRID_MU2EBINTOOLS_VERSION'} = $opt{'mu2ebintools-version'} // mu2egrid::default_mu2ebintools_version($opt{'mu2e-setup'}, $opt{'setup'});
 print "Will use mu2ebintools version $ENV{MU2EGRID_MU2EBINTOOLS_VERSION}\n";
 
-$ENV{'MU2EGRID_ERRORDELAY'} = $opt{'error-delay'} // $default_error_delay;
+$ENV{'MU2EGRID_ERRORDELAY'} = $opt{'error-delay'} // ($njobs > 10 ?  $default_error_delay : 1);
 
 #----------------------------------------------------------------
 while( (my $key, my $value) = each(%ENV) ) {
