@@ -44,7 +44,7 @@ addManifest() {
     echo "mu2eprodsys diskUse = $(du -ks)" >> $manifest
     echo '#================================================================' >> $manifest
     echo '# mu2egrid manifest' >> $manifest
-    ls -alR |awk '{print "# "$0}' >> $manifest
+    ls -al |awk '{print "# "$0}' >> $manifest
     echo '#----------------------------------------------------------------' >> $manifest
     echo '# algorithm: sha256sum' >> $manifest
     sha256sum "$@" >> $manifest
