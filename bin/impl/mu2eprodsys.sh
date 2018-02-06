@@ -100,7 +100,7 @@ mu2eprodsys_payload() {
     if [ -n "$MU2EGRID_CODE" ]; then
         localCode=$(basename $MU2EGRID_CODE)
         ifdh cp "$MU2EGRID_CODE" $localCode
-        tar xvf $localCode
+        tar xf $localCode
         /bin/rm $localCode
     fi
 
