@@ -323,23 +323,6 @@ sub validate_prestage_spec($) {
 }
 
 #================================================================
-sub validate_njobs($$) {
-    my ($nfiles,$njobs) = @_;
-
-    die "Invalid njobs = $njobs\n" unless $njobs > 0;
-
-    my $chunkSize = ceil($nfiles/$njobs);
-    my $numRequiredJobs = ceil($nfiles/$chunkSize);
-
-    if($numRequiredJobs != $njobs) {
-        die "Error: The number of input files to process is $nfiles. ".
-            "Splitting them into $njobs jobs will leave some jobs with no inputs. ".
-            "Please adjust --njobs (try $numRequiredJobs).\n"
-            ;
-    }
-}
-
-#================================================================
 BEGIN {
     use Exporter   ();
     our ($VERSION, @ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
