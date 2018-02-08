@@ -7,6 +7,8 @@
 
 use File::Basename;
 use File::Path;
+use File::Temp;
+use Archive::Tar;
 use Getopt::Long;
 use POSIX qw(ceil);
 
@@ -24,6 +26,24 @@ my $defaultProductionWFTop = '/pnfs/mu2e/persistent/users';
 my $defaultUserWFTop = '/pnfs/mu2e/scratch/users';
 
 my %features = ( prestageIsSupported => 0, outstageIsSupported => 0);
+
+my @extra_jobsub_args;
+
+my $dsowner = $submitter;
+$dsowner =~ s/^mu2epro/mu2e/;
+
+my %opt =
+    (
+     'jobsub-arg' => \@extra_jobsub_args,
+     'dsowner' => $dsowner,
+     'transfer-all-files' => 0,
+    );
+
+@opt{keys %mu2egrid::commonOptDefaultsMu2e}  =  values %mu2egrid::commonOptDefaultsMu2e;
+@opt{keys %mu2egrid::commonOptDefaultsJobsub}  =  values %mu2egrid::commonOptDefaultsJobsub;
+$opt{'wftop'} = '';
+$opt{'wfproject'} = 'default';
+
 
 #================================================================
 sub usage() {
@@ -59,9 +79,20 @@ EOF
       be deleted before the job is run, so that space can be reused
       by input or output data files.
 
-    - The set of fcl files specified via --fcllist will be
-      processed by Mu2e Offline, one fcl file per job.  The file
-      must remain intact until all the jobs are done.
+    - The set of fcl files specified via --fcllist will be processed
+      by Mu2e Offline, one fcl file per job.  Normally it should be a
+      plain text file with one fcl file name per line.  The filenames
+      must be absolute (start with the '/'). Fcl files for grid jobs
+      should normally reside in /pnfs.
+
+      Instead of a plain text list one can also provide a tar archive
+      with fcl files.  The archive may be bzip2 or gzip compressed,
+      and should normally be placed in /pnfs.  A grid job will be
+      scheduled for each file in the archive that has a name ending in
+      '.fcl'.  If the archive contains any other files (e.g. '.json'),
+      they will be ignored.  There are no specific requirements on the
+      directory structure of the archive; the files can be placed in
+      an arbitrary directory tree.
 
     - The configuration field in the names of output files should be
       specified via --dsconf.
@@ -122,23 +153,41 @@ sub checkFilenameComponent {
 }
 
 #================================================================
-my @extra_jobsub_args;
+sub interpret_fcl_input {
+    my ($fclin) = @_;
 
-my $whoami = `whoami`;
-chomp($whoami);
-$whoami =~ s/^mu2epro/mu2e/;
+    my ($njobs, $fcllist, $fcltar);
 
-my %opt =
-    (
-     'jobsub-arg' => \@extra_jobsub_args,
-     'dsowner' => $whoami,
-     'transfer-all-files' => 0,
-    );
+    print "Testing if fcl inputs in $fclin are given as a tar archive.\n" if $opt{'verbose'};
+    local $Archive::Tar::WARN = 0 unless $opt{'verbose'};
 
-@opt{keys %mu2egrid::commonOptDefaultsMu2e}  =  values %mu2egrid::commonOptDefaultsMu2e;
-@opt{keys %mu2egrid::commonOptDefaultsJobsub}  =  values %mu2egrid::commonOptDefaultsJobsub;
-$opt{'wftop'} = '';
-$opt{'wfproject'} = 'default';
+    my $tt = Archive::Tar->new($fclin);
+
+    if (defined $tt) {
+        print "$fclin is a tar file\n"  if $opt{'verbose'};
+
+        $fcltar = $fclin;
+
+        # Prepare a list of all fcl files in the tarball
+        my @arr = grep { /\.fcl$/ } $tt->list_files();
+
+        $njobs = 1 + $#arr;
+
+        # the file will be deleted afer running jobsub_submit
+        (my $tmph, $fcllist) = File::Temp::tempfile();
+        print $tmph join("\n", @arr), "\n";
+    }
+    else {
+        print "$fclin is NOT a tar file\n" if $opt{'verbose'};
+        $fcllist = $fclin;
+        $njobs = mu2egrid::validate_file_list($fcllist);
+        $fcltar = '';
+    }
+
+    return ($njobs, $fcllist, $fcltar);
+}
+
+#================================================================
 
 # Process command line opts.
 GetOptions(\%opt,
@@ -177,7 +226,7 @@ if(defined $opt{'setup'}) {
     $ENV{'MU2EGRID_USERSETUP'} = mu2egrid::find_file($opt{'setup'});
 }
 else {
-    die "Error: at least one of --setup or code should be specified.\n" unless defined $opt{'code'};
+    die "Error: at least one of --setup or --code should be specified.\n" unless defined $opt{'code'};
     $ENV{'MU2EGRID_USERSETUP'} = 'Code/setup.sh'; # relative path per the tar file convention
     $ENV{'MU2EGRID_CODE'} = mu2egrid::find_file($opt{'code'});
 }
@@ -208,9 +257,12 @@ print "Will use the outstage directory = $wfoutstage\n";
 
 $ENV{'MU2EGRID_MU2ESETUP'} = mu2egrid::find_file($opt{'mu2e-setup'});
 
-my $fcllist = mu2egrid::find_file($opt{'fcllist'});
-my $njobs = mu2egrid::validate_file_list($fcllist);
+my $fclin = mu2egrid::find_file($opt{'fcllist'});
+
+my ($njobs, $fcllist, $fcltar) = interpret_fcl_input($fclin);
+
 $ENV{'MU2EGRID_INPUTLIST'} = basename($fcllist); # use jobsub_client's -f, the worker node only needs the basename
+$ENV{'MU2EGRID_FCLTAR'} = $fcltar;
 
 $ENV{'MU2EGRID_WFOUTSTAGE'} = $wfoutstage;
 
@@ -286,6 +338,14 @@ exec { $mu2egrid::jobsub } $mu2egrid::jobsub, @args
 }
 else {
     print "Not submitting because --dry-run was requested.\n";
+}
+
+# Clean up temporary files
+if($fcltar ne '') {
+    print "Cleaning up: removing temporary fcl list file $fcllist\n"
+        if $opt{'verbose'};
+
+    unlink $fcllist;
 }
 
 #================================================================

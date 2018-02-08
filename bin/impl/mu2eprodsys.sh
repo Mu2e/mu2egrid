@@ -92,8 +92,23 @@ mu2eprodsys_payload() {
     }
     trap mu2epseh ERR
 
-    echo "Copying in $origFCL"
-    ifdh cp $origFCL $localFCL
+    mkdir mu2egridInDir
+
+    if [ -n "$MU2EGRID_FCLTAR" ]; then
+
+       # fcl files were given to this job as a tarball, we need to extract our job config
+        echo "FCL files are given as a tar file: $MU2EGRID_FCLTAR"
+        localTar=mu2egridInDir/$(basename $MU2EGRID_FCLTAR)
+        ifdh cp "$MU2EGRID_FCLTAR" $localTar
+        tar xf $localTar --directory mu2egridInDir $origFCL
+        rm -v $localTar
+        mv -v mu2egridInDir/$origFCL $localFCL
+
+    else # Job submissions with plain fcl file list
+
+        echo "Copying in $origFCL"
+        ifdh cp $origFCL $localFCL
+    fi
 
     #================================================================
     # Retrieve the code if needed
@@ -147,7 +162,6 @@ mu2eprodsys_payload() {
         # Pre-stage input data files, and write their SAM names
         # to the "parents" file for later use
 
-        mkdir mu2egridInDir
         touch localFileDefs
         # invoke fhicl-getpar as a separate command outside of for...done so that errors are trapped
         keys=( $(fhicl-getpar --strlist mu2emetadata.fcl.inkeys $localFCL) )
