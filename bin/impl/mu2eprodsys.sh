@@ -272,6 +272,13 @@ mu2eprodsys_payload() {
         echo "#----------------------------------------------------------------" >> $localFCL
 
         #================================================================
+        # Document what has been actually pre-staged
+        echo "################################################################"
+        echo "# ls -lR mu2egridInDir"
+        ls -lR mu2egridInDir
+        echo ""
+
+        #================================================================
         # include the edited copy of the fcl into the log
         echo "################################################################"
         echo "# The content of the final fcl file begin"
