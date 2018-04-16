@@ -239,6 +239,7 @@ mu2eprodsys_payload() {
             type ifdh
             tstart=$(date +%s)
             ifdh cp -f prestage_spec
+            ret=$?
             t2=$(date +%s)
             echo "$(date) # Total stage-in time: $((t2-tstart)) seconds, status $ret"
 
