@@ -123,6 +123,10 @@ mu2eprodsys_payload() {
 
     if source "${MU2EGRID_USERSETUP:?Error: MU2EGRID_USERSETUP: not defined}"; then
 
+        # Prepend the working directory to MU2E_SEARCH_PATH, otherwise some pre-staged files
+        # (e.g. custom stopped muon file) will not be found by mu2e modules.
+        MU2E_SEARCH_PATH=$(pwd):$MU2E_SEARCH_PATH
+
         if [ -n "$MU2EGRID_MU2EBINTOOLS_VERSION" ]; then
             setup -B mu2ebintools "${MU2EGRID_MU2EBINTOOLS_VERSION:?Error: MU2EGRID_MU2EBINTOOLS_VERSION is not set}" -q "${MU2E_UPS_QUALIFIERS}"
         else
