@@ -443,9 +443,6 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
 
             t2=$(date +%s)
             echo "$(date) # Total outstage time: $((t2-t1)) seconds"
-
-            t3=$(date +%s)
-            echo "$(date) # Total outstage pin time: $((t3-t2)) seconds"
         fi
 
     else
