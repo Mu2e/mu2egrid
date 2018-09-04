@@ -80,6 +80,7 @@ our @commonOptList = (
 
     'mu2e-setup=s',
     'ifdh-version=s',
+    'ifdh-options=s',
     'jobsub-arg=s@',
     'outstage=s',
     "prestage-spec=s",
@@ -148,6 +149,7 @@ sub commonOptDoc1 {
               [--jobsub-arg=string1] [--jobsub-arg=string2] [...] \\
               [--mu2e-setup=<setupmu2e-art.sh>] \\
               [--ifdh-version=<version>] \\
+              [--ifdh-opts=<string>] \\
 EOF
 .
     $outstagestr
@@ -206,6 +208,12 @@ EOF
       mu2egrid.  If the IFDH_VERSION environment variable is set, it
       will be used.  Otherwise the version seen by the submission
       process as the UPS "current" best match will be used.
+
+    --ifdh-options   Is empty by default.  It allows one to pass
+      extra options to the ifdh invocations (cp and mv) that deal
+      with job output files, like
+      --ifdh-options="--force=expftp"
+
 EOF
 ;
     $res .= $outstageDocString;

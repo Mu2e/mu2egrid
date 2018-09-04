@@ -422,13 +422,13 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
 
         t1=$(date +%s)
         # the -cd option causes gridftp to create all required directories in the output  path
-        IFDH_GRIDFTP_EXTRA='-cd' ifdh cp --force=expftp -D "${outfiles[@]}" "${tmpOutDir}"
+        IFDH_GRIDFTP_EXTRA='-cd' ifdh cp $MU2EGRID_IFDHEXTRAOPTS -D "${outfiles[@]}" "${tmpOutDir}"
         ifdhret=$?
 
         if [[ $ifdhret -ne 0 ]]; then
-            echo "The command: IFDH_GRIDFTP_EXTRA='-cd' ifdh cp --force=expftp -D ${outfiles[@]} ${tmpOutDir}" >&2
+            echo "The command: IFDH_GRIDFTP_EXTRA='-cd' ifdh cp $MU2EGRID_IFDHEXTRAOPTS -D ${outfiles[@]} ${tmpOutDir}" >&2
             echo "has failed on $(date) with status code $ifdhret.  Re-running with IFDH_DEBUG=10." >&2
-            IFDH_DEBUG=10 IFDH_GRIDFTP_EXTRA='-cd' ifdh cp --force=expftp -D "${outfiles[@]}" "${tmpOutDir}" >&2
+            IFDH_DEBUG=10 IFDH_GRIDFTP_EXTRA='-cd' ifdh cp $MU2EGRID_IFDHEXTRAOPTS -D "${outfiles[@]}" "${tmpOutDir}" >&2
             ifdhret=$?
         fi
 
@@ -439,7 +439,7 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
 
         if [[ $ifdhret -eq 0 ]]; then
             # ignore exit codes here - we've got the files
-            ifdh rename "${tmpOutDir}" "${finalOutDir}" --force=expftp
+            ifdh rename "${tmpOutDir}" "${finalOutDir}" $MU2EGRID_IFDHEXTRAOPTS
 
             t2=$(date +%s)
             echo "$(date) # Total outstage time: $((t2-t1)) seconds"

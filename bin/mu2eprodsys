@@ -313,6 +313,8 @@ else {
 
 $ENV{'MU2EGRID_ERRORDELAY'} = $opt{'error-delay'} // ($njobs > 10 ?  $default_error_delay : 1);
 
+$ENV{'MU2EGRID_IFDHEXTRAOPTS'} = $opt{'ifdh-options'} // '';
+
 #----------------------------------------------------------------
 while( (my $key, my $value) = each(%ENV) ) {
     if(($key =~ m/^MU2EGRID_\w+$/) or ($key eq 'IFDH_VERSION')) {

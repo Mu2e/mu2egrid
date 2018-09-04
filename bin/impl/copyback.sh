@@ -75,7 +75,7 @@ transferOutFiles() {
     t1=$(date +%s)
 
     # the -cd option causes gridftp to create all required directories in the output  path
-    IFDH_GRIDFTP_EXTRA='-cd' ifdh cp --force=expftp -D  "$MANIFEST" "$@" ${OUTDIR}
+    IFDH_GRIDFTP_EXTRA='-cd' ifdh cp -D  "$MANIFEST" "$@" ${OUTDIR}
 
     t2=$(date +%s)
     echo "$(date) # Total outstage lock and copy time: $((t2-t1)) seconds"
@@ -125,8 +125,8 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
     tmpOutDir="${finalOutDir}.$(od -A n -N 4 -t x4 /dev/urandom|sed -e 's/ //g')"
 
     transferOutFiles "${tmpOutDir}" $(filterOutProxy $(selectFiles *) )
-    ifdh chmod 0755 "${tmpOutDir}" --force=expftp
-    ifdh rename "${tmpOutDir}" "${finalOutDir}" --force=expftp
+    ifdh chmod 0755 "${tmpOutDir}"
+    ifdh rename "${tmpOutDir}" "${finalOutDir}"
 
 else
     echo "Error sourcing setup script ${MU2EGRID_MU2ESETUP}: status code $?"
