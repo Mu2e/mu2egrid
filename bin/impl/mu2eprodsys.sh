@@ -249,14 +249,8 @@ mu2eprodsys_payload() {
 
 
             # Point fcl to pre-staged file -  only if we do prestage
-
-            # FIXME: remove 'sed' after https://cdcvs.fnal.gov/redmine/issues/12877
-            # is resolved.  Note that the workaround does not work
-            # on @protect_ignore in included files.  But it is still
-            # a useful hack for now.
-            sed -e 's/@protect_ignore:/:/g' $localFCL > ${localFCL}.tmp
-            cat prologFileDefs ${localFCL}.tmp > $localFCL
-            rm ${localFCL}.tmp
+            cat prologFileDefs ${localFCL} > ${localFCL}.tmp
+            mv -f ${localFCL}.tmp ${localFCL}
 
             # set input file names
             echo "#----------------------------------------------------------------" >> $localFCL
