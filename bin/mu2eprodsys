@@ -36,6 +36,7 @@ my %opt =
     (
      'jobsub-arg' => \@extra_jobsub_args,
      'dsowner' => $dsowner,
+     'xrootd' => 0,
      'transfer-all-files' => 0,
     );
 
@@ -60,6 +61,7 @@ Usage:
               [--mu2ebintools-version=<string>] \\
               [--sam_web_client-version=<string>] \\
               [--dhtools-version=<string>] \\
+              [--xrootd] \\
               [--transfer-all-files] \\
               [--error-delay=<int>] \\
 EOF
@@ -126,6 +128,15 @@ EOF
       If a version is not specified on the command line, mu2eprodsys
       will rely on the mu2etools package to find a compatible
       mu2ebintools version.
+
+    - The --xrootd option alters the way input art files are accessed
+      by the worker node process.  By default all data files specified
+      in the job fcl file are pre-staged to a local disk on the worker
+      node using ifdh, and the job reads the local copies.  With the
+      xrootd switch the files are not pre-staged.  Instead the job
+      is started immediately and pointed to file URLs derived from
+      the original pnfs file names using the substitution
+      /pnfs/path => xroot://fndca1.fnal.gov/pnfs/fnal.gov/usr/path
 
     - The --transfer-all-files option requests to "ifdh cp" back
       all files left in the working directory after the job is complete.
@@ -203,6 +214,7 @@ GetOptions(\%opt,
     'sam_web_client-version=s',
     'dhtools-version=s',
     'error-delay=i',
+    'xrootd',
     'transfer-all-files',
     grep {!/prestage-spec/ and !/outstage/} @mu2egrid::commonOptList)
     or die "\nError processing command line options.\n";
@@ -272,6 +284,7 @@ $ENV{'MU2EGRID_CLUSTERNAME'} = $opt{'clustername'} // '';
 $ENV{'MU2EGRID_DSCONF'} = $opt{'dsconf'};
 
 $ENV{'MU2EGRID_TRANSFER_ALL'} = $opt{'transfer-all-files'};
+$ENV{'MU2EGRID_XROOTD'} = $opt{'xrootd'};
 
 #----------------------------------------------------------------
 my @args;

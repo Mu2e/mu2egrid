@@ -38,8 +38,21 @@ getFCLFileName() {
     tail --lines=+"$firstline" "$masterlist" | head --lines="$chunksize"
 }
 #================================================================
+formatInputFileSpec() {
+    filespec="${1:?formatInputFileSpec: filespec arg is missing}"
+    # filespec format is "/pfs/file/name.art  local/file/name.art"
+    if [[ x"$MU2EGRID_XROOTD" == x1 ]]; then
+        # Derive xrootd URLs from pnfs file names
+        awk 'BEGIN{first=1}; {if(!first) {cm=",";} else {first=0; cm=" ";}; fn=$1; sub("/pnfs/", "xroot://fndca1.fnal.gov/pnfs/fnal.gov/usr/",fn); print "    "cm"\""fn"\""}' $filespec
+    else
+        # Use local file names.
+        awk 'BEGIN{first=1}; {if(!first) {cm=",";} else {first=0; cm=" ";}; print "    "cm"\""$2"\""}' "$filespec"
+    fi
+}
+
+#================================================================
 addManifest() {
-    manifest=${1:?addManifest: }
+    manifest=${1:?addManifest: logFileName art is missing}
     shift
     echo "mu2eprodsys diskUse = $(du -ks)" >> $manifest
     echo '#================================================================' >> $manifest
@@ -187,7 +200,7 @@ mu2eprodsys_payload() {
             done
 
             echo "$key : [" >> localFileDefs
-            awk 'BEGIN{first=1}; {if(!first) {cm=",";} else {first=0; cm=" ";}; print "    "cm"\""$2"\""}' tmpspec >> localFileDefs
+            formatInputFileSpec tmpspec >> localFileDefs
             echo "]" >> localFileDefs
 
             cat tmpspec >> prestage_spec
@@ -227,7 +240,7 @@ mu2eprodsys_payload() {
 
             echo "BEGIN_PROLOG # by mu2eprodsys" >> prologFileDefs
             echo "$key @protect_ignore: [" >> prologFileDefs
-            awk 'BEGIN{first=1}; {if(!first) {cm=",";} else {first=0; cm=" ";}; print "    "cm"\""$2"\""}' tmpspec >> prologFileDefs
+            formatInputFileSpec tmpspec >> prologFileDefs
             echo "]" >> prologFileDefs
             echo "END_PROLOG # by mu2eprodsys" >> prologFileDefs
 
@@ -235,7 +248,7 @@ mu2eprodsys_payload() {
             rm tmpspec
         done
 
-        if [[ -e prestage_spec ]] && [[ x"$MU2EGRID_NO_PRESTAGE" == x ]]; then
+        if [[ -e prestage_spec ]] && [[ x"MU2EGRID_XROOTD" != x1  ]] && [[ x"$MU2EGRID_NO_PRESTAGE" == x ]]; then
             echo "# prestage_spec follows:"
             cat prestage_spec
             echo "#----------------------------------------------------------------"
@@ -246,18 +259,22 @@ mu2eprodsys_payload() {
             ret=$?
             t2=$(date +%s)
             echo "$(date) # Total stage-in time: $((t2-tstart)) seconds, status $ret"
+        fi
+        rm -f prestage_spec
 
+        if [[ x"$MU2EGRID_NO_PRESTAGE" == x ]]; then
+            # Point job to the input files
 
-            # Point fcl to pre-staged file -  only if we do prestage
             cat prologFileDefs ${localFCL} > ${localFCL}.tmp
             mv -f ${localFCL}.tmp ${localFCL}
 
-            # set input file names
             echo "#----------------------------------------------------------------" >> $localFCL
             echo "# code added by mu2eprodys" >> $localFCL
             cat localFileDefs >> $localFCL
         fi
+        rm -f prologFileDefs localFileDefs
 
+        #================================================================
         # set output file names
         keys=( $(fhicl-getpar --strlist mu2emetadata.fcl.outkeys $localFCL ) )
         for key in "${keys[@]}"; do
