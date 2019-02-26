@@ -262,14 +262,15 @@ mu2eprodsys_payload() {
         fi
         rm -f prestage_spec
 
+        echo "#----------------------------------------------------------------" >> $localFCL
+        echo "# code added by mu2eprodys" >> $localFCL
+
         if [[ x"$MU2EGRID_NO_PRESTAGE" == x ]]; then
             # Point job to the input files
 
             cat prologFileDefs ${localFCL} > ${localFCL}.tmp
             mv -f ${localFCL}.tmp ${localFCL}
 
-            echo "#----------------------------------------------------------------" >> $localFCL
-            echo "# code added by mu2eprodys" >> $localFCL
             cat localFileDefs >> $localFCL
         fi
         rm -f prologFileDefs localFileDefs
