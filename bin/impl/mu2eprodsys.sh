@@ -147,7 +147,6 @@ mu2eprodsys_payload() {
             setup mu2etools
         fi
 
-        setup -B sam_web_client "${MU2EGRID_SAM_WEB_CLIENT_VERSION:?Error: MU2EGRID_SAM_WEB_CLIENT_VERSION is not set}"
         setup -B dhtools "${MU2EGRID_DHTOOLS_VERSION:?Error: MU2EGRID_DHTOOLS_VERSION is not set}"
 
         echo "#================================================================"
@@ -189,12 +188,6 @@ mu2eprodsys_payload() {
                 # copy it to mu2egridInDir
                 bn="$(basename $rfn)"
                 lfn="mu2egridInDir/$bn"
-
-                # leave alone absolute path names, but expand SAM file names for ifdh
-                if [[ $rfn != '/'* ]]; then
-                    rfn="$(samweb get-file-access-url $rfn)"
-                fi
-
                 echo $rfn $lfn >> tmpspec
                 echo $bn >> parents
             done
@@ -228,12 +221,6 @@ mu2eprodsys_payload() {
                 # copy it to mu2egridInDir
                 bn="$(basename $rfn)"
                 lfn="mu2egridInDir/$bn"
-
-                # leave alone absolute path names, but expand SAM file names for ifdh
-                if [[ $rfn != '/'* ]]; then
-                    rfn="$(samweb get-file-access-url $rfn)"
-                fi
-
                 echo $rfn $lfn >> tmpspec
                 echo $bn >> parents
             done

@@ -59,7 +59,6 @@ Usage:
               [--wfproject=<name>] \\
               [--clustername=<name>] \\
               [--mu2ebintools-version=<string>] \\
-              [--sam_web_client-version=<string>] \\
               [--dhtools-version=<string>] \\
               [--xrootd] \\
               [--transfer-all-files] \\
@@ -119,15 +118,14 @@ EOF
       --clustername=foo the outstage directory will be named like
       1884300.foo (where 1884300 is the condor cluster number)
 
-    - The --mu2ebintools-version, --sam_web_client-version,
-      --dhtools-version options can be used to specify the version of
-      the corresponding package to be used by the worker node process.
-      By default the version seen by the submission process as the UPS
-      "current" best match will be used, except for the mu2ebintools
-      package.  The logic to set up mu2ebintools is more complicated.
-      If a version is not specified on the command line, mu2eprodsys
-      will rely on the mu2etools package to find a compatible
-      mu2ebintools version.
+    - The --mu2ebintools-version and --dhtools-version options
+      can be used to specify the version of the corresponding package
+      to be used by the worker node process.  By default the version
+      seen by the submission process as the UPS "current" best match
+      will be used for dhtools.  The logic to set up mu2ebintools is
+      more complicated.  If a version is not specified on the command
+      line, mu2eprodsys will rely on the mu2etools package to find a
+      compatible mu2ebintools version.
 
     - The --xrootd option alters the way input art files are accessed
       by the worker node process.  By default all data files specified
@@ -211,7 +209,6 @@ GetOptions(\%opt,
     'wfproject=s',
     'clustername=s',
     'mu2ebintools-version=s',
-    'sam_web_client-version=s',
     'dhtools-version=s',
     'error-delay=i',
     'xrootd',
@@ -312,9 +309,6 @@ print "Will use ifdh version $ENV{IFDH_VERSION}\n";
 
 $ENV{'MU2EGRID_DHTOOLS_VERSION'} = $opt{'dhtools-version'} // mu2egrid::default_package_version($opt{'mu2e-setup'}, 'dhtools', '');
 print "Will use dhtools version $ENV{MU2EGRID_DHTOOLS_VERSION}\n";
-
-$ENV{'MU2EGRID_SAM_WEB_CLIENT_VERSION'} = $opt{'sam_web_client-version'} // mu2egrid::default_package_version($opt{'mu2e-setup'}, 'sam_web_client', '');
-print "Will use sam_web_client version $ENV{MU2EGRID_SAM_WEB_CLIENT_VERSION}\n";
 
 if(!defined $opt{'code'}) {
     $ENV{'MU2EGRID_MU2EBINTOOLS_VERSION'} = $opt{'mu2ebintools-version'} // mu2egrid::default_mu2ebintools_version($opt{'mu2e-setup'}, $opt{'setup'});
