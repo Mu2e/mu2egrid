@@ -147,7 +147,12 @@ mu2eprodsys_payload() {
             setup mu2etools
         fi
 
-        setup -B dhtools "${MU2EGRID_DHTOOLS_VERSION:?Error: MU2EGRID_DHTOOLS_VERSION is not set}"
+        if [ -n "MU2EGRID_DHTOOLS_VERSION" ]; then
+            setup -B dhtools "${MU2EGRID_DHTOOLS_VERSION:?Error: MU2EGRID_DHTOOLS_VERSION is not set}"
+        else
+            echo "MU2EGRID_DHTOOLS_VERSION not defined - will setup current dhtools"
+            setup dhtools
+        fi
 
         echo "#================================================================"
         echo "# After package setup, the environment is:"
