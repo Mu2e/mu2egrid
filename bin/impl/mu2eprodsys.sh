@@ -105,7 +105,7 @@ mu2eprodsys_payload() {
     }
     trap mu2epseh ERR
 
-    mkdir mu2egridInDir
+    [[ $MU2EGRID_HPC ]] || mkdir mu2egridInDir
 
     if [ -n "$MU2EGRID_FCLTAR" ]; then
 
@@ -120,7 +120,12 @@ mu2eprodsys_payload() {
     else # Job submissions with plain fcl file list
 
         echo "Copying in $origFCL"
-        ifdh cp $origFCL $localFCL
+        if [[ $MU2EGRID_HPC ]]; then
+            cp $origFCL $localFCL
+        else
+            ifdh cp $origFCL $localFCL
+        fi
+
     fi
 
     #================================================================
@@ -173,6 +178,8 @@ mu2eprodsys_payload() {
         # successful.
 
         timecmd=time  # shell builtin is the fallback option
+
+        if [[ $MU2EGRID_HPC ]]; then timecmd="/usr/bin/time"; fi
 
         mu2etime=/cvmfs/mu2e.opensciencegrid.org/bin/SLF6/mu2e_time
         if $mu2etime true > /dev/null 2>&1; then
@@ -281,10 +288,12 @@ mu2eprodsys_payload() {
 
         #================================================================
         # Document what has been actually pre-staged
-        echo "################################################################"
-        echo "# ls -lR mu2egridInDir"
-        ls -lR mu2egridInDir
-        echo ""
+        if ! [[ $MU2EGRID_HPC ]]; then
+            echo "################################################################"
+            echo "# ls -lR mu2egridInDir"
+            ls -lR mu2egridInDir
+            echo ""
+        fi
 
         #================================================================
         # include the edited copy of the fcl into the log
@@ -344,6 +353,8 @@ mu2eprodsys_payload() {
                 $i >&3 2>&4
         done
 
+        rm -f parents
+
     else
         echo "Error sourcing setup script ${MU2EGRID_USERSETUP}: status code $?"
         echo "Sleeping for $error_delay seconds"
@@ -381,9 +392,9 @@ finalOutDir="${MU2EGRID_WFOUTSTAGE:?Error: MU2EGRID_WFOUTSTAGE is not set}/$clus
 # Set up Mu2e environment and make ifdh available
 if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
 
-    setup -B ifdhc $IFDH_VERSION
+    [[ $MU2EGRID_HPC ]] || setup -B ifdhc $IFDH_VERSION
 
-    if type ifdh 2> $errfile; then
+    if [[ $MU2EGRID_HPC ]] || ( type ifdh 2> $errfile ); then
 
         printinfo >> $logFileName 2>&1
 
@@ -414,39 +425,41 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
             fi
         fi
 
-        # Transfer the results.  There were cases when jobs failed after
-        # creating the outstage directory, and were automatically restarted by
-        # condor.  I also observed cases when more than one instance of the
-        # same job, duplicated by some glitches in the grid system, completed
-        # and transferred files back.  To prevent data corruption we write to
-        # a unique tmp dir, than rename it to the final name.
+        if ! [[ $MU2EGRID_HPC ]]; then
 
-        tmpOutDir="${finalOutDir}.$(od -A n -N 4 -t x4 /dev/urandom|sed -e 's/ //g')"
+            # Transfer the results.  There were cases when jobs failed after
+            # creating the outstage directory, and were automatically restarted by
+            # condor.  I also observed cases when more than one instance of the
+            # same job, duplicated by some glitches in the grid system, completed
+            # and transferred files back.  To prevent data corruption we write to
+            # a unique tmp dir, than rename it to the final name.
 
+            tmpOutDir="${finalOutDir}.$(od -A n -N 4 -t x4 /dev/urandom|sed -e 's/ //g')"
 
-        t1=$(date +%s)
-        # the -cd option causes gridftp to create all required directories in the output  path
-        IFDH_GRIDFTP_EXTRA='-cd' ifdh cp $MU2EGRID_IFDHEXTRAOPTS -D "${outfiles[@]}" "${tmpOutDir}"
-        ifdhret=$?
-
-        if [[ $ifdhret -ne 0 ]]; then
-            echo "The command: IFDH_GRIDFTP_EXTRA='-cd' ifdh cp $MU2EGRID_IFDHEXTRAOPTS -D ${outfiles[@]} ${tmpOutDir}" >&2
-            echo "has failed on $(date) with status code $ifdhret.  Re-running with IFDH_DEBUG=10." >&2
-            IFDH_DEBUG=10 IFDH_GRIDFTP_EXTRA='-cd' ifdh cp $MU2EGRID_IFDHEXTRAOPTS -D "${outfiles[@]}" "${tmpOutDir}" >&2
+            t1=$(date +%s)
+            # the -cd option causes gridftp to create all required directories in the output  path
+            IFDH_GRIDFTP_EXTRA='-cd' ifdh cp $MU2EGRID_IFDHEXTRAOPTS -D "${outfiles[@]}" "${tmpOutDir}"
             ifdhret=$?
-        fi
 
-        if [[ ( $ret -eq 0 ) && ( $ifdhret -ne 0 ) ]]; then
-            echo "ifdh cp failed on $(date): exit code $ifdhret" >&2
-            ret=23
-        fi
+            if [[ $ifdhret -ne 0 ]]; then
+                echo "The command: IFDH_GRIDFTP_EXTRA='-cd' ifdh cp $MU2EGRID_IFDHEXTRAOPTS -D ${outfiles[@]} ${tmpOutDir}" >&2
+                echo "has failed on $(date) with status code $ifdhret.  Re-running with IFDH_DEBUG=10." >&2
+                IFDH_DEBUG=10 IFDH_GRIDFTP_EXTRA='-cd' ifdh cp $MU2EGRID_IFDHEXTRAOPTS -D "${outfiles[@]}" "${tmpOutDir}" >&2
+                ifdhret=$?
+            fi
 
-        if [[ $ifdhret -eq 0 ]]; then
-            # ignore exit codes here - we've got the files
-            ifdh rename "${tmpOutDir}" "${finalOutDir}" $MU2EGRID_IFDHEXTRAOPTS
+            if [[ ( $ret -eq 0 ) && ( $ifdhret -ne 0 ) ]]; then
+                echo "ifdh cp failed on $(date): exit code $ifdhret" >&2
+                ret=23
+            fi
 
-            t2=$(date +%s)
-            echo "$(date) # Total outstage time: $((t2-t1)) seconds"
+            if [[ $ifdhret -eq 0 ]]; then
+                # ignore exit codes here - we've got the files
+                ifdh rename "${tmpOutDir}" "${finalOutDir}" $MU2EGRID_IFDHEXTRAOPTS
+
+                t2=$(date +%s)
+                echo "$(date) # Total outstage time: $((t2-t1)) seconds"
+            fi
         fi
 
     else
