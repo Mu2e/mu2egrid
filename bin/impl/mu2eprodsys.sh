@@ -261,6 +261,7 @@ mu2eprodsys_payload() {
         fi
         rm -f prestage_spec
 
+        #================================================================
         echo "#----------------------------------------------------------------" >> $localFCL
         echo "# code added by mu2eprodys" >> $localFCL
 
@@ -274,7 +275,7 @@ mu2eprodsys_payload() {
         fi
         rm -f prologFileDefs localFileDefs
 
-        #================================================================
+        #----------------------------------------------------------------
         # set output file names
         keys=( $(fhicl-getpar --strlist mu2emetadata.fcl.outkeys $localFCL ) )
         for key in "${keys[@]}"; do
@@ -283,6 +284,22 @@ mu2eprodsys_payload() {
             echo "$key : \"$newname\"" >> $localFCL
         done
 
+        #----------------------------------------------------------------
+        # Handle multithreading.
+        # FIXME: this should be revised to enable general support (including
+        # on OSG) when we upgrade to art3.   The mu2eprodsys submission
+        # script will need to implement suitable new options.
+        #
+        # For the moment just let the HPC shim script handle G4-specific
+        # multithreading with art2.
+
+        hpcfcl="mu2e_hpc.fcl"
+        if [[ -e $hpcfcl ]]; then
+            echo "# extra settings for the HPC environment" >> $localFCL
+            cat $hpcfcl >> $localFCL
+        fi
+
+        #----------------------------------------------------------------
         echo "# end code added by mu2eprodys" >> $localFCL
         echo "#----------------------------------------------------------------" >> $localFCL
 
