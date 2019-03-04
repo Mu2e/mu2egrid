@@ -1,0 +1,223 @@
+#!/usr/bin/perl -w
+#
+# A frontend script to submit mu2e framework jobs in the HPC environment
+
+use File::Basename;
+use File::Path;
+use File::Temp;
+use Getopt::Long;
+use Archive::Tar;
+
+use Data::Dumper; # for debugging
+
+my %opt =
+    (
+     'dsowner' => 'mu2e',
+     'setup' => '/Offline/setup.sh',
+     'mu2e-setup' => '/setupmu2e-art.sh',
+     'help' => 0
+    );
+
+#================================================================
+sub usage() {
+    my $self = basename($0);
+    return <<EOF
+Usage:
+        $self --fcllist=<fcl-file-list> \\
+              --dsconf=<output-dataset-version-string> \\
+              [--dsowner=<name>] \\
+              --topdir=<directory> \\
+              --container=<file> \\
+              --sbopts=<file> \\
+              --ntasks-per-node=<integer>
+
+    - The set of fcl files specified via --fcllist will be processed
+      by Mu2e Offline, one fcl file per job.  It should be a plain
+      text file with one fcl file name per line.  The filenames must
+      be absolute (start with the '/').
+
+    - The configuration field in the names of output files should be
+      specified via --dsconf.
+
+    - The --dsowner option specifies the username field in the names
+      of output files.  The default is the 'mu2e'
+
+    --topdir will have subdirectories created where the jobs will
+      run and place their outputs.
+
+    --container is the Mu2e container to be used for the job
+
+    --sbopts should point to a text file that will be
+       merged in a the beginning of the submitted batch script.
+       Each line must start with '#SBATCH' and define
+       an option for the batch job.
+
+    --ntasks-per-node is passed to sbatch.  The corresponding --nodes
+      request is deduced from --ntasks-per-node and the number of jobs
+      in the --fcllist.
+
+EOF
+;
+}
+
+#================================================================
+# generates a reasonably unuque name for the "submission level" directory
+sub makeSubDirName {
+    my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime();
+    $year = sprintf("%02d", $year+1900);
+    $mon = sprintf("%02d", $mon+1);
+    $mday = sprintf("%02d", $mday);
+    $hour = sprintf("%02d", $hour);
+    $min = sprintf("%02d", $min);
+    $sec = sprintf("%02d", $sec);
+
+    my $sd = "${year}${mon}${mday}-${hour}${min}";
+    return $sd;
+}
+
+#================================================================
+sub checkFilenameComponent {
+    my ($opt, $list) = @_;
+    foreach my $a (@$list) {
+        die "Error: parameter $a must be specified\n" unless defined $$opt{$a};
+        my $val = $$opt{$a};
+        die "Invalid value of parameter $a = '$val'"
+            unless $val =~ /^\w[-\w]*$/;
+    }
+}
+
+#================================================================
+sub interpret_fcl_input {
+    my ($fclin) = @_;
+
+    my ($njobs, $fcllist, $fcltar);
+
+    $fcllist = $fclin;
+    $njobs = mu2egrid::validate_file_list($fcllist);
+    $fcltar = '';
+
+    return ($njobs, $fcllist, $fcltar);
+}
+
+#================================================================
+# Process command line opts.
+GetOptions(\%opt,
+           'setup=s',
+           'fcllist=s',
+           'dsconf=s',
+           'dsowner=s',
+           'topdir=s',
+           'container=s',
+           'sbopts=s',
+           'ntasks-per-node=i',
+           'help',
+           'verbose',
+           'dry-run'
+    )
+    or die "\nError processing command line options.\n";
+
+if($opt{'help'}) {
+    print usage();
+exit 0;
+}
+
+print "Final set of options:\n", Dumper( \%opt ), "\n"
+    if($opt{'verbose'});
+
+# Check that all of the required args are present:
+foreach my $k ('fcllist', 'dsconf', 'topdir', 'container', 'sbopts', 'ntasks-per-node') {
+    defined $opt{$k} or die "Error: --$k must be specified.  Try the --help option.\n";
+}
+
+my $container = $opt{'container'};
+die "Error: can not read the container file $container" unless -r $container;
+
+# Make sure components of Mu2e filenames are valid
+checkFilenameComponent(\%opt, ['dsconf', 'dsowner']);
+
+#----------------
+# Create a new "submission level" dir to make sure individual jobdirs
+# do not clash with anything pre-existing.
+
+my $clusterdir = $opt{'topdir'} . '/' . makeSubDirName();
+if(!$opt{'dry-run'}) {
+    my $nnew = File::Path::make_path( $clusterdir, { verbose=>1 } ); # this Carps on errors
+    die "Error: failed to create a new directory $clusterdir - did it already exist?\n" unless $nnew;
+}
+
+print "clusterdir = $clusterdir\n" if $opt{'verbose'};
+
+#----------------------------------------------------------------
+my $script = "#!/bin/bash\n";
+
+my $sbopts = $opt{'sbopts'};
+open(my $sbin, $sbopts) or die "Error opening $sbopts: $!\n";
+while(my $line = <$sbin>) {
+    die "Error: invalid --sbopts line:\n$line\n"
+        unless $line =~ /^#SBATCH/;
+
+    # FIXME: add more checks to ban --ntasks-per-node,
+    # --nodes, and other similar settings here
+
+    $script .= $line;
+}
+close $sbin;
+
+#----------------------------------------------------------------
+# Environment for the worker process
+my $env = "MU2EGRID_DSOWNER=$opt{'dsowner'} "
+    . "MU2EGRID_DSCONF=$opt{'dsconf'} "
+    . "MU2EGRID_MU2ESETUP=$opt{'mu2e-setup'} "
+    . "MU2EGRID_USERSETUP=$opt{'setup'} "
+    ;
+
+#----------------------------------------------------------------
+# FIXME: emit shell code to compute and create JOBDIR, and to
+# set environment vars for the worker.
+
+
+
+$script .= "\nmodule load singularity --latest\n";
+$script .= "\nsrun singularity exec -B \$JOBDIR:/mnt $container bash -c \"$env /mu2egrid/bin/impl/mu2eprodsys.sh\"\n";
+
+$script .= << 'EOF'
+exit $?
+BEGIN_DATA
+EOF
+    ;
+
+print "The script to be submitted (fcl list not shown):\n";
+print $script;
+
+#----------------------------------------------------------------
+my $fcllist = $opt{'fcllist'};
+open(my $fclin, $fcllist) or die "Error opening $fcllist: $!\n";
+while(my $line = <$fclin>) {
+    # FIXME: add sanity checks here
+    $script .= $line;
+}
+close $fclin;
+
+#----------------------------------------------------------------
+
+
+#----------------
+#tmp:if(!$opt{'dry-run'}) {
+#tmp:    print "Submitting....\n";
+#tmp:    ## Actually, print to a pipe here
+#tmp:    exec { 'sbatch' } 'sbatch', @args
+#tmp:    or die "Error executing sbatch @args: $!";
+#tmp:}
+#tmp:else {
+#tmp:    print "Not submitting because --dry-run was requested.\n";
+#tmp:}
+#tmp:
+#tmp:# Clean up temporary files
+#tmp:if($fcltar ne '') {
+#tmp:    print "Cleaning up: removing temporary fcl list file $fcllist\n"
+#tmp:        if $opt{'verbose'};
+#tmp:
+#tmp:    unlink $fcllist;
+#tmp:}
+#tmp:
+#tmp:#================================================================
