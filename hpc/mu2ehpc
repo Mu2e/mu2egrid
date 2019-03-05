@@ -192,7 +192,7 @@ JOBDIR=\"$clusterdir/\$(printf %02d \$((\$SLURM_PROCID/1000)))/\$(printf %05d \$
 mkdir -p \$JOBDIR
 
 # Extract the --fcllist
-sed -e '1,/^BEGIN_MASTERLIST/d' -e '/^BEGIN_DATA/,$d' \$0 > \$JOBDIR/masterlist
+sed -e '1,/^BEGIN_MASTERLIST/d' -e '/^BEGIN_DATA/,\$d' \$0 > \$JOBDIR/masterlist
 
 # Extract the fcl files archive
 sed -e '1,/^BEGIN_DATA/d' \$0 > \$JOBDIR/fcl.tar.bz2
