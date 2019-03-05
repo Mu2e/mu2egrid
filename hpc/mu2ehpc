@@ -6,6 +6,7 @@ use File::Basename;
 use File::Path;
 use File::Temp;
 use Getopt::Long;
+use MIME::Base64;
 
 my $scriptCopyName = 'dump.sh';
 
@@ -208,7 +209,7 @@ mkdir -p \$JOBDIR
 sed -e '1,/^BEGIN_MASTERLIST/d' -e '/^BEGIN_DATA/,\$d' \$0 > \$JOBDIR/masterlist
 
 # Extract the fcl files archive
-sed -e '1,/^BEGIN_DATA/d' \$0 > \$JOBDIR/fcl.tar.bz2
+sed -e '1,/^BEGIN_DATA/d' \$0 | base64 -d > \$JOBDIR/fcl.tar.bz2
 
 module load singularity --latest
 srun singularity exec -B \$JOBDIR:/mnt $container bash -c \"$env /mu2egrid/bin/impl/mu2eprodsys.sh\"
@@ -243,8 +244,9 @@ $script .= "BEGIN_DATA\n";
 open my $tarstream, '-|', 'tar', '--create', '--bzip2', '--file=-', "--files-from=$fcllist"
     or die "Can not execute tar: $!\n";
 
-while(my $tmp = <$tarstream>) {
-    $script .= $tmp;
+# Use a multiple of 57 bytes to avoid base64 padding in the middle.
+while (read($tarstream, my $tmp, 60*57)) {
+    $script .= encode_base64($tmp);
 }
 
 close $tarstream;
