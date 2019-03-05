@@ -7,7 +7,7 @@ use File::Path;
 use File::Temp;
 use Getopt::Long;
 
-use Data::Dumper; # for debugging
+my $scriptCopyName = 'dump.sh';
 
 my %opt =
     (
@@ -28,12 +28,19 @@ Usage:
               --topdir=<directory> \\
               --container=<file> \\
               --sbopts=<file> \\
-              --ntasks-per-node=<integer>
+              --ntasks-per-node=<integer> \\
+              [--dry-run] \\
+              [--mu2e-setup=<inside-the-container-file>] \\
+              [--setup=<inside-the-container-file>]
+
+    where square brackets denote optional parameters.
 
     - The set of fcl files specified via --fcllist will be processed
-      by Mu2e Offline, one fcl file per job.  It should be a plain
-      text file with one fcl file name per line.  The filenames must
-      be absolute (start with the '/').
+      by Mu2e Offline, one fcl file per job.  The --fcllist argument
+      should be a plain text file with one fcl file name per line.
+      The submission process will take a snapshot of the content of
+      fcl files, and later modifications to the files (or fcllist
+      itself) will not affect any previously submitted jobs.
 
     - The configuration field in the names of output files should be
       specified via --dsconf.
@@ -46,14 +53,25 @@ Usage:
 
     --container is the Mu2e container to be used for the job
 
-    --sbopts should point to a text file that will be
-       merged in a the beginning of the submitted batch script.
-       Each line must start with '#SBATCH' and define
-       an option for the batch job.
+    --sbopts should point to a text file that will be merged in a the
+       beginning of the submitted batch script.  Each line must start
+       with '#SBATCH' and define an option for the batch job.  The
+       --nnodes and --ntasks-per-node parameters are given on the
+       sbatch command line and should not be duplicated in --sbopts.
 
     --ntasks-per-node is passed to sbatch.  The corresponding --nodes
       request is deduced from --ntasks-per-node and the number of jobs
       in the --fcllist.
+
+    --dry-run will cause a batch script to be prepared, but not submitted.
+      Note that a copy of the batch script is always dumped to '$scriptCopyName'
+      and available for inspection.
+
+    --mu2e-setup defaults to $opt{'mu2e-setup'}, to be sourced by
+      the inside-the-container working processes.
+
+    --setup defaults to $opt{'setup'}, another file to be sourced by
+      the inside-the-container working processes.
 
 EOF
 ;
@@ -101,6 +119,7 @@ sub interpret_fcl_input {
 #================================================================
 # Process command line opts.
 GetOptions(\%opt,
+           'mu2e-setup=s',
            'setup=s',
            'fcllist=s',
            'dsconf=s',
@@ -110,7 +129,6 @@ GetOptions(\%opt,
            'sbopts=s',
            'ntasks-per-node=i',
            'help',
-           'verbose',
            'dry-run'
     )
     or die "\nError processing command line options.\n";
@@ -119,9 +137,6 @@ if($opt{'help'}) {
     print usage();
 exit 0;
 }
-
-print "Final set of options:\n", Dumper( \%opt ), "\n"
-    if($opt{'verbose'});
 
 # Check that all of the required args are present:
 foreach my $k ('fcllist', 'dsconf', 'topdir', 'container', 'sbopts', 'ntasks-per-node') {
@@ -143,8 +158,6 @@ if(!$opt{'dry-run'}) {
     my $nnew = File::Path::make_path( $clusterdir, { verbose=>1 } ); # this Carps on errors
     die "Error: failed to create a new directory $clusterdir - did it already exist?\n" unless $nnew;
 }
-
-print "clusterdir = $clusterdir\n" if $opt{'verbose'};
 
 #----------------------------------------------------------------
 my $script = "#!/bin/bash\n";
@@ -238,12 +251,11 @@ close $tarstream;
 
 #----------------------------------------------------------------
 # debug
-my $soname = 'dump.sh';
-if(open(my $sout, '>', $soname)) {
+if(open(my $sout, '>', $scriptCopyName)) {
     print $sout $script;
 }
 else {
-    warn "Warning: could not write a copy of the batch script to '$soname': $!\n";
+    warn "Warning: could not write a copy of the batch script to '$scriptCopyName': $!\n";
 }
 
 #----------------------------------------------------------------
@@ -255,11 +267,11 @@ die "The number of fcl files $nfclfiles is not a multiple of --ntasks-per-node $
 
 my $nnodes = $nfclfiles / $tpn;
 
-print "Job size:  $nnodes nodes at $tpn tasks per node\n";
+print "\n# Job size:  $nnodes nodes at $tpn tasks per node\n";
 
 #----------------
 if(!$opt{'dry-run'}) {
-    print "Submitting....\n";
+    print "# Submitting....\n";
     ## Actually, print to a pipe here
     #exec { 'sbatch' } 'sbatch', @args
     open my $sbstream, '|-', 'sbatch', "--ntasks-per-node=$tpn", "--nodes=$nnodes"
@@ -268,6 +280,6 @@ if(!$opt{'dry-run'}) {
     close $sbstream or die "Error from sbatch\n";
 }
 else {
-    print "Not submitting because --dry-run was requested.\n";
+    print "# Not submitting because --dry-run was requested.\n";
 }
 #================================================================
