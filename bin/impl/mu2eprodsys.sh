@@ -105,14 +105,18 @@ mu2eprodsys_payload() {
     }
     trap mu2epseh ERR
 
-    [[ $MU2EGRID_HPC ]] || mkdir mu2egridInDir
+    mkdir mu2egridInDir
 
     if [ -n "$MU2EGRID_FCLTAR" ]; then
 
        # fcl files were given to this job as a tarball, we need to extract our job config
         echo "FCL files are given as a tar file: $MU2EGRID_FCLTAR"
         localTar=mu2egridInDir/$(basename $MU2EGRID_FCLTAR)
-        ifdh cp "$MU2EGRID_FCLTAR" $localTar
+        if [[ $MU2EGRID_HPC ]]; then
+            /bin/mv "$MU2EGRID_FCLTAR" $localTar
+        else
+            ifdh cp "$MU2EGRID_FCLTAR" $localTar
+        fi
         tar xf $localTar --directory mu2egridInDir $origFCL
         rm -v $localTar
         mv -v mu2egridInDir/$origFCL $localFCL
@@ -305,12 +309,10 @@ mu2eprodsys_payload() {
 
         #================================================================
         # Document what has been actually pre-staged
-        if ! [[ $MU2EGRID_HPC ]]; then
-            echo "################################################################"
-            echo "# ls -lR mu2egridInDir"
-            ls -lR mu2egridInDir
-            echo ""
-        fi
+        echo "################################################################"
+        echo "# ls -lR mu2egridInDir"
+        ls -lR mu2egridInDir
+        echo ""
 
         #================================================================
         # include the edited copy of the fcl into the log
@@ -325,6 +327,9 @@ mu2eprodsys_payload() {
         echo "Running the command: $timecmd mu2e -c $localFCL"
         $timecmd mu2e -c $localFCL
         echo "mu2egrid exit status $?"
+
+        # Clean up input files
+        /bin/rm -rf mu2egridInDir
 
         echo "#================================================================"
 
