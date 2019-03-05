@@ -6,7 +6,6 @@ use File::Basename;
 use File::Path;
 use File::Temp;
 use Getopt::Long;
-use Archive::Tar;
 
 use Data::Dumper; # for debugging
 
@@ -182,7 +181,7 @@ $script .= "\nsrun singularity exec -B \$JOBDIR:/mnt $container bash -c \"$env /
 
 $script .= << 'EOF'
 exit $?
-BEGIN_DATA
+BEGIN_MASTERLIST
 EOF
     ;
 
@@ -190,34 +189,64 @@ print "The script to be submitted (fcl list not shown):\n";
 print $script;
 
 #----------------------------------------------------------------
+my $nfclfiles = 0;
 my $fcllist = $opt{'fcllist'};
 open(my $fclin, $fcllist) or die "Error opening $fcllist: $!\n";
 while(my $line = <$fclin>) {
-    # FIXME: add sanity checks here
+    chomp $line;
+    -l $line && die "Error: fcl input $line is a symlink. Must be a plain file.\n";
+    -f $line || die "Error: fcl input $line is not a plain file\n";
+    -r $line || die "Error: fcl file $line is not readable\n";
     $script .= $line;
+    $script .= "\n";
+    ++$nfclfiles;
 }
 close $fclin;
 
 #----------------------------------------------------------------
+# tar up the fcl files and embed them in the batch script
+$script .= "BEGIN_DATA\n";
+open my $tarstream, '-|', 'tar', '--create', '--bzip2', '--file=-', "--files-from=$fcllist"
+    or die "Can not execute tar: $!\n";
 
+while(my $tmp = <$tarstream>) {
+    $script .= $tmp;
+}
+
+close $tarstream;
+
+#----------------------------------------------------------------
+# debug
+my $soname = 'dump.sh';
+if(open(my $sout, '>', $soname)) {
+    print $sout $script;
+}
+else {
+    warn "Warning: could not write a copy of the batch script to '$soname': $!\n";
+}
+
+#----------------------------------------------------------------
+my $tpn = $opt{'ntasks-per-node'};
+die "--ntasks-per-node must be a positive integer.  Got: $tpn\n" unless $tpn > 0;
+
+die "The number of fcl files $nfclfiles is not a multiple of --ntasks-per-node $tpn\n"
+    if ($nfclfiles % $tpn);
+
+my $nnodes = $nfclfiles / $tpn;
+
+print "Job size:  $nnodes nodes at $tpn tasks per node\n";
 
 #----------------
-#tmp:if(!$opt{'dry-run'}) {
-#tmp:    print "Submitting....\n";
-#tmp:    ## Actually, print to a pipe here
-#tmp:    exec { 'sbatch' } 'sbatch', @args
-#tmp:    or die "Error executing sbatch @args: $!";
-#tmp:}
-#tmp:else {
-#tmp:    print "Not submitting because --dry-run was requested.\n";
-#tmp:}
-#tmp:
-#tmp:# Clean up temporary files
-#tmp:if($fcltar ne '') {
-#tmp:    print "Cleaning up: removing temporary fcl list file $fcllist\n"
-#tmp:        if $opt{'verbose'};
-#tmp:
-#tmp:    unlink $fcllist;
-#tmp:}
-#tmp:
-#tmp:#================================================================
+if(!$opt{'dry-run'}) {
+    print "Submitting....\n";
+    ## Actually, print to a pipe here
+    #exec { 'sbatch' } 'sbatch', @args
+    open my $sbstream, '|-', 'sbatch', "--ntasks-per-node=$tpn", "--nodes=$nnodes"
+        or die "Error starting sbatch: $!";
+    print $sbstream $script;
+    close $sbstream or die "Error from sbatch\n";
+}
+else {
+    print "Not submitting because --dry-run was requested.\n";
+}
+#================================================================
