@@ -164,28 +164,49 @@ close $sbin;
 
 #----------------------------------------------------------------
 # Environment for the worker process
-my $env = "MU2EGRID_DSOWNER=$opt{'dsowner'} "
+my $env = ""
+    . "MU2EGRID_HPC=1 "
+    . "MU2EGRID_ERRORDELAY=1 "
+    . "MU2EGRID_DSOWNER=$opt{'dsowner'} "
     . "MU2EGRID_DSCONF=$opt{'dsconf'} "
     . "MU2EGRID_MU2ESETUP=$opt{'mu2e-setup'} "
     . "MU2EGRID_USERSETUP=$opt{'setup'} "
+    . "MU2EGRID_INPUTLIST=masterlist "
+    . "MU2EGRID_FCLTAR=fcl.tar.bz2 "
+    . "TMPDIR=/mnt "
+    . "CONDIR_DIR_INPUT=/mnt "
+    . "PROCESS=\$SLURM_PROCID "
     ;
 
 #----------------------------------------------------------------
-# FIXME: emit shell code to compute and create JOBDIR, and to
-# set environment vars for the worker.
+# The outside-of-container worker node script code.
+#
+# NB: SLURM_PROCID must be escaped here to be expanded by the worker
+# node process instead of the submission script, but we do need
+# to expand $clusterdir
 
+$script .= <<"EOF"
 
+set -e  # immediate exit on an error
+JOBDIR=\"$clusterdir/\$(printf %02d \$((\$SLURM_PROCID/1000)))/\$(printf %05d \$SLURM_PROCID)\"
+mkdir -p \$JOBDIR
 
-$script .= "\nmodule load singularity --latest\n";
-$script .= "\nsrun singularity exec -B \$JOBDIR:/mnt $container bash -c \"$env /mu2egrid/bin/impl/mu2eprodsys.sh\"\n";
+# Extract the --fcllist
+sed -e '1,/^BEGIN_MASTERLIST/d' -e '/^BEGIN_DATA/,$d' \$0 > \$JOBDIR/masterlist
 
-$script .= << 'EOF'
-exit $?
+# Extract the fcl files archive
+sed -e '1,/^BEGIN_DATA/d' \$0 > \$JOBDIR/fcl.tar.bz2
+
+module load singularity --latest
+srun singularity exec -B \$JOBDIR:/mnt $container bash -c \"$env /mu2egrid/bin/impl/mu2eprodsys.sh\"
+exit \$?
+
 BEGIN_MASTERLIST
 EOF
     ;
 
-print "The script to be submitted (fcl list not shown):\n";
+#----------------------------------------------------------------
+print "The script to be submitted (embedded data not shown):\n";
 print $script;
 
 #----------------------------------------------------------------
