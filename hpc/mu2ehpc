@@ -189,6 +189,7 @@ my $env = ""
     . "MU2EGRID_FCLTAR=fcl.tar.bz2 "
     . "TMPDIR=/mnt "
     . "CONDIR_DIR_INPUT=/mnt "
+    . "MU2EGRID_WFOUTSTAGE=/mnt "
     . "PROCESS=\$SLURM_PROCID "
     ;
 
