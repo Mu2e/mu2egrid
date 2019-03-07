@@ -5,8 +5,8 @@
 use File::Basename;
 use File::Path;
 use File::Temp;
+use File::Copy;
 use Getopt::Long;
-use MIME::Base64;
 
 my $scriptCopyName = 'dump.sh';
 
@@ -105,19 +105,6 @@ sub checkFilenameComponent {
 }
 
 #================================================================
-sub interpret_fcl_input {
-    my ($fclin) = @_;
-
-    my ($njobs, $fcllist, $fcltar);
-
-    $fcllist = $fclin;
-    $njobs = mu2egrid::validate_file_list($fcllist);
-    $fcltar = '';
-
-    return ($njobs, $fcllist, $fcltar);
-}
-
-#================================================================
 # Process command line opts.
 GetOptions(\%opt,
            'mu2e-setup=s',
@@ -155,9 +142,10 @@ checkFilenameComponent(\%opt, ['dsconf', 'dsowner']);
 # do not clash with anything pre-existing.
 
 my $clusterdir = $opt{'topdir'} . '/' . makeSubDirName();
+my $inputdir=$clusterdir . '/inputs';
 if(!$opt{'dry-run'}) {
-    my $nnew = File::Path::make_path( $clusterdir, { verbose=>1 } ); # this Carps on errors
-    die "Error: failed to create a new directory $clusterdir - did it already exist?\n" unless $nnew;
+    my $nnew = File::Path::make_path( $inputdir, { verbose=>1 } ); # this Carps on errors
+    die "Error: failed to create a new directory $inputdir - did it already exist?\n" unless $nnew;
 }
 
 #----------------------------------------------------------------
@@ -186,45 +174,29 @@ my $env = ""
     . "MU2EGRID_MU2ESETUP=$opt{'mu2e-setup'} "
     . "MU2EGRID_USERSETUP=$opt{'setup'} "
     . "MU2EGRID_INPUTLIST=masterlist "
-    . "MU2EGRID_FCLTAR=fcl.tar.bz2 "
+    . "MU2EGRID_FCLTAR=/mnt/inputs/fcl.tar.bz2 "
     . "TMPDIR=/mnt "
-    . "CONDOR_DIR_INPUT=/mnt "
+    . "CONDOR_DIR_INPUT=/mnt/inputs "
     . "MU2EGRID_WFOUTSTAGE=/mnt "
-    . "PROCESS=\$SLURM_PROCID "
     ;
 
 #----------------------------------------------------------------
 # The outside-of-container worker node script code.
-#
-# NB: SLURM_PROCID must be escaped here to be expanded by the worker
-# node process instead of the submission script, but we do need
-# to expand $clusterdir
 
 $script .= <<"EOF"
 
-set -e  # immediate exit on an error
-JOBDIR=\"$clusterdir/\$(printf %02d \$((\$SLURM_PROCID/1000)))/\$(printf %05d \$SLURM_PROCID)\"
-mkdir -p \$JOBDIR
-
-# Extract the --fcllist
-sed -e '1,/^BEGIN_MASTERLIST/d' -e '/^BEGIN_DATA/,\$d' \$0 > \$JOBDIR/masterlist
-
-# Extract the fcl files archive
-sed -e '1,/^BEGIN_DATA/d' \$0 | base64 -d > \$JOBDIR/fcl.tar.bz2
-
 module load singularity --latest
-srun singularity exec -B \$JOBDIR:/mnt $container bash -c \"$env /mu2egrid/bin/impl/mu2eprodsys.sh\"
+srun singularity exec -B $clusterdir:/mnt $container bash -c \"$env /mu2egrid/bin/impl/mu2eprodsys.sh\"
 exit \$?
-
-BEGIN_MASTERLIST
 EOF
     ;
 
 #----------------------------------------------------------------
-print "The script to be submitted (embedded data not shown):\n";
+print "The script to be submitted:\n";
 print $script;
 
 #----------------------------------------------------------------
+# Count input fcl files and copy the list to job input dir
 my $nfclfiles = 0;
 my $fcllist = $opt{'fcllist'};
 open(my $fclin, $fcllist) or die "Error opening $fcllist: $!\n";
@@ -233,24 +205,19 @@ while(my $line = <$fclin>) {
     -l $line && die "Error: fcl input $line is a symlink. Must be a plain file.\n";
     -f $line || die "Error: fcl input $line is not a plain file\n";
     -r $line || die "Error: fcl file $line is not readable\n";
-    $script .= $line;
-    $script .= "\n";
     ++$nfclfiles;
 }
 close $fclin;
 
-#----------------------------------------------------------------
-# tar up the fcl files and embed them in the batch script
-$script .= "BEGIN_DATA\n";
-open my $tarstream, '-|', 'tar', '--create', '--bzip2', '--file=-', "--files-from=$fcllist"
-    or die "Can not execute tar: $!\n";
+if(!$opt{'dry-run'}) {
+    copy($fcllist, $inputdir . '/masterlist')
+        or die "Error copying $fcllist to $inputdir/masterlist: $!\n";
 
-# Use a multiple of 57 bytes to avoid base64 padding in the middle.
-while (read($tarstream, my $tmp, 60*57)) {
-    $script .= encode_base64($tmp);
+    # tar up the fcl files
+    my @tarcmd = ("tar", "--create", "--bzip2", "--file=$inputdir/fcl.tar.bz2", "--files-from=$fcllist");
+    system(@tarcmd) == 0
+        or die "Error: @tarcmd failed: $?";
 }
-
-close $tarstream;
 
 #----------------------------------------------------------------
 # debug

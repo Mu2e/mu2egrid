@@ -105,30 +105,29 @@ mu2eprodsys_payload() {
     }
     trap mu2epseh ERR
 
-    mkdir mu2egridInDir
+    [[ $MU2EGRID_HPC ]] || mkdir mu2egridInDir
 
     if [ -n "$MU2EGRID_FCLTAR" ]; then
 
        # fcl files were given to this job as a tarball, we need to extract our job config
         echo "FCL files are given as a tar file: $MU2EGRID_FCLTAR"
-        localTar=mu2egridInDir/$(basename $MU2EGRID_FCLTAR)
+
         if [[ $MU2EGRID_HPC ]]; then
-            /bin/mv "$MU2EGRID_FCLTAR" $localTar
+            tar --extract --transform='s|^.*/||' --file "$MU2EGRID_FCLTAR" $origFCL
+            # these names may coincide
+            [[ $(basename $origFCL) == $localFCL ]] || /bin/mv -v $(basename $origFCL) $localFCL
         else
+            localTar=mu2egridInDir/$(basename $MU2EGRID_FCLTAR)
             ifdh cp "$MU2EGRID_FCLTAR" $localTar
+            tar xf $localTar --directory mu2egridInDir $origFCL
+            rm -v $localTar
+            mv -v mu2egridInDir/$origFCL $localFCL
         fi
-        tar xf $localTar --directory mu2egridInDir $origFCL
-        rm -v $localTar
-        mv -v mu2egridInDir/$origFCL $localFCL
 
     else # Job submissions with plain fcl file list
 
         echo "Copying in $origFCL"
-        if [[ $MU2EGRID_HPC ]]; then
-            cp $origFCL $localFCL
-        else
-            ifdh cp $origFCL $localFCL
-        fi
+        ifdh cp $origFCL $localFCL
 
     fi
 
@@ -309,10 +308,12 @@ mu2eprodsys_payload() {
 
         #================================================================
         # Document what has been actually pre-staged
-        echo "################################################################"
-        echo "# ls -lR mu2egridInDir"
-        ls -lR mu2egridInDir
-        echo ""
+        if ! [[ $MU2EGRID_HPC ]]; then
+            echo "################################################################"
+            echo "# ls -lR mu2egridInDir"
+            ls -lR mu2egridInDir
+            echo ""
+        fi
 
         #================================================================
         # include the edited copy of the fcl into the log
@@ -327,9 +328,6 @@ mu2eprodsys_payload() {
         echo "Running the command: $timecmd mu2e -c $localFCL"
         $timecmd mu2e -c $localFCL
         echo "mu2egrid exit status $?"
-
-        # Clean up input files
-        /bin/rm -rf mu2egridInDir
 
         echo "#================================================================"
 
@@ -394,21 +392,34 @@ echo "Starting on host $(hostname) on $(date) -- $(date +%s) seconds since epoch
 
 umask 002
 
-# TMPDIR is defined and created by Condor.
-cd $TMPDIR
-
 # make sure we are not stuck with stale CVMFS data
 CVMFSHACK=/cvmfs/grid.cern.ch/util/cvmfs-uptodate
 test -x $CVMFSHACK && $CVMFSHACK /cvmfs/mu2e.opensciencegrid.org
 
 ret=1
-cluster=$(printf %06d ${CLUSTER:-0})
-clustername="$cluster${MU2EGRID_CLUSTERNAME:+.$MU2EGRID_CLUSTERNAME}"
-
 jobname=failedjob
 export logFileName="${jobname}.log"
 declare -a outfiles=( $logFileName )
+
+# PROCESS is the original variable set by Condor
+# Other systems call it differently, put it in PROCESS by hand.
+PROCESS=${PROCESS:-$MU2EGRID_PROCID}
+PROCESS=${PROCESS:-$SLURM_PROCID}
+export PROCESS
+
+cluster=$(printf %06d ${CLUSTER:-0})
+clustername="${cluster}${MU2EGRID_CLUSTERNAME:+.$MU2EGRID_CLUSTERNAME}"
+[[ $MU2EGRID_HPC ]] && clustername=out
 finalOutDir="${MU2EGRID_WFOUTSTAGE:?Error: MU2EGRID_WFOUTSTAGE is not set}/$clustername/$(printf %02d $((${PROCESS:-0}/1000)))/$(printf %05d ${PROCESS:-0})"
+
+if [[ $MU2EGRID_HPC ]]; then
+    mkdir -p ${finalOutDir}
+    cd ${finalOutDir}
+    export TMPDIR=${finalOutDir}
+else
+    # TMPDIR is defined and created by Condor.
+    cd $TMPDIR
+fi
 
 #================================================================
 # Set up Mu2e environment and make ifdh available
