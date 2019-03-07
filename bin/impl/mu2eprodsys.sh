@@ -433,7 +433,6 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
 
         masterlist="$CONDOR_DIR_INPUT/${MU2EGRID_INPUTLIST:?MU2EGRID_INPUTLIST environment variable is not set}";
         export origFCL=$(getFCLFileName $masterlist ${PROCESS:?PROCESS environment variable is not set}) 2>> $logFileName
-        rm -v $masterlist # clean up for HPC, no harm for OSG
 
         echo "mu2eprodsys origFCL = $origFCL" >> $logFileName 2>&1
 
