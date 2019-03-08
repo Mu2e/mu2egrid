@@ -15,7 +15,8 @@ my %opt =
      'dsowner' => 'mu2e',
      'setup' => '/Offline/setup.sh',
      'mu2e-setup' => '/setupmu2e-art.sh',
-     'help' => 0
+     'help' => 0,
+     'debug' => 0,
     );
 
 #================================================================
@@ -68,6 +69,8 @@ Usage:
       Note that a copy of the batch script is always dumped to '$scriptCopyName'
       and available for inspection.
 
+    --debug requests a more verbose logging by the worker node script
+
     --mu2e-setup defaults to $opt{'mu2e-setup'}, to be sourced by
       the inside-the-container working processes.
 
@@ -117,7 +120,8 @@ GetOptions(\%opt,
            'sbopts=s',
            'ntasks-per-node=i',
            'help',
-           'dry-run'
+           'dry-run',
+           'debug'
     )
     or die "\nError processing command line options.\n";
 
@@ -168,6 +172,7 @@ close $sbin;
 # Environment for the worker process
 my $env = ""
     . "MU2EGRID_HPC=1 "
+    . "MU2EGRID_DEBUG=$opt{'debug'} "
     . "MU2EGRID_ERRORDELAY=1 "
     . "MU2EGRID_DSOWNER=$opt{'dsowner'} "
     . "MU2EGRID_DSCONF=$opt{'dsconf'} "
