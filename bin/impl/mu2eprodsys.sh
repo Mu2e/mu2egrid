@@ -148,15 +148,15 @@ mu2eprodsys_payload() {
         # (e.g. custom stopped muon file) will not be found by mu2e modules.
         MU2E_SEARCH_PATH=$(pwd):$MU2E_SEARCH_PATH
 
-        if [ -n "$MU2EGRID_MU2EBINTOOLS_VERSION" ]; then
-            setup -B mu2ebintools "${MU2EGRID_MU2EBINTOOLS_VERSION:?Error: MU2EGRID_MU2EBINTOOLS_VERSION is not set}" -q "${MU2E_UPS_QUALIFIERS}"
+        if [[ $MU2EGRID_MU2EBINTOOLS_VERSION ]]; then
+            setup -B mu2ebintools "${MU2EGRID_MU2EBINTOOLS_VERSION}" -q "${MU2E_UPS_QUALIFIERS}"
         else
             echo "MU2EGRID_MU2EBINTOOLS_VERSION not defined - will setup current mu2etools"
             setup mu2etools
         fi
 
-        if [ -n "MU2EGRID_DHTOOLS_VERSION" ]; then
-            setup -B dhtools "${MU2EGRID_DHTOOLS_VERSION:?Error: MU2EGRID_DHTOOLS_VERSION is not set}"
+        if [[ $MU2EGRID_DHTOOLS_VERSION ]]; then
+            setup -B dhtools "${MU2EGRID_DHTOOLS_VERSION}"
         else
             echo "MU2EGRID_DHTOOLS_VERSION not defined - will setup current dhtools"
             setup dhtools
