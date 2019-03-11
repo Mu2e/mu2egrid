@@ -222,8 +222,8 @@ my $env = ""
 #----------------------------------------------------------------
 $script .= <<"EOF"
 
-aprun  -n $nfclfiles -N $tpn -cc depth -d $opt{'nthreads-per-task'} -j 4 \
-    singularity exec -B $clusterdir:/mnt $container \
+aprun  -n $nfclfiles -N $tpn -cc depth -d $opt{'nthreads-per-task'} -j 4 \\
+    singularity exec -B $clusterdir:/mnt $container \\
         bash -c \"$env /mu2egrid/bin/impl/mu2eprodsys.sh\"
 
 exit \$?
