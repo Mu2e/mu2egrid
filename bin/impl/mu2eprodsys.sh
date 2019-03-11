@@ -293,13 +293,12 @@ mu2eprodsys_payload() {
         # on OSG) when we upgrade to art3.   The mu2eprodsys submission
         # script will need to implement suitable new options.
         #
-        # For the moment just let the HPC shim script handle G4-specific
+        # For the moment just let the HPC scripts handle G4-specific
         # multithreading with art2.
 
-        hpcfcl="mu2e_hpc.fcl"
-        if [[ -e $hpcfcl ]]; then
+        if [[ $MU2EGRID_FCLMT ]]; then
             echo "# extra settings for the HPC environment" >> $localFCL
-            cat $hpcfcl >> $localFCL
+            cat $MU2EGRID_FCLMT >> $localFCL
         fi
 
         #----------------------------------------------------------------

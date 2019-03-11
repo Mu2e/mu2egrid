@@ -154,6 +154,8 @@ checkFilenameComponent(\%opt, ['dsconf', 'dsowner']);
 # outputs of individual jobs do not clash with anything pre-existing.
 my $clusterdir = $opt{'topdir'} . '/' . makeSubDirName();
 my $inputdir=$clusterdir . '/inputs';
+my $fclmtbase = 'mtfragment.fcl';
+my $fclmtname = $inputdir . '/' . $fclmtbase;
 
 #----------------------------------------------------------------
 # Count input fcl files
@@ -211,6 +213,7 @@ my $env = ""
     . "MU2EGRID_USERSETUP=$opt{'setup'} "
     . "MU2EGRID_INPUTLIST=masterlist "
     . "MU2EGRID_FCLTAR=/mnt/inputs/fcl.tar.bz2 "
+    . "MU2EGRID_FCLMT=/mnt/inputs/$fclmtbase "
     . "TMPDIR=/mnt "
     . "CONDOR_DIR_INPUT=/mnt/inputs "
     . "MU2EGRID_WFOUTSTAGE=/mnt "
@@ -255,6 +258,15 @@ if(!$opt{'dry-run'}) {
     print $sout $script or die  "Error: can not write to '$scriptName': $!\n";
     close $sout or die "Error closing '$scriptName': $!\n";
     chmod(0555, $fcltar);
+
+    open(my $frag, '>', $fclmtname) or die "Error: can not create '$fclmtname': $!\n";
+    print $frag <<"EOF"
+physics.producers.g4run.runinMTMode: true
+physics.producers.g4run.numberOfThreads: $opt{'nthreads-per-task'}
+EOF
+    ;
+    close $frag or die "Error closing '$fclmtname': $!\n";
+    chmod(0444, $fclmtname);
 }
 
 #----------------------------------------------------------------
