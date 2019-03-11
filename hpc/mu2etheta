@@ -222,8 +222,6 @@ my $env = ""
 #----------------------------------------------------------------
 $script .= <<"EOF"
 
-#bebop:module load singularity --latest
-
 aprun  -n $nfclfiles -N $tpn -cc depth -d $opt{'nthreads-per-task'} -j 4 \
     singularity exec -B $clusterdir:/mnt $container \
         bash -c \"$env /mu2egrid/bin/impl/mu2eprodsys.sh\"
@@ -257,7 +255,7 @@ if(!$opt{'dry-run'}) {
     open(my $sout, '>', $scriptName) or die "Error: can not create '$scriptName': $!\n";
     print $sout $script or die  "Error: can not write to '$scriptName': $!\n";
     close $sout or die "Error closing '$scriptName': $!\n";
-    chmod(0555, $fcltar);
+    chmod(0555, $scriptName);
 
     open(my $frag, '>', $fclmtname) or die "Error: can not create '$fclmtname': $!\n";
     print $frag <<"EOF"
