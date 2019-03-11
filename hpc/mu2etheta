@@ -1,0 +1,282 @@
+#!/usr/bin/perl -w
+#
+# A frontend script to submit mu2e framework jobs in the HPC environment
+
+use File::Basename;
+use File::Path;
+use File::Temp;
+use File::Copy;
+use Getopt::Long;
+
+my %opt =
+    (
+     'dsowner' => 'mu2e',
+     'setup' => '/Offline/setup.sh',
+     'mu2e-setup' => '/setupmu2e-art.sh',
+     'help' => 0,
+     'debug' => 0,
+    );
+
+#================================================================
+sub usage() {
+    my $self = basename($0);
+    return <<EOF
+Usage:
+        $self --fcllist=<fcl-file-list> \\
+              --dsconf=<output-dataset-version-string> \\
+              [--dsowner=<name>] \\
+              --topdir=<directory> \\
+              --container=<file> \\
+              --batchopts=<file> \\
+              --ntasks-per-node=<integer> \\
+              --nthreads-per-task=<integer> \\
+              --time-limit=<string> \\
+              [--help|-h] \\
+              [--dry-run] \\
+              [--debug] \\
+              [--mu2e-setup=<inside-the-container-file>] \\
+              [--setup=<inside-the-container-file>]
+
+    where square brackets denote optional parameters.
+
+    - The set of fcl files specified via --fcllist will be processed
+      by Mu2e Offline, one fcl file per job.  The --fcllist argument
+      should be a plain text file with one fcl file name per line.
+      The submission process will take a snapshot of the content of
+      fcl files, and later modifications to the files (or fcllist
+      itself) will not affect any previously submitted jobs.
+
+    - The configuration field in the names of output files should be
+      specified via --dsconf.
+
+    - The --dsowner option specifies the username field in the names
+      of output files.  The default is the 'mu2e'
+
+    --topdir will have subdirectories created where the jobs will
+      run and place their outputs.
+
+    --container is the Mu2e container to be used for the job
+
+    --batchopts should point to a text file that will be merged in a the
+       beginning of the submitted batch script.  Each line must start
+       with '#COBALT' and define an option for the batch job.
+
+    --ntasks-per-node must be provided.  The number of nodes request
+      is deduced from --ntasks-per-node and the number of jobs in
+      --fcllist.
+
+    --nthreads-per-task will be used to process each fcl file
+
+    --time-limit will be passed to qsub
+
+    --help or -h: print out the documentation
+
+    --dry-run will run pre-submission job checks and print out
+      the script, but not submit it.
+
+    --debug requests a more verbose logging by the worker node script
+
+    --mu2e-setup defaults to $opt{'mu2e-setup'}, to be sourced by
+      the inside-the-container working processes.
+
+    --setup defaults to $opt{'setup'}, another file to be sourced by
+      the inside-the-container working processes.
+
+EOF
+;
+}
+
+#================================================================
+# generates a reasonably unuque name for the "submission level" directory
+sub makeSubDirName {
+    my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime();
+    $year = sprintf("%02d", $year+1900);
+    $mon = sprintf("%02d", $mon+1);
+    $mday = sprintf("%02d", $mday);
+    $hour = sprintf("%02d", $hour);
+    $min = sprintf("%02d", $min);
+    $sec = sprintf("%02d", $sec);
+
+    my $sd = "${year}${mon}${mday}-${hour}${min}";
+    return $sd;
+}
+
+#================================================================
+sub checkFilenameComponent {
+    my ($opt, $list) = @_;
+    foreach my $a (@$list) {
+        die "Error: parameter $a must be specified\n" unless defined $$opt{$a};
+        my $val = $$opt{$a};
+        die "Invalid value of parameter $a = '$val'"
+            unless $val =~ /^\w[-\w]*$/;
+    }
+}
+
+#================================================================
+# Process command line opts.
+GetOptions(\%opt,
+           'fcllist=s',
+           'dsconf=s',
+           'dsowner=s',
+           'topdir=s',
+           'container=s',
+           'batchopts=s',
+           'ntasks-per-node=i',
+           'nthreads-per-task=i',
+           'time-limit=s',
+           'help',
+           'dry-run',
+           'debug',
+           'mu2e-setup=s',
+           'setup=s',
+    )
+    or die "\nError processing command line options.\n";
+
+if($opt{'help'}) {
+    print usage();
+exit 0;
+}
+
+# Check that all of the required args are present:
+foreach my $k ('fcllist', 'dsconf', 'topdir', 'container', 'batchopts',
+               'ntasks-per-node', 'nthreads-per-task', 'time-limit')
+{
+    defined $opt{$k} or die "Error: --$k must be specified.  Try the --help option.\n";
+}
+
+my $container = $opt{'container'};
+die "Error: can not read the container file $container" unless -r $container;
+
+# Make sure components of Mu2e filenames are valid
+checkFilenameComponent(\%opt, ['dsconf', 'dsowner']);
+
+# Use a new "submission level" directory for each job to make sure
+# outputs of individual jobs do not clash with anything pre-existing.
+my $clusterdir = $opt{'topdir'} . '/' . makeSubDirName();
+my $inputdir=$clusterdir . '/inputs';
+
+#----------------------------------------------------------------
+# Count input fcl files
+my $nfclfiles = 0;
+my $fcllist = $opt{'fcllist'};
+open(my $fclin, $fcllist) or die "Error opening $fcllist: $!\n";
+while(my $line = <$fclin>) {
+    chomp $line;
+    -l $line && die "Error: fcl input $line is a symlink. Must be a plain file.\n";
+    -f $line || die "Error: fcl input $line is not a plain file\n";
+    -r $line || die "Error: fcl file $line is not readable\n";
+    ++$nfclfiles;
+}
+close $fclin;
+
+#----------------------------------------------------------------
+my $tpn = $opt{'ntasks-per-node'};
+die "--ntasks-per-node must be a positive integer.  Got: $tpn\n" unless $tpn > 0;
+
+die "The number of fcl files $nfclfiles is not a multiple of --ntasks-per-node $tpn\n"
+    if ($nfclfiles % $tpn);
+
+my $numnodes = $nfclfiles / $tpn;
+
+print "\n# Job size:  $numnodes nodes at $tpn tasks per node\n";
+
+#----------------------------------------------------------------
+my $scriptName = $inputdir . '/job.sh';
+
+# The outside-of-container worker node script code.
+my $script = "#!/bin/bash\n";
+
+my $batchopts = $opt{'batchopts'};
+open(my $sbin, $batchopts) or die "Error opening $batchopts: $!\n";
+while(my $line = <$sbin>) {
+    die "Error: invalid --batchopts line:\n$line\n"
+        unless $line =~ /^#COBALT/;
+
+    # FIXME: add more checks to ban --ntasks-per-node,
+    # --nodes, and other similar settings here
+
+    $script .= $line;
+}
+close $sbin;
+
+#----------------------------------------------------------------
+# Environment for the worker process
+my $env = ""
+    . "MU2EGRID_HPC=1 "
+    . "MU2EGRID_DEBUG=$opt{'debug'} "
+    . "MU2EGRID_ERRORDELAY=1 "
+    . "MU2EGRID_DSOWNER=$opt{'dsowner'} "
+    . "MU2EGRID_DSCONF=$opt{'dsconf'} "
+    . "MU2EGRID_MU2ESETUP=$opt{'mu2e-setup'} "
+    . "MU2EGRID_USERSETUP=$opt{'setup'} "
+    . "MU2EGRID_INPUTLIST=masterlist "
+    . "MU2EGRID_FCLTAR=/mnt/inputs/fcl.tar.bz2 "
+    . "TMPDIR=/mnt "
+    . "CONDOR_DIR_INPUT=/mnt/inputs "
+    . "MU2EGRID_WFOUTSTAGE=/mnt "
+    ;
+
+#----------------------------------------------------------------
+$script .= <<"EOF"
+
+#bebop:module load singularity --latest
+
+aprun  -n $nfclfiles -N $tpn -cc depth -d $opt{'nthreads-per-task'} -j 4 \
+    singularity exec -B $clusterdir:/mnt $container \
+        bash -c \"$env /mu2egrid/bin/impl/mu2eprodsys.sh\"
+
+exit \$?
+EOF
+    ;
+
+#----------------------------------------------------------------
+# create files for this job submission
+
+if(!$opt{'dry-run'}) {
+
+    if(!$opt{'dry-run'}) {
+        my $nnew = File::Path::make_path( $inputdir, { verbose=>1 } ); # this Carps on errors
+        die "Error: failed to create a new directory $inputdir - did it already exist?\n" unless $nnew;
+    }
+
+    my $masterlist = $inputdir . '/masterlist';
+    copy($fcllist, $masterlist)
+        or die "Error copying $fcllist to $inputdir/masterlist: $!\n";
+    chmod(0444, $masterlist);
+
+    # tar up the fcl files
+    my $fcltar = "$inputdir/fcl.tar.bz2";
+    my @tarcmd = ("tar", "--create", "--bzip2", "--file=$fcltar", "--files-from=$fcllist");
+    system(@tarcmd) == 0
+        or die "Error: @tarcmd failed: $?";
+    chmod(0444, $fcltar);
+
+    open(my $sout, '>', $scriptName) or die "Error: can not create '$scriptName': $!\n";
+    print $sout $script or die  "Error: can not write to '$scriptName': $!\n";
+    close $sout or die "Error closing '$scriptName': $!\n";
+    chmod(0555, $fcltar);
+}
+
+#----------------------------------------------------------------
+print "The script to be submitted:\n";
+print $script;
+
+my $cmdname = 'qsub';
+my @args = (
+    '--mode', 'script',
+    '-n', $numnodes,
+    '-t', $opt{'time-limit'},
+    $scriptName
+    );
+
+#----------------
+if(!$opt{'dry-run'}) {
+    print "# Executing $cmdname @args\n";
+    exec { $cmdname } $cmdname, @args
+        or die "Error: $!\n";
+}
+else {
+    print "# Submission command: $cmdname @args\n";
+    print "# Not submitting because --dry-run was requested.\n";
+}
+#================================================================

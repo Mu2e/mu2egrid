@@ -408,6 +408,7 @@ declare -a outfiles=( $logFileName )
 # Other systems call it differently, put it in PROCESS by hand.
 PROCESS=${PROCESS:-$MU2EGRID_PROCID}
 PROCESS=${PROCESS:-$SLURM_PROCID}
+PROCESS=${PROCESS:-$ALPS_APP_PE}
 export PROCESS
 
 cluster=$(printf %06d ${CLUSTER:-0})
