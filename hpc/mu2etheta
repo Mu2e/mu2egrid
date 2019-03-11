@@ -247,7 +247,12 @@ if(!$opt{'dry-run'}) {
 
     # tar up the fcl files
     my $fcltar = "$inputdir/fcl.tar.bz2";
-    my @tarcmd = ("tar", "--create", "--bzip2", "--file=$fcltar", "--files-from=$fcllist");
+    my @tarcmd = ("tar",
+                  "--create",
+                  "--absolute-names",
+                  "--bzip2",
+                  "--file=$inputdir/fcl.tar.bz2",
+                  "--files-from=$fcllist");
     system(@tarcmd) == 0
         or die "Error: @tarcmd failed: $?";
     chmod(0444, $fcltar);
