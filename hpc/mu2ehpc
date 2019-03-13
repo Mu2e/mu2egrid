@@ -75,7 +75,7 @@ my %clusters = (
             my $a = shift;
             return (
                 '--nodes', ${$a->numnodes},
-                '--nprocs-per-node', ${$a->procsPerNode},
+                '--ntasks-per-node', ${$a->procsPerNode},
                 '--time', ${$a->timeLimit},
                 ${$a->scriptName}
                 );
