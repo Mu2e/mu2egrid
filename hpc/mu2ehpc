@@ -20,8 +20,8 @@ use Class::Struct Mu2eHPCBatchSys => [
 use Class::Struct JobPars => [
     nfclfiles=>'*$',
     numnodes=>'*$',
-    tasksPerNode=>'*$',
-    threadsPerTask=>'*$',
+    procsPerNode=>'*$',
+    threadsPerProcess=>'*$',
     timeLimit=>'*$',
     sldir=>'*$',
     container=>'*$',
@@ -34,7 +34,7 @@ my $thetascriplet = sub {
     my $a = shift;
     return <<"EOF"
 
-aprun  -n ${$a->nfclfiles} -N ${$a->tasksPerNode} -cc depth -d ${$a->threadsPerTask} -j 4 \\
+aprun  -n ${$a->nfclfiles} -N ${$a->procsPerNode} -cc depth -d ${$a->threadsPerProcess} -j 4 \\
     singularity exec -B ${$a->sldir}:/mnt ${$a->container} \\
         bash -c \"${$a->env} /mu2egrid/bin/impl/mu2eprodsys.sh\"
 
@@ -75,7 +75,7 @@ my %clusters = (
             my $a = shift;
             return (
                 '--nodes', ${$a->numnodes},
-                '--ntasks-per-node', ${$a->tasksPerNode},
+                '--nprocs-per-node', ${$a->procsPerNode},
                 '--time', ${$a->timeLimit},
                 ${$a->scriptName}
                 );
@@ -109,8 +109,8 @@ Usage:
               --topdir=<directory> \\
               --container=<file> \\
               --batchopts=<file> \\
-              --nthreads-per-task=<integer> \\
-              --ntasks-per-node=<integer> \\
+              --nthreads-per-process=<integer> \\
+              --nprocs-per-node=<integer> \\
               --time-limit=<string> \\
               [-h|--help] \\
               [--dry-run] \\
@@ -153,11 +153,11 @@ sub usage() {
       start with '#SBATCH' for Bebop or '#COBALT' for Theta, and
       define an option for the batch submission.
 
-    --nthreads-per-task is the number of threads used by an individual
+    --nthreads-per-process is the number of threads used by an individual
       Mu2e job to process a single fcl file in the submission.
 
-    --ntasks-per-node must be provided.  The number of nodes request
-      is deduced from --ntasks-per-node and the number of jobs in
+    --nprocs-per-node must be provided.  The number of nodes request
+      is deduced from --nprocs-per-node and the number of jobs in
       --fcllist.
 
     --time-limit is the maximal job duration.
@@ -220,8 +220,8 @@ GetOptions(\%opt,
            'topdir=s',
            'container=s',
            'batchopts=s',
-           'ntasks-per-node=i',
-           'nthreads-per-task=i',
+           'nprocs-per-node=i',
+           'nthreads-per-process=i',
            'time-limit=s',
            'help',
            'dry-run',
@@ -239,7 +239,7 @@ exit 0;
 # Check that all of the required args are present:
 foreach my $k ('cluster', 'fcllist', 'dsconf',
                'topdir', 'container', 'batchopts',
-               'ntasks-per-node', 'nthreads-per-task', 'time-limit')
+               'nprocs-per-node', 'nthreads-per-process', 'time-limit')
 {
     defined $opt{$k} or die "Error: --$k must be specified.  Try the --help option.\n";
 }
@@ -249,10 +249,10 @@ grep { /^$clname$/ } keys %clusters
     or die "Error: unknown cluster $clname\n";
 my $cl = $clusters{$clname};
 
-my $tpn = $opt{'ntasks-per-node'};
-die "--ntasks-per-node must be a positive integer.  Got: $tpn\n" unless $tpn > 0;
+my $tpn = $opt{'nprocs-per-node'};
+die "--nprocs-per-node must be a positive integer.  Got: $tpn\n" unless $tpn > 0;
 
-die "--nthreads-per-task must be a positive integer.  Got: $opt{'nthreads-per-task'}\n" unless $opt{'nthreads-per-task'} > 0;
+die "--nthreads-per-process must be a positive integer.  Got: $opt{'nthreads-per-process'}\n" unless $opt{'nthreads-per-process'} > 0;
 
 my $container = $opt{'container'};
 die "Error: can not read the container file $container" unless -r $container;
@@ -282,12 +282,12 @@ while(my $line = <$fclin>) {
 close $fclin;
 
 #----------------------------------------------------------------
-die "The number of fcl files $nfclfiles is not a multiple of --ntasks-per-node $tpn\n"
+die "The number of fcl files $nfclfiles is not a multiple of --nprocs-per-node $tpn\n"
     if ($nfclfiles % $tpn);
 
 my $numnodes = $nfclfiles / $tpn;
 
-print "\n# Job size:  $numnodes nodes at $tpn tasks per node\n";
+print "\n# Job size:  $numnodes nodes at $tpn procs per node\n";
 
 #----------------------------------------------------------------
 my $scriptName = $inputdir . '/job.sh';
@@ -327,8 +327,8 @@ my $env = ""
 my $jp = JobPars->new(
     nfclfiles=>$nfclfiles,
     numnodes=>$numnodes,
-    tasksPerNode=>$tpn,
-    threadsPerTask=>$opt{'nthreads-per-task'},
+    procsPerNode=>$tpn,
+    threadsPerProcess=>$opt{'nthreads-per-process'},
     timeLimit=>$opt{'time-limit'},
     sldir=>$sldir,
     container=>$container,
@@ -373,7 +373,7 @@ if(!$opt{'dry-run'}) {
     open(my $frag, '>', $fclmtname) or die "Error: can not create '$fclmtname': $!\n";
     print $frag <<"EOF"
 physics.producers.g4run.runinMTMode: true
-physics.producers.g4run.numberOfThreads: $opt{'nthreads-per-task'}
+physics.producers.g4run.numberOfThreads: $opt{'nthreads-per-process'}
 EOF
     ;
     close $frag or die "Error closing '$fclmtname': $!\n";
