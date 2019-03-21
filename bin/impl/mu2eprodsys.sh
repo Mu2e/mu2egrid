@@ -412,7 +412,7 @@ export PROCESS
 
 cluster=$(printf %06d ${CLUSTER:-0})
 clustername="${cluster}${MU2EGRID_CLUSTERNAME:+.$MU2EGRID_CLUSTERNAME}"
-[[ $MU2EGRID_HPC ]] && clustername=out
+[[ $MU2EGRID_HPC ]] && clustername=${MU2EGRID_CLUSTERNAME}
 finalOutDir="${MU2EGRID_WFOUTSTAGE:?Error: MU2EGRID_WFOUTSTAGE is not set}/$clustername/$(printf %02d $((${PROCESS:-0}/1000)))/$(printf %05d ${PROCESS:-0})"
 
 if [[ $MU2EGRID_HPC ]]; then

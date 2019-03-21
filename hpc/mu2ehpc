@@ -262,7 +262,8 @@ checkFilenameComponent(\%opt, ['dsconf', 'dsowner']);
 
 # Use a new "submission level" directory for each job to make sure
 # outputs of individual jobs do not clash with anything pre-existing.
-my $sldir = $opt{'topdir'} . '/' . makeSubDirName();
+my $clustername = makeSubDirName();
+my $sldir = $opt{'topdir'} . "/$clustername";
 my $inputdir=$sldir . '/inputs';
 my $fclmtbase = 'mtfragment.fcl';
 my $fclmtname = $inputdir . '/' . $fclmtbase;
@@ -321,6 +322,7 @@ my $env = ""
     . "TMPDIR=/mnt "
     . "CONDOR_DIR_INPUT=/mnt/inputs "
     . "MU2EGRID_WFOUTSTAGE=/mnt "
+    . "MU2EGRID_CLUSTERNAME=out.$clustername "
     ;
 
 #----------------------------------------------------------------
