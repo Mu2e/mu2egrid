@@ -190,7 +190,7 @@ sub makeSubDirName {
     $min = sprintf("%02d", $min);
     $sec = sprintf("%02d", $sec);
 
-    my $sd = "${year}${mon}${mday}-${hour}${min}";
+    my $sd = "${year}${mon}${mday}-${hour}${min}${sec}";
     return $sd;
 }
 
