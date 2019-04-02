@@ -235,7 +235,7 @@ mu2eprodsys_payload() {
             rm tmpspec
         done
 
-        if [[ -e prestage_spec ]] && [[ x"MU2EGRID_XROOTD" != x1  ]] && [[ x"$MU2EGRID_NO_PRESTAGE" == x ]]; then
+        if [[ -e prestage_spec ]] && [[ x"$MU2EGRID_XROOTD" != x1  ]] && [[ x"$MU2EGRID_NO_PRESTAGE" == x ]]; then
             echo "# prestage_spec follows:"
             cat prestage_spec
             echo "#----------------------------------------------------------------"
