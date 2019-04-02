@@ -105,22 +105,30 @@ mu2eprodsys_payload() {
     }
     trap mu2epseh ERR
 
-    mkdir mu2egridInDir
+    [[ $MU2EGRID_HPC ]] || mkdir mu2egridInDir
 
     if [ -n "$MU2EGRID_FCLTAR" ]; then
 
        # fcl files were given to this job as a tarball, we need to extract our job config
         echo "FCL files are given as a tar file: $MU2EGRID_FCLTAR"
-        localTar=mu2egridInDir/$(basename $MU2EGRID_FCLTAR)
-        ifdh cp "$MU2EGRID_FCLTAR" $localTar
-        tar xf $localTar --directory mu2egridInDir $origFCL
-        rm -v $localTar
-        mv -v mu2egridInDir/$origFCL $localFCL
+
+        if [[ $MU2EGRID_HPC ]]; then
+            tar --extract --transform='s|^.*/||' --file "$MU2EGRID_FCLTAR" $origFCL
+            # these names may coincide
+            [[ $(basename $origFCL) == $localFCL ]] || /bin/mv -v $(basename $origFCL) $localFCL
+        else
+            localTar=mu2egridInDir/$(basename $MU2EGRID_FCLTAR)
+            ifdh cp "$MU2EGRID_FCLTAR" $localTar
+            tar xf $localTar --directory mu2egridInDir $origFCL
+            rm -v $localTar
+            mv -v mu2egridInDir/$origFCL $localFCL
+        fi
 
     else # Job submissions with plain fcl file list
 
         echo "Copying in $origFCL"
         ifdh cp $origFCL $localFCL
+
     fi
 
     #================================================================
@@ -140,14 +148,19 @@ mu2eprodsys_payload() {
         # (e.g. custom stopped muon file) will not be found by mu2e modules.
         MU2E_SEARCH_PATH=$(pwd):$MU2E_SEARCH_PATH
 
-        if [ -n "$MU2EGRID_MU2EBINTOOLS_VERSION" ]; then
-            setup -B mu2ebintools "${MU2EGRID_MU2EBINTOOLS_VERSION:?Error: MU2EGRID_MU2EBINTOOLS_VERSION is not set}" -q "${MU2E_UPS_QUALIFIERS}"
+        if [[ $MU2EGRID_MU2EBINTOOLS_VERSION ]]; then
+            setup -B mu2ebintools "${MU2EGRID_MU2EBINTOOLS_VERSION}" -q "${MU2E_UPS_QUALIFIERS}"
         else
             echo "MU2EGRID_MU2EBINTOOLS_VERSION not defined - will setup current mu2etools"
             setup mu2etools
         fi
 
-        setup -B dhtools "${MU2EGRID_DHTOOLS_VERSION:?Error: MU2EGRID_DHTOOLS_VERSION is not set}"
+        if [[ $MU2EGRID_DHTOOLS_VERSION ]]; then
+            setup -B dhtools "${MU2EGRID_DHTOOLS_VERSION}"
+        else
+            echo "MU2EGRID_DHTOOLS_VERSION not defined - will setup current dhtools"
+            setup dhtools
+        fi
 
         echo "#================================================================"
         echo "# After package setup, the environment is:"
@@ -168,6 +181,8 @@ mu2eprodsys_payload() {
         # successful.
 
         timecmd=time  # shell builtin is the fallback option
+
+        if [[ $MU2EGRID_HPC ]]; then timecmd="/usr/bin/time"; fi
 
         mu2etime=/cvmfs/mu2e.opensciencegrid.org/bin/SLF6/mu2e_time
         if $mu2etime true > /dev/null 2>&1; then
@@ -249,6 +264,7 @@ mu2eprodsys_payload() {
         fi
         rm -f prestage_spec
 
+        #================================================================
         echo "#----------------------------------------------------------------" >> $localFCL
         echo "# code added by mu2eprodys" >> $localFCL
 
@@ -262,7 +278,7 @@ mu2eprodsys_payload() {
         fi
         rm -f prologFileDefs localFileDefs
 
-        #================================================================
+        #----------------------------------------------------------------
         # set output file names
         keys=( $(fhicl-getpar --strlist mu2emetadata.fcl.outkeys $localFCL ) )
         for key in "${keys[@]}"; do
@@ -271,15 +287,32 @@ mu2eprodsys_payload() {
             echo "$key : \"$newname\"" >> $localFCL
         done
 
+        #----------------------------------------------------------------
+        # Handle multithreading.
+        # FIXME: this should be revised to enable general support (including
+        # on OSG) when we upgrade to art3.   The mu2eprodsys submission
+        # script will need to implement suitable new options.
+        #
+        # For the moment just let the HPC scripts handle G4-specific
+        # multithreading with art2.
+
+        if [[ $MU2EGRID_FCLMT ]]; then
+            echo "# extra settings for the HPC environment" >> $localFCL
+            cat $MU2EGRID_FCLMT >> $localFCL
+        fi
+
+        #----------------------------------------------------------------
         echo "# end code added by mu2eprodys" >> $localFCL
         echo "#----------------------------------------------------------------" >> $localFCL
 
         #================================================================
         # Document what has been actually pre-staged
-        echo "################################################################"
-        echo "# ls -lR mu2egridInDir"
-        ls -lR mu2egridInDir
-        echo ""
+        if ! [[ $MU2EGRID_HPC ]]; then
+            echo "################################################################"
+            echo "# ls -lR mu2egridInDir"
+            ls -lR mu2egridInDir
+            echo ""
+        fi
 
         #================================================================
         # include the edited copy of the fcl into the log
@@ -339,6 +372,8 @@ mu2eprodsys_payload() {
                 $i >&3 2>&4
         done
 
+        rm -f parents
+
     else
         echo "Error sourcing setup script ${MU2EGRID_USERSETUP}: status code $?"
         echo "Sleeping for $error_delay seconds"
@@ -354,31 +389,48 @@ export mu2eprodsys_payload
 # Print this into the condor .out file; unlike the printinfo() output that goes into mu2e logs.
 echo "Starting on host $(hostname) on $(date) -- $(date +%s) seconds since epoch"
 
-umask 002
+[[ $MU2EGRID_DEBUG > 0 ]] && echo "We are in directory $(/bin/pwd)"
+[[ $MU2EGRID_DEBUG > 0 ]] && /usr/bin/printenv
 
-# TMPDIR is defined and created by Condor.
-cd $TMPDIR
+umask 002
 
 # make sure we are not stuck with stale CVMFS data
 CVMFSHACK=/cvmfs/grid.cern.ch/util/cvmfs-uptodate
 test -x $CVMFSHACK && $CVMFSHACK /cvmfs/mu2e.opensciencegrid.org
 
 ret=1
-cluster=$(printf %06d ${CLUSTER:-0})
-clustername="$cluster${MU2EGRID_CLUSTERNAME:+.$MU2EGRID_CLUSTERNAME}"
-
 jobname=failedjob
 export logFileName="${jobname}.log"
 declare -a outfiles=( $logFileName )
+
+# PROCESS is the original variable set by Condor
+# Other systems call it differently, put it in PROCESS by hand.
+PROCESS=${PROCESS:-$MU2EGRID_PROCID}
+PROCESS=${PROCESS:-$SLURM_PROCID}
+PROCESS=${PROCESS:-$ALPS_APP_PE}
+export PROCESS
+
+cluster=$(printf %06d ${CLUSTER:-0})
+clustername="${cluster}${MU2EGRID_CLUSTERNAME:+.$MU2EGRID_CLUSTERNAME}"
+[[ $MU2EGRID_HPC ]] && clustername=${MU2EGRID_CLUSTERNAME}
 finalOutDir="${MU2EGRID_WFOUTSTAGE:?Error: MU2EGRID_WFOUTSTAGE is not set}/$clustername/$(printf %02d $((${PROCESS:-0}/1000)))/$(printf %05d ${PROCESS:-0})"
+
+if [[ $MU2EGRID_HPC ]]; then
+    mkdir -p ${finalOutDir}
+    cd ${finalOutDir}
+    export TMPDIR=${finalOutDir}
+else
+    # TMPDIR is defined and created by Condor.
+    cd $TMPDIR
+fi
 
 #================================================================
 # Set up Mu2e environment and make ifdh available
 if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
 
-    setup -B ifdhc $IFDH_VERSION
+    [[ $MU2EGRID_HPC ]] || setup -B ifdhc $IFDH_VERSION
 
-    if type ifdh 2> $errfile; then
+    if [[ $MU2EGRID_HPC ]] || ( type ifdh 2> $errfile ); then
 
         printinfo >> $logFileName 2>&1
 
@@ -409,39 +461,41 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
             fi
         fi
 
-        # Transfer the results.  There were cases when jobs failed after
-        # creating the outstage directory, and were automatically restarted by
-        # condor.  I also observed cases when more than one instance of the
-        # same job, duplicated by some glitches in the grid system, completed
-        # and transferred files back.  To prevent data corruption we write to
-        # a unique tmp dir, than rename it to the final name.
+        if ! [[ $MU2EGRID_HPC ]]; then
 
-        tmpOutDir="${finalOutDir}.$(od -A n -N 4 -t x4 /dev/urandom|sed -e 's/ //g')"
+            # Transfer the results.  There were cases when jobs failed after
+            # creating the outstage directory, and were automatically restarted by
+            # condor.  I also observed cases when more than one instance of the
+            # same job, duplicated by some glitches in the grid system, completed
+            # and transferred files back.  To prevent data corruption we write to
+            # a unique tmp dir, than rename it to the final name.
 
+            tmpOutDir="${finalOutDir}.$(od -A n -N 4 -t x4 /dev/urandom|sed -e 's/ //g')"
 
-        t1=$(date +%s)
-        # the -cd option causes gridftp to create all required directories in the output  path
-        IFDH_GRIDFTP_EXTRA='-cd' ifdh cp $MU2EGRID_IFDHEXTRAOPTS -D "${outfiles[@]}" "${tmpOutDir}"
-        ifdhret=$?
-
-        if [[ $ifdhret -ne 0 ]]; then
-            echo "The command: IFDH_GRIDFTP_EXTRA='-cd' ifdh cp $MU2EGRID_IFDHEXTRAOPTS -D ${outfiles[@]} ${tmpOutDir}" >&2
-            echo "has failed on $(date) with status code $ifdhret.  Re-running with IFDH_DEBUG=10." >&2
-            IFDH_DEBUG=10 IFDH_GRIDFTP_EXTRA='-cd' ifdh cp $MU2EGRID_IFDHEXTRAOPTS -D "${outfiles[@]}" "${tmpOutDir}" >&2
+            t1=$(date +%s)
+            # the -cd option causes gridftp to create all required directories in the output  path
+            IFDH_GRIDFTP_EXTRA='-cd' ifdh cp $MU2EGRID_IFDHEXTRAOPTS -D "${outfiles[@]}" "${tmpOutDir}"
             ifdhret=$?
-        fi
 
-        if [[ ( $ret -eq 0 ) && ( $ifdhret -ne 0 ) ]]; then
-            echo "ifdh cp failed on $(date): exit code $ifdhret" >&2
-            ret=23
-        fi
+            if [[ $ifdhret -ne 0 ]]; then
+                echo "The command: IFDH_GRIDFTP_EXTRA='-cd' ifdh cp $MU2EGRID_IFDHEXTRAOPTS -D ${outfiles[@]} ${tmpOutDir}" >&2
+                echo "has failed on $(date) with status code $ifdhret.  Re-running with IFDH_DEBUG=10." >&2
+                IFDH_DEBUG=10 IFDH_GRIDFTP_EXTRA='-cd' ifdh cp $MU2EGRID_IFDHEXTRAOPTS -D "${outfiles[@]}" "${tmpOutDir}" >&2
+                ifdhret=$?
+            fi
 
-        if [[ $ifdhret -eq 0 ]]; then
-            # ignore exit codes here - we've got the files
-            ifdh rename "${tmpOutDir}" "${finalOutDir}" $MU2EGRID_IFDHEXTRAOPTS
+            if [[ ( $ret -eq 0 ) && ( $ifdhret -ne 0 ) ]]; then
+                echo "ifdh cp failed on $(date): exit code $ifdhret" >&2
+                ret=23
+            fi
 
-            t2=$(date +%s)
-            echo "$(date) # Total outstage time: $((t2-t1)) seconds"
+            if [[ $ifdhret -eq 0 ]]; then
+                # ignore exit codes here - we've got the files
+                ifdh rename "${tmpOutDir}" "${finalOutDir}" $MU2EGRID_IFDHEXTRAOPTS
+
+                t2=$(date +%s)
+                echo "$(date) # Total outstage time: $((t2-t1)) seconds"
+            fi
         fi
 
     else
