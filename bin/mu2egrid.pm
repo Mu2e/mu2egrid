@@ -122,7 +122,7 @@ our %commonOptDefaultsJobsub = (
     'disk' => '30GB',
     'memory' => '2000MB',
     'expected-lifetime' => '24h',
-    'OS' => 'SL6',
+    'OS' => 'SL7',
     'resource-provides' => 'usage_model=OPPORTUNISTIC,DEDICATED',
     'site' => undef,
     );
