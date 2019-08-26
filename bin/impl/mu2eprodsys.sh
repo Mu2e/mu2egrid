@@ -12,7 +12,7 @@ errfile=$TMPDIR/mu2eprodsys_errmsg.$$
 
 #================================================================
 printinfo() {
-    echo ${1:-Starting} on host `uname -a` on `date`
+    echo ${1:-Starting} on host `uname -a` on `date` -- $(date +%s)
     echo running as user `id`
     echo "current work dir is $(/bin/pwd)"
     echo OS version `cat /etc/redhat-release`
@@ -110,7 +110,7 @@ mu2eprodsys_payload() {
     if [ -n "$MU2EGRID_FCLTAR" ]; then
 
        # fcl files were given to this job as a tarball, we need to extract our job config
-        echo "FCL files are given as a tar file: $MU2EGRID_FCLTAR"
+        echo "mu2eprodsys $(date) -- $(date +%s) FCL files are given as a tar file: $MU2EGRID_FCLTAR"
 
         if [[ $MU2EGRID_HPC ]]; then
             tar --extract --transform='s|^.*/||' --file "$MU2EGRID_FCLTAR" $origFCL
@@ -124,25 +124,32 @@ mu2eprodsys_payload() {
             mv -v mu2egridInDir/$origFCL $localFCL
         fi
 
+        echo "mu2eprodsys $(date) -- $(date +%s) after FCL file extraction"
+
     else # Job submissions with plain fcl file list
 
-        echo "Copying in $origFCL"
+        echo "mu2eprodsys $(date) -- $(date +%s) Copying in $origFCL"
         ifdh cp $origFCL $localFCL
+        echo "mu2eprodsys $(date) -- $(date +%s) after FCL file retrieval"
 
     fi
 
     #================================================================
     # Retrieve the code if needed
     if [ -n "$MU2EGRID_CODE" ]; then
+        echo "mu2eprodsys $(date) -- $(date +%s) Copying in $MU2EGRID_CODE"
         localCode=$(basename $MU2EGRID_CODE)
         ifdh cp "$MU2EGRID_CODE" $localCode
         tar xf $localCode
         /bin/rm $localCode
+        echo "mu2eprodsys $(date) -- $(date +%s) after code tarball extraction"
     fi
 
     #================================================================
 
     if source "${MU2EGRID_USERSETUP:?Error: MU2EGRID_USERSETUP: not defined}"; then
+
+        echo "mu2eprodsys $(date) -- $(date +%s) after sourcing $MU2EGRID_USERSETUP"
 
         # Prepend the working directory to MU2E_SEARCH_PATH, otherwise some pre-staged files
         # (e.g. custom stopped muon file) will not be found by mu2e modules.
@@ -163,7 +170,7 @@ mu2eprodsys_payload() {
         fi
 
         echo "#================================================================"
-        echo "# After package setup, the environment is:"
+        echo "# mu2eprodsys $(date) -- $(date +%s) After package setup, the environment is:"
         /usr/bin/printenv
         export MU2EGRID_ENV_PRINTED=1
         echo "#================================================================"
@@ -188,6 +195,8 @@ mu2eprodsys_payload() {
         if $mu2etime true > /dev/null 2>&1; then
             timecmd=$mu2etime;
         fi
+
+        echo "mu2eprodsys $(date) -- $(date +%s) after timecmd resolution"
 
         #================================================================
         # Pre-stage input data files, and write their SAM names
@@ -214,6 +223,8 @@ mu2eprodsys_payload() {
             cat tmpspec >> prestage_spec
             rm tmpspec
         done
+
+        echo "mu2eprodsys $(date) -- $(date +%s) after mu2emetadata.fcl.inkeys processing"
 
         # Handle input files defined in fhicl prolog variables
 
@@ -249,6 +260,8 @@ mu2eprodsys_payload() {
             cat tmpspec >> prestage_spec
             rm tmpspec
         done
+
+        echo "mu2eprodsys $(date) -- $(date +%s) after mu2emetadata.fcl.prologkeys processing"
 
         if [[ -e prestage_spec ]] && [[ x"$MU2EGRID_XROOTD" != x1  ]] && [[ x"$MU2EGRID_NO_PRESTAGE" == x ]]; then
             echo "# prestage_spec follows:"
@@ -305,11 +318,13 @@ mu2eprodsys_payload() {
         echo "# end code added by mu2eprodys" >> $localFCL
         echo "#----------------------------------------------------------------" >> $localFCL
 
+        echo "mu2eprodsys $(date) -- $(date +%s) job FCL file finalized"
+
         #================================================================
         # Document what has been actually pre-staged
         if ! [[ $MU2EGRID_HPC ]]; then
             echo "################################################################"
-            echo "# ls -lR mu2egridInDir"
+            echo "# ls -lR mu2egridInDir  on $(date) -- $(date +%s)"
             ls -lR mu2egridInDir
             echo ""
         fi
@@ -324,9 +339,9 @@ mu2eprodsys_payload() {
 
         #================================================================
         # Run the job
-        echo "Running the command: $timecmd mu2e -c $localFCL"
+        echo "Running the command: $timecmd mu2e -c $localFCL on  $(date) -- $(date +%s)"
         $timecmd mu2e -c $localFCL
-        echo "mu2egrid exit status $?"
+        echo "mu2egrid exit status $? on $(date) -- $(date +%s)"
 
         echo "#================================================================"
 
@@ -360,9 +375,13 @@ mu2eprodsys_payload() {
 
         declare -a manifestfiles=( *.art *.root *.json )
 
+        echo "mu2eprodsys $(date) -- $(date +%s) before addManifest"
+
         # A file should be immutable after its json is created.
         # addManifest appends to the log file; log.json has to be made after that.
         addManifest $logFileName "${manifestfiles[@]}" >&3 2>&4
+
+        # Do not write to the log file after the manifest
 
         for i in $logFileName; do
             jsonMaker.py \
@@ -449,7 +468,10 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
 
             export localFCL="./$jobname.fcl"
 
+            echo "mu2eprodsys $(date) -- $(date +%s) before the payload" >> $logFileName 2>&1
             ( mu2eprodsys_payload ) 3>&1 4>&2 1>> $logFileName 2>&1
+            # The log file should not be touched after payload exit.  Further messages go to jobsub/condor logs.
+            echo "mu2eprodsys $(date) -- $(date +%s) after the payload"
 
             ret=$?
 
@@ -471,6 +493,8 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
             # a unique tmp dir, than rename it to the final name.
 
             tmpOutDir="${finalOutDir}.$(od -A n -N 4 -t x4 /dev/urandom|sed -e 's/ //g')"
+
+            echo "mu2eprodsys $(date) -- $(date +%s) before calling ifdh outstage"
 
             t1=$(date +%s)
             # the -cd option causes gridftp to create all required directories in the output  path
