@@ -10,6 +10,8 @@
 error_delay="${MU2EGRID_ERRORDELAY:?Error: MU2EGRID_ERRORDELAY is not defined}"
 errfile=$TMPDIR/mu2eprodsys_errmsg.$$
 
+jsonScript=${MU2EGRID_DIR:?Error: MU2EGRID_DIR is not defined}/bin/impl/printJson.sh
+
 #================================================================
 printinfo() {
     echo ${1:-Starting} on host `uname -a` on `date` -- $(date +%s)
@@ -160,13 +162,6 @@ mu2eprodsys_payload() {
         else
             echo "MU2EGRID_MU2EBINTOOLS_VERSION not defined - will setup current mu2etools"
             setup mu2etools
-        fi
-
-        if [[ $MU2EGRID_DHTOOLS_VERSION ]]; then
-            setup -B dhtools "${MU2EGRID_DHTOOLS_VERSION}"
-        else
-            echo "MU2EGRID_DHTOOLS_VERSION not defined - will setup current dhtools"
-            setup dhtools
         fi
 
         echo "#================================================================"
@@ -357,20 +352,8 @@ mu2eprodsys_payload() {
         shopt -u failglob
         shopt -s nullglob
 
-        for i in *.art; do
-            jsonMaker.py \
-                -f ${ffprefix}-sim \
-                -a parents \
-                -x \
-                $i
-        done
-
-        for i in *.root; do
-            jsonMaker.py \
-                -f ${ffprefix}-nts \
-                -a parents \
-                -x \
-                $i
+        for i in *.art *.root; do
+            $jsonScript --parents parents $i > $i.json
         done
 
         declare -a manifestfiles=( *.art *.root *.json )
@@ -384,11 +367,7 @@ mu2eprodsys_payload() {
         # Do not write to the log file after the manifest
 
         for i in $logFileName; do
-            jsonMaker.py \
-                -f ${ffprefix}-etc \
-                -a parents \
-                -x \
-                $i >&3 2>&4
+            $jsonScript --parents parents $i > $i.json 2>&4
         done
 
         rm -f parents
