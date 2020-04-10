@@ -545,21 +545,14 @@ mu2eprodsys_payload() {
             printJson --parents parents $i > $i.json
         done
 
+        rm -f parents
+
         declare -a manifestfiles=( *.art *.root *.json )
 
         echo "mu2eprodsys $(date) -- $(date +%s) before addManifest"
 
-        # A file should be immutable after its json is created.
-        # addManifest appends to the log file; log.json has to be made after that.
+        # After the manifest is created the log file must not be modified
         addManifest $logFileName "${manifestfiles[@]}" >&3 2>&4
-
-        # Do not write to the log file after the manifest
-
-        for i in $logFileName; do
-            printJson --parents parents $i > $i.json 2>&4
-        done
-
-        rm -f parents
 
     else
         echo "Error sourcing setup script ${MU2EGRID_USERSETUP}: status code $?"
