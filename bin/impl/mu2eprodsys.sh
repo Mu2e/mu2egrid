@@ -52,7 +52,7 @@ formatInputFileSpec() {
 
 #================================================================
 addManifest() {
-    manifest=${1:?addManifest: logFileName art is missing}
+    manifest=${1:?addManifest: logFileName is missing}
     shift
     echo "mu2eprodsys diskUse = $(du -ks)" >> $manifest
     echo '#================================================================' >> $manifest
@@ -548,6 +548,10 @@ mu2eprodsys_payload() {
         rm -f parents
 
         declare -a manifestfiles=( *.art *.root *.json )
+        if [[ "x$MU2EGRID_TRANSFER_ALL" == "x1" ]]; then
+            # the log file needs a special treatment
+            manifestfiles=( $(filterOutProxy $(selectFiles *) |grep -v $logFileName) )
+        fi
 
         echo "mu2eprodsys $(date) -- $(date +%s) before addManifest"
 
@@ -611,6 +615,8 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
     [[ $MU2EGRID_HPC ]] || setup -B ifdhc $IFDH_VERSION
 
     if [[ $MU2EGRID_HPC ]] || ( type ifdh 2> $errfile ); then
+
+        rm -f $errfile
 
         printinfo >> $logFileName 2>&1
 
