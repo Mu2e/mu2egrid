@@ -59,6 +59,7 @@ Usage:
               [--wfproject=<name>] \\
               [--clustername=<name>] \\
               [--mu2ebintools-version=<string>] \\
+              [--mu2efilename-version=<string>] \\
               [--xrootd] \\
               [--transfer-all-files] \\
               [--error-delay=<int>] \\
@@ -121,7 +122,16 @@ EOF
       version of the corresponding package to be used by the worker
       node process.  If a version is not specified on the command
       line, mu2eprodsys will rely on the mu2etools package to find a
-      compatible mu2ebintools version.
+      compatible mu2ebintools version. The version will be fixed at
+      the job submission time, unless the --code options is used.
+      With the --code options the package version resolution is
+      postponed until the process starts on the worker node, which
+      might lead to different jobs from the same submission using
+      different mu2ebintools versions.
+
+    - The --mu2efilename-version option can be used to override
+      the default package version.  The version is fixed at the
+      job submission time.
 
     - The --xrootd option alters the way input art files are accessed
       by the worker node process.  By default all data files specified
@@ -205,6 +215,7 @@ GetOptions(\%opt,
     'wfproject=s',
     'clustername=s',
     'mu2ebintools-version=s',
+    'mu2efilename-version=s',
     'error-delay=i',
     'xrootd',
     'transfer-all-files',
@@ -310,6 +321,9 @@ else {
     print "WARNING: Can not determine mu2ebintools version at submission time when --code is used.\n";
 }
 
+$ENV{'MU2EGRID_MU2EFILENAME_VERSION'} = $opt{'mu2efilename-version'} // mu2egrid::default_package_version($opt{'mu2e-setup'}, 'mu2efilename', '');
+print "Will use mu2efilename version $ENV{MU2EGRID_MU2EFILENAME_VERSION}\n";
+
 $ENV{'MU2EGRID_ERRORDELAY'} = $opt{'error-delay'} // ($njobs > 10 ?  $default_error_delay : 1);
 
 $ENV{'MU2EGRID_IFDHEXTRAOPTS'} = $opt{'ifdh-options'} // '';
@@ -322,7 +336,7 @@ while( (my $key, my $value) = each(%ENV) ) {
             push @args,  ('-e', $key);
             print "Using: $key => $ENV{$key}\n";
         }
-}
+    }
 }
 
 push @args, ('-N', $njobs);
