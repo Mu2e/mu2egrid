@@ -170,6 +170,18 @@ mu2eprodsys_payload() {
         export MU2EGRID_ENV_PRINTED=1
         echo "#================================================================"
 
+        #================================================================
+        # Got mu2ebintools.  Check that we did not get an untreated
+        # fcl made with --ignore-source
+        if fhicl-getpar --keys mu2emetadata $localFCL | grep -q ignoreSource; then
+            ignoreSource="$(fhicl-getpar --int mu2emetadata.ignoreSource $localFCL)"
+            if (( $ignoreSource )); then
+                echo "ERROR: unexpected value ignoreSource=$ignoreSource.  Input fcl needs extra processing before we get here."
+                exit 1
+            fi
+        fi
+
+        #================================================================
         # The version of GNU time in SLF6 (/usr/bin/time) does not
         # properly report when the supervised process is terminated by
         # a signal.  We use a patched version instead.
