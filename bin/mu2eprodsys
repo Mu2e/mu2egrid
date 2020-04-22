@@ -60,6 +60,7 @@ Usage:
               [--clustername=<name>] \\
               [--mu2ebintools-version=<string>] \\
               [--mu2efilename-version=<string>] \\
+              [--prerun=<name> --prconf=<file>] \\
               [--xrootd] \\
               [--transfer-all-files] \\
               [--error-delay=<int>] \\
@@ -133,6 +134,16 @@ EOF
       the default package version.  The version is fixed at the
       job submission time.
 
+    - The --prerun options allows to run additional processing before
+      starting the art job, perhaps a non-art event generator.  The
+      <name> has to be one of a pre-defined names.  At the moment
+      "corsika" is the only one supported.
+
+    - The --prconf option provides an additional configuration
+      file used by the --prerun process. The format depends on
+      the --prerun choice.  This options has to be used together
+      with the --prerun option.
+
     - The --xrootd option alters the way input art files are accessed
       by the worker node process.  By default all data files specified
       in the job fcl file are pre-staged to a local disk on the worker
@@ -203,6 +214,60 @@ sub interpret_fcl_input {
 }
 
 #================================================================
+sub corsika_prerun_handler {
+    my ($opt) = @_;
+    my $prconf = $$opt{'prconf'};
+    die "Error: --prerun=corsika requres that a config file is specified via --prconf\n"
+        unless $prconf;
+
+    my $filename = mu2egrid::find_file($prconf);;
+
+    my $exe;
+    my $seed = 0, $nshow = 0, $runnr=0;
+    open(my $fh, '<', $filename) or die "Error opening '$filename': $!\n";
+    while(my $line = <$fh>) {
+
+        # Check that executable name is defined in a comment line.
+        # We accept comment lines identified by a 'c' or '*' as
+        # the first character.
+        if($line =~ /^[cC\*] *mu2egrid +executable:\s+(\w+)/) {
+            # An executable definition candidate.  Make sure there is no
+            # unexpected garbage after exe name
+            die "Error: confusing line in CORSIKA config: $line\n"
+                unless $line =~ /^[cC\*]\s*mu2egrid\s+executable:\s+(\w+)\s*$/;
+
+            die "Error: multiple definitions of executable in file '$filename'"
+                if $exe;
+
+            $exe = $1;
+        }
+
+        # Worker node will need to set a few other paramers.
+        # Make sure they are present
+        ++$seed if($line =~ /^SEED\s/i);
+        ++$nshow if($line =~ /^NSHOW\s/i);
+        ++$runnr if($line =~ /^RUNNR\s/i);
+    }
+    close($fh);
+
+    die "Error: no definition of 'mu2egrid executable' in file '$filename'\n"
+        unless $exe;
+
+    die "Error: no SEED lines in file '$filename'.\nThe config must "
+        ."initialize an apropriate number of pseudorandom sequences.\n"
+        ."The actual seed values will be set by worker node script.\n"
+        unless $seed;
+
+    die "Error: no NSHOW line in file '$filename'.\n"
+        unless $nshow;
+
+    die "Error: no RUNNR line in file '$filename'.\n"
+        unless $runnr;
+
+    return $filename;
+}
+
+#================================================================
 
 # Process command line opts.
 GetOptions(\%opt,
@@ -216,6 +281,8 @@ GetOptions(\%opt,
     'clustername=s',
     'mu2ebintools-version=s',
     'mu2efilename-version=s',
+    'prerun=s',
+    'prconf=s',
     'error-delay=i',
     'xrootd',
     'transfer-all-files',
@@ -266,6 +333,30 @@ File::Path::make_path( $wfoutstage, { verbose=>1 } ) # this Carps on errors
     unless $opt{'dry-run'};
 
 print "Will use the outstage directory = $wfoutstage\n";
+
+#----------------
+# Prerun handling
+die "The --prconf option requires that --prerun is spedified\n"
+    if $opt{'prconf'} and not $opt{'prerun'};
+
+my %prerun_handlers = (
+    'corsika' => \&corsika_prerun_handler,
+    );
+
+my $prerun = $opt{'prerun'};
+my $prconf_fullpathname;
+if($prerun) {
+    my $v = $prerun_handlers{$prerun};
+
+    die "Unrecognized --prerun value: $prerun. Known values are: "
+        . join(", ", keys %prerun_handlers) . ".\n"
+        unless defined $v;
+
+    my $prconf_fullpathname = &$v(\%opt);
+
+    $ENV{'MU2EGRID_PRERUN'} = $prerun;
+    $ENV{'MU2EGRID_PRCONF'} = basename($prconf_fullpathname);  # with "jobsub_submit -f" the worker node only needs the basename
+}
 
 #----------------
 # All file args are to be passed to the worker node script using full path names.
@@ -342,6 +433,8 @@ while( (my $key, my $value) = each(%ENV) ) {
 push @args, ('-N', $njobs);
 
 push @args, ( '-f', "dropbox://$fcllist" );
+
+push @args, ( '-f', "dropbox://$prconf_fullpathname" ) if $prconf_fullpathname;
 
 push @args, 'file://' . $mu2egrid::impldir . '/mu2eprodsys.sh';
 

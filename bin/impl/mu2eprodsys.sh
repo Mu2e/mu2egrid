@@ -84,26 +84,131 @@ filterOutProxy() {
     done
 }
 #================================================================
+mu2egrid_errh() {
+    ret=$?
+    if [ x"$MU2EGRID_ENV_PRINTED" == x ]; then
+        echo "Dumping the environment on error"
+        echo "#================================================================"
+        /usr/bin/printenv
+        echo "#================================================================"
+        echo "End of the environment dump."
+    fi
+    echo "Error from $BASH_COMMAND: exit code $ret"
+    echo "Sleeping for $error_delay seconds"
+    sleep $error_delay
+    exit $ret
+}
+#================================================================
+set_corsika_parameter() {
+    trap mu2egrid_errh ERR
+    local file="$1"
+    local name="$2"
+    local value="$3"
+
+    if awk '{if(gsub(/^'$name' .*$/, "'$name'      '"$value"'")){++count;}; print};
+             END { if(!count) { exit(1); }
+             }' $file > $file.tmp;
+    then
+        mv -f $file.tmp $file
+    else
+        echo "Error updating CORSIKA config $file: did not match parameter $name";
+        return 1
+    fi
+}
+#================================================================
+write_corsika_config() {
+    trap mu2egrid_errh ERR
+
+    local target=$1
+    shift
+
+    if source "${MU2EGRID_USERSETUP:?Error: MU2EGRID_USERSETUP: not defined}"; then
+        # Prepend the working directory to MU2E_SEARCH_PATH, otherwise some pre-staged files
+        # (e.g. custom stopped muon file) will not be found by mu2e modules.
+        MU2E_SEARCH_PATH=$(pwd):$MU2E_SEARCH_PATH
+        if [[ $MU2EGRID_MU2EBINTOOLS_VERSION ]]; then
+            setup -B mu2ebintools "${MU2EGRID_MU2EBINTOOLS_VERSION}" -q "${MU2E_UPS_QUALIFIERS}"
+        else
+            echo "MU2EGRID_MU2EBINTOOLS_VERSION not defined - will setup current mu2etools"
+            setup mu2etools
+        fi
+
+        # Note: we use the subrun number for corsika
+        local subrun=$(fhicl-getpar --int mu2emetadata.firstSubRun $localFCL)
+        set_corsika_parameter $target  RUNNR $subrun
+
+        # The actual run number is used by the source module
+        local run=$(fhicl-getpar --int mu2emetadata.firstRun $localFCL)
+        echo "source.runNumber: $run" >> $localFCL
+
+        local NSHOW=$(fhicl-getpar --int mu2emetadata.maxEvents $localFCL)
+        set_corsika_parameter $target  NSHOW $NSHOW
+
+        local SEED=$(fhicl-getpar --int services.SeedService.baseSeed $localFCL)
+        set_corsika_parameter $target  SEED "$SEED 0 0"
+
+    else
+        echo "write_corsika_config: failed to source $MU2EGRID_USERSETUP"
+        false
+    fi
+}
+
+#================================================================
+prerun_corsika() {
+    trap mu2egrid_errh ERR
+    echo "mu2egrid: executing ${FUNCNAME[0]}"
+
+    local prconf="${MU2EGRID_PRCONF:?Error: MU2EGRID_PRCONF not defined in ${FUNCNAME[0]}}"
+
+    # Setup packages per config file instructions
+    local setupfile=prerunsetup
+    awk '{if(gsub(/^[cC\*] *mu2egrid  *setup:/, "")) print}' "$prconf" |\
+    while read line; do
+        echo echo "mu2egrid: Performing setup $line" >> $setupfile
+        echo setup $line >> $setupfile
+    done
+    source $setupfile
+    rm -f $setupfile
+
+    # Extract the name of the CORSIKA executable
+    local corsika=$(awk '{if(gsub(/^[cC\*] *mu2egrid  *executable:/, "")) print}' $prconf)
+
+    # Set parameters for this individual CORSIKA run: SEED, NSHOW, RUNNR
+    # We need to setup mu2ebintools to extract info from localFCL
+    # Do it in a subshell to avoid potential conflict with CORSIKA dependencies.
+    ( write_corsika_config $prconf )
+
+    echo "#================================================================"
+    echo "mu2egrid: Final CORSIKA configuration:"
+    cat $prconf
+    echo "#================================================================"
+
+    echo "mu2egrid: Starting $corsika on $(date)"
+    /usr/bin/time $corsika < $prconf
+
+    local origBin=$(ls DAT*)
+
+    #FIXME: # Derive Mu2e name for the CORSIKA bin file from this job's FCL file.
+    #FIXME: local mu2eBin=$(echo $localFCL|sed -e 's|^\(\./\)\?cnf|sim|' -e 's/fcl$/csk/')
+    #FIXME: mv $origBin $mu2eBin
+    #FIXME:
+    #FIXME: echo 'source.fileNames: ["'$mu2eBin'"]' >> $localFCL
+    #FIXME:
+    # The FromCorsikaBinary source in Offline v09_03_00 is too picky
+    # to use $mu2eBin name.
+    echo 'source.fileNames: ["'$origBin'"]' >> $localFCL
+
+    # The preprocessing is done, flip the safety
+    echo "mu2emetadata.ignoreSource: 0" >> $localFCL
+
+    echo "mu2egrid: end of ${FUNCNAME[0]}"
+}
+#================================================================
 # Run the framework jobs and create json files for the outputs
 # Running it inside a function makes it easier to exit on error
 # during the "payload" part, but still transfer the log file back.
 mu2eprodsys_payload() {
-
-    mu2epseh() {
-        ret=$?
-        if [ x"$MU2EGRID_ENV_PRINTED" == x ]; then
-            echo "Dumping the environment on error"
-            echo "#================================================================"
-            /usr/bin/printenv
-            echo "#================================================================"
-            echo "End of the environment dump."
-        fi
-        echo "Error from $BASH_COMMAND: exit code $ret"
-        echo "Sleeping for $error_delay seconds"
-        sleep $error_delay
-        exit $ret
-    }
-    trap mu2epseh ERR
+    trap mu2egrid_errh ERR
 
     [[ $MU2EGRID_HPC ]] || mkdir mu2egridInDir
 
@@ -143,6 +248,13 @@ mu2eprodsys_payload() {
         tar xf $localCode
         /bin/rm $localCode
         echo "mu2eprodsys $(date) -- $(date +%s) after code tarball extraction"
+    fi
+
+    #================================================================
+    # Perform a "prerun" processing if requested.  Use a subshell for different product setup.
+
+    if [ -n "$MU2EGRID_PRERUN" ]; then
+        ( prerun_"$MU2EGRID_PRERUN" )
     fi
 
     #================================================================
