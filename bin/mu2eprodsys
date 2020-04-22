@@ -352,7 +352,7 @@ if($prerun) {
         . join(", ", keys %prerun_handlers) . ".\n"
         unless defined $v;
 
-    my $prconf_fullpathname = &$v(\%opt);
+    $prconf_fullpathname = &$v(\%opt);
 
     $ENV{'MU2EGRID_PRERUN'} = $prerun;
     $ENV{'MU2EGRID_PRCONF'} = basename($prconf_fullpathname);  # with "jobsub_submit -f" the worker node only needs the basename

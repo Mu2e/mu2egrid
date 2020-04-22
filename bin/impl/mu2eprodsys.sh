@@ -158,7 +158,7 @@ prerun_corsika() {
     trap mu2egrid_errh ERR
     echo "mu2egrid: executing ${FUNCNAME[0]}"
 
-    local prconf="${MU2EGRID_PRCONF:?Error: MU2EGRID_PRCONF not defined in ${FUNCNAME[0]}}"
+    local prconf="$CONDOR_DIR_INPUT/${MU2EGRID_PRCONF:?Error: MU2EGRID_PRCONF not defined in ${FUNCNAME[0]}}"
 
     # Setup packages per config file instructions
     local setupfile=prerunsetup
