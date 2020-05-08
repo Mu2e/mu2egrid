@@ -24,6 +24,7 @@ use Class::Struct JobPars => [
     threadsPerProcess=>'*$',
     timeLimit=>'*$',
     sldir=>'*$',
+    mu2egridDir=>'*$',
     container=>'*$',
     env=>'*$',
     scriptName=>'*$',
@@ -43,11 +44,12 @@ EOF
 };
 
 # expects JobPars arg
+#srun singularity exec -B ${$a->sldir}:/mnt ${$a->container} bash -c \"${$a->env} /mu2egrid/bin/impl/mu2eprodsys.sh\"
 my $bebopscriplet = sub {
     my $a = shift;
     return <<"EOF"
-
-srun singularity exec -B ${$a->sldir}:/mnt ${$a->container} bash -c \"${$a->env} /mu2egrid/bin/impl/mu2eprodsys.sh\"
+	
+srun singularity exec -B ${$a->sldir}:/mnt ${$a->container} bash -c \"${$a->env} ${$a->mu2egridDir}/bin/impl/mu2eprodsys.sh\"	
 
 EOF
     ;
@@ -107,6 +109,7 @@ Usage:
               --dsconf=<output-dataset-version-string> \\
               [--dsowner=<name>] \\
               --topdir=<directory> \\
+              --mu2egrid-dir=<name> \\
               --container=<file> \\
               --batchopts=<file> \\
               --nthreads-per-process=<integer> \\
@@ -145,6 +148,9 @@ sub usage() {
 
     --topdir specifies where to create a new directory structure to
       place inputs and receive outputs of the jobs.
+
+    --mu2egrid-dir specify mu2egrid version inside the container 
+      to be used.
 
     --container is the Mu2e container to be used for the job
 
@@ -218,6 +224,7 @@ GetOptions(\%opt,
            'dsconf=s',
            'dsowner=s',
            'topdir=s',
+           'mu2egrid-dir=s',
            'container=s',
            'batchopts=s',
            'nprocs-per-node=i',
@@ -238,7 +245,7 @@ exit 0;
 
 # Check that all of the required args are present:
 foreach my $k ('cluster', 'fcllist', 'dsconf',
-               'topdir', 'container', 'batchopts',
+               'topdir', 'mu2egrid-dir', 'container', 'batchopts',
                'nprocs-per-node', 'nthreads-per-process', 'time-limit')
 {
     defined $opt{$k} or die "Error: --$k must be specified.  Try the --help option.\n";
@@ -263,8 +270,8 @@ checkFilenameComponent(\%opt, ['dsconf', 'dsowner']);
 # Use a new "submission level" directory for each job to make sure
 # outputs of individual jobs do not clash with anything pre-existing.
 my $clustername = makeSubDirName();
-my $sldir = $opt{'topdir'} . "/$clustername";
-my $inputdir=$sldir . '/inputs';
+my $sldir = $opt{'topdir'};
+my $inputdir=$sldir . "/$clustername" . '/inputs';
 my $fclmtbase = 'mtfragment.fcl';
 my $fclmtname = $inputdir . '/' . $fclmtbase;
 
@@ -309,6 +316,7 @@ close $sbin;
 #----------------------------------------------------------------
 # Environment for the worker process
 my $env = ""
+    . "MU2EGRID_DIR=$opt{'mu2egrid-dir'} "
     . "MU2EGRID_HPC=1 "
     . "MU2EGRID_DEBUG=$opt{'debug'} "
     . "MU2EGRID_ERRORDELAY=1 "
@@ -317,10 +325,10 @@ my $env = ""
     . "MU2EGRID_MU2ESETUP=$opt{'mu2e-setup'} "
     . "MU2EGRID_USERSETUP=$opt{'setup'} "
     . "MU2EGRID_INPUTLIST=masterlist "
-    . "MU2EGRID_FCLTAR=/mnt/inputs/fcl.tar.bz2 "
-    . "MU2EGRID_FCLMT=/mnt/inputs/$fclmtbase "
-    . "TMPDIR=/mnt "
-    . "CONDOR_DIR_INPUT=/mnt/inputs "
+    . "MU2EGRID_FCLTAR=/mnt/$clustername/inputs/fcl.tar.bz2 "
+    . "MU2EGRID_FCLMT=/mnt/$clustername/inputs/$fclmtbase "
+    . "TMPDIR=/mnt/$clustername "
+    . "CONDOR_DIR_INPUT=/mnt/$clustername/inputs "
     . "MU2EGRID_WFOUTSTAGE=/mnt "
     . "MU2EGRID_CLUSTERNAME=out.$clustername "
     ;
@@ -333,6 +341,7 @@ my $jp = JobPars->new(
     threadsPerProcess=>$opt{'nthreads-per-process'},
     timeLimit=>$opt{'time-limit'},
     sldir=>$sldir,
+    mu2egridDir=>$opt{'mu2egrid-dir'},
     container=>$container,
     env=>$env,
     scriptName=>$scriptName,
@@ -374,8 +383,10 @@ if(!$opt{'dry-run'}) {
 
     open(my $frag, '>', $fclmtname) or die "Error: can not create '$fclmtname': $!\n";
     print $frag <<"EOF"
-physics.producers.g4run.runinMTMode: true
-physics.producers.g4run.numberOfThreads: $opt{'nthreads-per-process'}
+
+services.scheduler.num_schedules: $opt{'nthreads-per-process'}
+services.scheduler.num_threads: $opt{'nthreads-per-process'}
+
 EOF
     ;
     close $frag or die "Error closing '$fclmtname': $!\n";
