@@ -27,6 +27,7 @@ printinfo() {
     echo "#================================================================"
     echo "cat /proc/cpuinfo"
     cat /proc/cpuinfo
+    echo "#================================================================"
 }
 #================================================================
 # Extract the name of the fcl file to work on from the file list
@@ -240,14 +241,10 @@ mu2eprodsys_payload() {
     fi
 
     #================================================================
-    # Retrieve the code if needed
+    # Handle the code-in-the-user-tarball case.
     if [ -n "$MU2EGRID_CODE" ]; then
-        echo "mu2eprodsys $(date) -- $(date +%s) Copying in $MU2EGRID_CODE"
-        localCode=$(basename $MU2EGRID_CODE)
-        ifdh cp "$MU2EGRID_CODE" $localCode
-        tar xf $localCode
-        /bin/rm $localCode
-        echo "mu2eprodsys $(date) -- $(date +%s) after code tarball extraction"
+        MU2EGRID_USERSETUP="${INPUT_TAR_DIR}/${MU2EGRID_USERSETUP}";
+        echo "mu2eprodsys $(date) -- $(date +%s) pointing MU2EGRID_USERSETUP to the tarball extract: $MU2EGRID_USERSETUP"
     fi
 
     #================================================================

@@ -51,7 +51,7 @@ sub usage() {
     my $self = basename($0);
     return <<EOF
 Usage:
-        $self {--setup=<cvmfs-script-to-source.sh>|--code=/pnfs/path/to/tar-file} \\
+        $self {--setup=<cvmfs-script-to-source.sh>|--code=/path/to/tar-file} \\
               --fcllist=<fcl-file-list> \\
               --dsconf=<output-dataset-version-string> \\
               [--dsowner=<name>] \\
@@ -72,14 +72,14 @@ EOF
       The --setup argument must point to the setup.sh script
       in an Offline build on /cvmfs.
 
-      The --code option must point to a tarball in an ifdh-accessible
-      area like /pnfs.  The tarball will be extracted on the worker
+      The --code option must point to a tarball.  It can be
+      on any disk visible to the submission command, event
+      if that disk is not accessible via ifdh from worker nodes.
+      The tarball will be extracted on the worker
       node, and is expected to have a Code/setup.sh file, which will
       be sourced to setup a release of Offline.  Note that you will
       need sufficient disk space on the worker node to hold a copy of
-      the original tarball plus its extracted content.   The copy will
-      be deleted before the job is run, so that space can be reused
-      by input or output data files.
+      the original tarball plus its extracted content.
 
     - The set of fcl files specified via --fcllist will be processed
       by Mu2e Offline, one fcl file per job.  Normally it should be a
@@ -268,6 +268,10 @@ sub corsika_prerun_handler {
 }
 
 #================================================================
+# Protect against potential conflicing stuff from the user environment
+foreach my $k (grep {/^MU2EGRID_/} keys %ENV) {
+    delete $ENV{$k};
+}
 
 # Process command line opts.
 GetOptions(\%opt,
@@ -435,6 +439,11 @@ push @args, ('-N', $njobs);
 push @args, ( '-f', "dropbox://$fcllist" );
 
 push @args, ( '-f', "dropbox://$prconf_fullpathname" ) if $prconf_fullpathname;
+
+push @args, ( '--use-cvmfs-dropbox',
+              '--tar_file_name',
+              'dropbox://' . $ENV{MU2EGRID_CODE}
+    ) if $ENV{MU2EGRID_CODE};
 
 push @args, 'file://' . $mu2egrid::impldir . '/mu2eprodsys.sh';
 
