@@ -90,7 +90,7 @@ my $tar = $opt{'tar'};
 $tar = mu2egrid::find_file($tar) unless $tar eq '';
 
 my $mu2esetup = mu2egrid::find_file($opt{'mu2e-setup'});
-my $outstage = mu2egrid::find_file($opt{'outstage'});
+my $outstage = mu2egrid::find_directory($opt{'outstage'});
 
 mu2egrid::assert_known_outstage($outstage);
 

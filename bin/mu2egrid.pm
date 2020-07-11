@@ -276,12 +276,24 @@ sub assert_known_outstage($) {
 }
 
 #================================================================
-sub find_file($) {
+sub find_object($) {
     my $fn = shift;
     my $res = abs_path($fn);
     die "Error: file \"$fn\" does not exist\n"
         unless (defined $res and -e $res);
 
+    return $res;
+}
+
+sub find_file($) {
+    my $res = &find_object;
+    die "Error: \"$res\" is not a file\n" unless -f $res;
+    return $res;
+}
+
+sub find_directory($) {
+    my $res = &find_object;
+    die "Error: \"$res\" is not a directory\n" unless -d $res;
     return $res;
 }
 
