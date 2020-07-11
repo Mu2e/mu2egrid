@@ -398,7 +398,7 @@ push @args, ('-l', "priority=$opt{priority}");
 push @args, @extra_jobsub_args;
 
 # Export the EXPERIMENT variable for ifdh
-push @args, ('-e', 'EXPERIMENT');
+push @args, ('-e', 'EXPERIMENT='.$ENV{'EXPERIMENT'});
 
 #----------------------------------------------------------------
 # Figure out package versions to use on the worker node
@@ -428,8 +428,8 @@ while( (my $key, my $value) = each(%ENV) ) {
     if(($key =~ m/^MU2EGRID_\w+$/) or ($key eq 'IFDH_VERSION')) {
         # jobsub_client does not allow empty string as environment values
         if($value ne '') {
-            push @args,  ('-e', $key);
-            print "Using: $key => $ENV{$key}\n";
+            push @args,  ('-e', $key . '=' . $ENV{$key});
+            print "Using: $key => $ENV{$key}\n" if $opt{'verbose'};
         }
     }
 }
