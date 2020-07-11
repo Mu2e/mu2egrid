@@ -68,7 +68,9 @@ sub default_mu2ebintools_version($$) {
 sub default_package_version($$$) {
     my ($mu2esetup, $package, $qualifiers) = @_;
     my $ver = `source $mu2esetup >/dev/null; ups list -K version $package -q '$qualifiers'|head -1`;
-    chomp $ver;
+    # remove the double quotes and spaces printed out by ups
+    $ver =~ s/^\s*"//;
+    $ver =~ s/"\s*$//;
     return $ver;
 }
 
