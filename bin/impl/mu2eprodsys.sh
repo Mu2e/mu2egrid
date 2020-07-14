@@ -569,10 +569,10 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
 
             echo "mu2eprodsys $(date) -- $(date +%s) before the payload" >> $logFileName 2>&1
             ( mu2eprodsys_payload ) 3>&1 4>&2 1>> $logFileName 2>&1
+            ret=$?
+
             # The log file should not be touched after payload exit.  Further messages go to jobsub/condor logs.
             echo "mu2eprodsys $(date) -- $(date +%s) after the payload"
-
-            ret=$?
 
             shopt -u failglob
             shopt -s nullglob
