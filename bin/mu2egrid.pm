@@ -28,9 +28,7 @@ our $mu2eDefaultOutstage = $knownOutstage[0];
 
 #================================================================
 sub default_group_helper() {
-    my $group;
-    $group = $ENV{'GROUP'} if(defined($ENV{'GROUP'}));
-    $group = 'mu2e' unless defined($group);
+    my $group = $ENV{'GROUP'} // 'mu2e';
     return ('group' => $group);
 }
 
@@ -191,7 +189,7 @@ EOF
       can be passed using --jobsub-arg.
       The default values are
 
-          --group              $ENV{GROUP} (the GROUP environment variable, if set)
+          --group              $commonOptDefaultsJobsub{'group'} (the GROUP environment variable, if set, mu2e otherwise)
           --role               Production for the mu2epro user, none otherwise
           --jobsub-server      $commonOptDefaultsJobsub{'jobsub-server'}
           --disk               $commonOptDefaultsJobsub{'disk'}
