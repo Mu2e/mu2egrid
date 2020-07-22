@@ -207,7 +207,7 @@ prerun_corsika() {
     echo "#================================================================"
 
     echo "mu2egrid: Starting $corsika on $(date)"
-    /usr/bin/time $corsika < $prconf
+    $(resolve_timecmd) $corsika < $prconf
 
     local origBin=$(ls DAT*)
 
