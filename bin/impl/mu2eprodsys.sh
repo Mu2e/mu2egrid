@@ -85,6 +85,28 @@ filterOutProxy() {
     done
 }
 #================================================================
+# The version of GNU time in SLF6 and SLF7 (/usr/bin/time) does not
+# properly report when the supervised process is terminated by
+# a signal.  We use a patched version instead if availalble.
+resolve_timecmd() {
+    for timecmd in \
+    /cvmfs/mu2e.opensciencegrid.org/bin/SLF7/mu2e_time \
+    /cvmfs/mu2e.opensciencegrid.org/bin/SLF6/mu2e_time \
+    /usr/bin/time \
+    ; do
+        if $timecmd true > /dev/null 2>&1; then
+            echo $timecmd
+            return 0
+        fi
+    done
+
+    # nothing works.  Do not fall back to the shell builtin
+    # because its printout will fail mu2eClusterCheckAndMove
+    echo "ERROR: resolve_timecmd: no compatible time command found." >&2
+    return 1
+}
+
+#================================================================
 mu2egrid_errh() {
     ret=$?
     if [ x"$MU2EGRID_ENV_PRINTED" == x ]; then
@@ -291,27 +313,7 @@ mu2eprodsys_payload() {
         fi
 
         #================================================================
-        # The version of GNU time in SLF6 (/usr/bin/time) does not
-        # properly report when the supervised process is terminated by
-        # a signal.  We use a patched version instead.
-
-        # FIXME: package mu2e_time as a UPS product.
-        #
-        # There is a copy of GNU time on CVMFS, but not as a UPS
-        # package.  We'd need to re-implement a part of UPS to
-        # select the correct binary to run on the current node.
-        # Instead just try to run the SL6 version and use it if
-        # successful.
-
-        timecmd=time  # shell builtin is the fallback option
-
-        if [[ $MU2EGRID_HPC ]]; then timecmd="/usr/bin/time"; fi
-
-        mu2etime=/cvmfs/mu2e.opensciencegrid.org/bin/SLF6/mu2e_time
-        if $mu2etime true > /dev/null 2>&1; then
-            timecmd=$mu2etime;
-        fi
-
+        timecmd=$(resolve_timecmd)
         echo "mu2eprodsys $(date) -- $(date +%s) after timecmd resolution"
 
         #================================================================
