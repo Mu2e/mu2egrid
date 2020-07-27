@@ -43,17 +43,17 @@ if setup G4beamline "${MU2EGRID_G4BLVERSION:?Error: MU2EGRID_G4BLVERSION not set
         args+=(First_Event=$First_Event Num_Events=$Num_Events)
         args+=($MU2EGRID_G4BL_ADD_ARGS)
     else
-            # There are input files specified.
-            # Need to append something like
-            #
-            #     beam ascii filename1
-            #     beam ascii filename2
-            #     ...
-            #     beam ascii filenameN
-            #
-            # to the .in file.  Need to decide whether the inputs are
-            # ROOT or ASCII.  More important, the .in file should be
-            # written in a way that supports this.
+        # There are input files specified.
+        # Need to append something like
+        #
+        #     beam ascii filename1
+        #     beam ascii filename2
+        #     ...
+        #     beam ascii filenameN
+        #
+        # to the .in file.  Need to decide whether the inputs are
+        # ROOT or ASCII.  More important, the .in file should be
+        # written in a way that supports this.
         echo "mu2eg4bl.sh: input file support is not implemented"
         ret=1
     fi
@@ -69,10 +69,10 @@ if setup G4beamline "${MU2EGRID_G4BLVERSION:?Error: MU2EGRID_G4BLVERSION not set
         /cvmfs/mu2e.opensciencegrid.org/bin/SLF6/mu2e_time g4bl "${args[@]}"
         ret=$?
         echo "mu2egrid exit status $ret"
-	if [ "$ret" -eq 0 ]; then
-                    # clean up
-	    rm -f "$MU2EGRID_PRESTAGE"
-	fi
+        if [ "$ret" -eq 0 ]; then
+            # clean up
+            rm -f "$MU2EGRID_PRESTAGE"
+        fi
     else
         echo "Aborting the job because pre-staging of input files failed: stageIn '$MU2EGRID_PRESTAGE'"
     fi
