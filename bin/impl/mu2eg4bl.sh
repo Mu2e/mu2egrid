@@ -7,9 +7,58 @@
 # Andrei Gaponenko, 2012
 #
 
-set -e
+#================================================================
+# This function takes an arbitrary number of "prestage specification"
+# files, and copies all the remote files to their destinations
+# under an I/O throttling protection.
+stageIn() {
 
-source "$(dirname $0)/funcs"
+    ret=0
+
+    declare -a specs
+    for f in "$@"; do
+        if [ -n "$f" ]; then
+            specs=("${specs[@]}" $f)
+        fi
+    done
+
+    if [ "${#specs[@]}" -gt 0 ]; then
+
+        echo "$(date) # Starting to pre-stage input files"
+        type ifdh
+
+        # Merge all the lists into a single file
+        # ifdh is picky about white spaces, (redmine #3790)
+        # Make sure we have exactly one space
+        totalspec=$(mktemp prestage-merged.XXXX)
+        awk '{print $1" "$2}' "${specs[@]}" > "$totalspec"
+
+        # ifdh does not create destination directories
+        # Do it here
+        mkdir -p $(awk '{print $2}' "$totalspec" | sed -e 's|/[^/]*$||' | sort -u)
+
+        awk '{print "Pre-staging: ",$1,"  ==>  ",$2}' "$totalspec"
+
+        tstart=$(date +%s)
+
+        # Get the lock and copy files
+        ifdh cp -f "$totalspec"
+        ret=$?
+
+        # Do not delete the prestage-merged file - it is useful, e.g. to re-run an exact job.
+
+        t2=$(date +%s)
+        echo "$(date) # Total stage-in time: $((t2-tstart)) seconds, status $ret"
+
+    fi
+
+    return $ret
+}
+
+#================================================================
+# Execution starts here
+
+set -e
 
 export process=${PROCESS:-0}
 export masterin="$CONDOR_DIR_INPUT/${MU2EGRID_MASTERIN:?'Error: MU2EGRID_MASTERIN is not set'}"
