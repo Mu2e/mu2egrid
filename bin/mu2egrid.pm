@@ -16,12 +16,8 @@ use English qw( -no_match_vars ) ; # Avoids regex performance penalty
 our $impldir;
 $impldir = abs_path(dirname($0) . '/impl');
 
-our @knownOutstage = ('/mu2e/data/outstage',
-                      '/mu2e/data2/outstage',
-                      '/pnfs/mu2e/persistent/outstage',
-                      '/pnfs/mu2e/scratch/outstage',
-                      '/grid/data/marsmu2e/outstage',
-                      '/pnfs/mars/marsmu2e/scratch'
+our @knownOutstage = ('/pnfs/mu2e/scratch/outstage',
+                      '/pnfs/mu2e/persistent/outstage'
                       );
 
 our $mu2eDefaultOutstage = $knownOutstage[0];
