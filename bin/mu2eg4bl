@@ -164,7 +164,7 @@ print "Will use ifdh version $ENV{IFDH_VERSION}\n";
 push @args, ('-e', 'EXPERIMENT='.$ENV{'EXPERIMENT'});
 
 if($tar) {
-    push @args, ('-f', $tar);
+    push @args, ('-f', 'dropbox://' . $tar);
 }
 if($test_queue) {
     push @args, '--test_queue';
@@ -182,7 +182,7 @@ while( (my $key, my $value) = each(%ENV) ) {
 
 my %filecheck;
 foreach my $f (@files_to_transfer) {
-    push @args, ('-f', $f);
+    push @args, ('-f', 'dropbox://' . $f);
     my $bn = basename($f);
     if(defined($filecheck{$f})) {
         die "Error: duplicate file name $f on the transfer list\n";
