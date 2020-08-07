@@ -22,6 +22,32 @@ our @knownOutstage = ('/pnfs/mu2e/scratch/outstage',
 
 our $mu2eDefaultOutstage = $knownOutstage[0];
 
+
+#================================================================
+my %predefinedArgChoices = (
+    'none' => ['Use jobsub defaults.', []],
+    'sl7' =>  ["Request SL7 nodes:\n", ['--OS=SL7']],
+    'singularity' => ["Request to use singularity:\n",
+                      [
+                       "--append_condor_requirements='(TARGET.HAS_SINGULARITY=?=true)'",
+                       "-l", "'+SingularityImage=\"/cvmfs/singularity.opensciencegrid.org/fermilab/fnal-wn-sl7:latest\"'"
+                      ]
+    ]
+);
+
+my $predefinedArgChoiceDefault = 'singularity';
+
+sub addPredefinedArgs($$) {
+    my ($args, $choice) = @_;
+    my $resolved = $predefinedArgChoices{$choice};
+    die "Error: unknown value '$choice' for --predefined-args\n"
+        unless defined $resolved;
+
+    for my $o (@{$resolved->[1]}) {
+        push @$args, $o;
+    }
+}
+
 #================================================================
 sub default_group_helper() {
     my $group = $ENV{'JOBSUB_GROUP'} // $ENV{'GROUP'} // 'mu2e';
@@ -73,7 +99,7 @@ our $jobsub = 'jobsub_submit';
 our @commonOptList = (
 
 # Mu2e specific things
-
+    'predefined-args=s',
     'mu2e-setup=s',
     'ifdh-version=s',
     'ifdh-options=s',
@@ -93,13 +119,13 @@ our @commonOptList = (
     'disk=s',
     'memory=s',
     'expected-lifetime=s',
-    'OS=s',
     'resource-provides=s',
     'site=s',
     );
 
 # those that are not defaulted must be tested with exists($opt{'option'}) before accessing their values
 our %commonOptDefaultsMu2e = (
+    'predefined-args' => $predefinedArgChoiceDefault,
     'mu2e-setup' => '/cvmfs/mu2e.opensciencegrid.org/setupmu2e-art.sh',
     'outstage' => $mu2egrid::mu2eDefaultOutstage,
     'priority' => 0,
@@ -118,7 +144,6 @@ our %commonOptDefaultsJobsub = (
     'disk' => '30GB',
     'memory' => '2000MB',
     'expected-lifetime' => '24h',
-    'OS' => 'SL7',
     'resource-provides' => 'usage_model=OPPORTUNISTIC,DEDICATED',
     'site' => undef,
     );
@@ -132,6 +157,8 @@ sub commonOptDoc1 {
     my $outstageIsSupported = $features{'outstageIsSupported'} // 1;
     my $outstagestr = $outstageIsSupported ? "              [--outstage=<dir>] \\\n" : "";
 
+    my $predef = join('|', keys %predefinedArgChoices);
+
     return <<EOF
               [--group=<name>] \\
               [--role=<name>] \\
@@ -139,10 +166,10 @@ sub commonOptDoc1 {
               [--disk=<SizeUnits>] \\
               [--memory=<SizeUnits>] \\
               [--expected-lifetime=<spec>] \\
-              [--OS=<comma_separated_list>] \\
               [--resource-provides=<spec>] \\
               [--site=<site1,site2,...>] \\
               [--jobsub-arg=string1] [--jobsub-arg=string2] [...] \\
+              [--predefined-args=<$predef>] \\
               [--mu2e-setup=<setupmu2e-art.sh>] \\
               [--ifdh-version=<version>] \\
               [--ifdh-opts=<string>] \\
@@ -178,9 +205,17 @@ sub commonOptDoc2 {
 EOF
 : '';
 
+    my $keyFieldWidth = 15;
+    my $preDoc='';
+    foreach my $k (keys %predefinedArgChoices) {
+        $preDoc .= ' 'x10 . $k. " "x($keyFieldWidth-length($k)) . $predefinedArgChoices{$k}[0] . "\n";
+        $preDoc .= ' 'x14
+            . join("\n".' 'x14, @{$predefinedArgChoices{$k}[1]}) . "\n\n";
+    }
+
     my $res= <<EOF
     - The --group, --role, --jobsub-server, --disk, --memory, --expected-lifetime,
-      --OS, --resource-provides, and --site options are passed to jobsub_submit.
+      --resource-provides, and --site options are passed to jobsub_submit.
       Run \"jobsub_submit -h\" for details. Arbitrary jobsub_submit options
       can be passed using --jobsub-arg.
       The default values are
@@ -191,9 +226,13 @@ EOF
           --disk               $commonOptDefaultsJobsub{'disk'}
           --memory             $commonOptDefaultsJobsub{'memory'}
           --expected-lifetime  $commonOptDefaultsJobsub{'expected-lifetime'}
-          --OS                 $commonOptDefaultsJobsub{'OS'}
           --resource-provides  $commonOptDefaultsJobsub{'resource-provides'}
           --site               none
+
+    --predefined-args controls which set of options is added to the
+      jobsub command line on top of everything else.
+      The choices are:\n\n$preDoc
+      The default setting is '$predefinedArgChoiceDefault'.
 
     --mu2e-setup arg is optional, by default the current official mu2e
       release is used.  The ifdhc package must be available in the
@@ -354,7 +393,9 @@ BEGIN {
     # as well as any optionally exported functions
     @EXPORT_OK   = qw(
                       $impldir
-                      @knownOutstage $mu2eDefaultOutstage @commonOptList
+                      @knownOutstage $mu2eDefaultOutstage
+                      &addPredefinedArgs
+                      @commonOptList
                       $jobsub %commonOptDefaultsMu2e %commonOptDefaultsJobsub
                       &commonOptDoc1 &commonOptDoc2
                       &assert_known_outstage &find_file &validate_file_list

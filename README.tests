@@ -31,6 +31,26 @@ mu2eprodsys --wfpro=mu2egridtest --setup=$myOffline --expected-lifetime=1h --dis
 ## after the job completes
 #mu2eClusterCheckAndMove --dry --timecut=10 /pnfs/mu2e/scratch/users/gandr/workflow/mu2egridtest/outstage/10830312
 
+#----------------------------------------------------------------
+# --code tarball (andr)
+
+mu2eprodsys --wfpro=mu2egridtest --code=/pnfs/mu2e/resilient/users/gandr/gridexport/tmp.9I7Gv1adwT/Code.tar.bz --expected-lifetime=1h --disk=2GB  --fcllist=joblist-s1.txt --dsconf=$(date +%Y%m%d%H%M%S)
+
+JobsubJobId of first job: 35368544.0@jobsub02.fnal.gov
+
+# code tarball, copy of mmackenz
+mu2eprodsys --wfpro=mu2egridtest --code=/mu2e/app/users/gandr/gridexport/mmackenz/mmackenz.tar.bz --expected-lifetime=1h --disk=2GB  --fcllist=joblist-s1.txt --dsconf=$(date +%Y%m%d%H%M%S)
+
+JobsubJobId of first job: 35372301.0@jobsub02.fnal.gov
+
+# code tarball, REPACKED copy of mmackenz plus a dummy file to change the checksum
+mu2eprodsys --wfpro=mu2egridtest --code=/mu2e/app/users/gandr/gridexport/mmackenz/repacked-new.tar.bz --expected-lifetime=1h --disk=2GB  --fcllist=joblist-s1.txt --dsconf=$(date +%Y%m%d%H%M%S)
+
+JobsubJobId of first job: 35395485.0@jobsub01.fnal.gov
+
+
+
+
 #================================================================
 # Offline s2, default
 
@@ -64,5 +84,29 @@ mu2eprodsys --wfpro=mu2egridtest --setup=$myOffline --expected-lifetime=1h --dis
 mu2eDatasetFileList cnf.gandr.corsikatest.v1.fcl | head -2 > joblist-corsika.txt
 
 mu2eprodsys --prerun=corsika --prconf=/grid/fermiapp/mu2e/users/gandr/mu2egrid-corsika/corsika.in --wfpro=mu2egridtest --setup=$corsikaOffline --expected-lifetime=1h --disk=2GB --fcllist=joblist-corsika.txt --dsconf=$(date +%Y%m%d%H%M%S) --dry
+
+#================================================================
+
+
+#================================================================
+#================================================================
+#================================================================
+# --code tarball (Michael)
+
+mu2eprodsys --wfpro=mu2egridtest --expected-lifetime=1h --disk=2GB  --fcllist=joblist-s1.txt --dsconf=$(date +%Y%m%d%H%M%S) --code=/pnfs/mu2e/resilient/users/mu2epro/su2020/su2020.code.92ae524e.tbz
+
+
+JobsubJobId of first job: 10897012.0@jobsub03.fnal.gov
+
+
+#----------------------------------------------------------------
+# --code and --fcllist tarballs  (Michael MacKenzie)
+
+mu2eprodsys --code=/pnfs/mu2e/resilient/users/mu2epro/su2020/su2020.code.92ae524e.tbz \
+--fcllist=/pnfs/mu2e/resilient/users/mu2epro/su2020/cnf.mu2e.rmce1s41b0.s5_reco_stn.su2020.fcl.tbz --dsconf=su2020 --wfproject=su2020.rmce1s41b0.s5_reco_stn \
+--error-delay=10 --transfer-all-files --expected-lifetime=3h --memory=3000MB --xrootd
+
+JobsubJobId of first job: 10897163.0@jobsub03.fnal.gov
+
 
 #================================================================
