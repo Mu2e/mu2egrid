@@ -23,6 +23,7 @@ use Class::Struct JobPars => [
     procsPerNode=>'*$',
     threadsPerProcess=>'*$',
     timeLimit=>'*$',
+    extraOptions=>'*@',
     sldir=>'*$',
     mu2egridDir=>'*$',
     container=>'*$',
@@ -34,9 +35,8 @@ use Class::Struct JobPars => [
 my $thetascriplet = sub {
     my $a = shift;
     return <<"EOF"
-
-aprun  -n ${$a->nfclfiles} -N ${$a->procsPerNode} -cc depth -d ${$a->threadsPerProcess} -j 4 \\
-    singularity exec -B ${$a->sldir}:/mnt ${$a->container} \\
+        aprun  -n ${$a->nfclfiles} -N ${$a->procsPerNode} -cc depth -d ${$a->threadsPerProcess} -j 4 \\
+        singularity exec @{$a->extraOptions} -B ${$a->sldir}:/mnt ${$a->container} \\
         bash -c \"${$a->env} /mu2egrid/bin/impl/mu2eprodsys.sh\"
 
 EOF
@@ -44,32 +44,19 @@ EOF
 };
 
 # expects JobPars arg
-#srun singularity exec -B ${$a->sldir}:/mnt ${$a->container} bash -c \"${$a->env} /mu2egrid/bin/impl/mu2eprodsys.sh\"
 my $bebopscriplet = sub {
     my $a = shift;
     return <<"EOF"
-	
-srun singularity exec -B ${$a->sldir}:/mnt ${$a->container} bash -c \"${$a->env} ${$a->mu2egridDir}/bin/impl/mu2eprodsys.sh\"	
+        srun singularity exec @{$a->extraOptions} -B ${$a->sldir}:/mnt ${$a->container} bash -c \"${$a->env} ${$a->mu2egridDir}/bin/impl/mu2eprodsys.sh\"
 
 EOF
     ;
 };
 
-my %clusters = (
-    'theta' => Mu2eHPCBatchSys->new(
-        batchcmd => 'qsub',
-        batchargs => sub {
-            my $a = shift;
-            return (
-                '--mode', 'script',
-                '-n', ${$a->numnodes},
-                '-t', ${$a->timeLimit},
-                ${$a->scriptName}
-                );
-        },
-        batchoptheader => '^#COBALT',
-        scriplet => $thetascriplet,
-        ),
+my %clusters = ( 'theta' => Mu2eHPCBatchSys->new( batchcmd => 'qsub',
+    batchargs => sub { my $a = shift; return ( '--mode', 'script',
+    '-n', ${$a->numnodes}, '-t', ${$a->timeLimit}, ${$a->scriptName}
+    ); }, batchoptheader => '^#COBALT', scriplet => $thetascriplet, ),
 
     'bebop' => Mu2eHPCBatchSys->new(
         batchcmd => 'sbatch',
@@ -95,6 +82,7 @@ my %opt =
      'dsowner' => 'mu2e',
      'setup' => '/Offline/setup.sh',
      'mu2e-setup' => '/setupmu2e-art.sh',
+     'extra-option' => [],
      'help' => 0,
      'debug' => 0,
     );
@@ -108,6 +96,7 @@ Usage:
               --fcllist=<fcl-file-list> \\
               --dsconf=<output-dataset-version-string> \\
               [--dsowner=<name>] \\
+              [--extra-option=<string> [--extra-option=<string> ...]] \\
               --topdir=<directory> \\
               --mu2egrid-dir=<name> \\
               --container=<file> \\
@@ -149,7 +138,13 @@ sub usage() {
     --topdir specifies where to create a new directory structure to
       place inputs and receive outputs of the jobs.
 
-    --mu2egrid-dir specify mu2egrid version inside the container 
+    --extra-option accepts an extra argument for the singularity container
+      For instance, it can be used to mount an additional locaiton as:
+      --extra-option=-B/lcrc/project/mu2e_CRY_1/200605/:/pnfs/mu2e/tape/phy-sim/sim/mu2e/filtered-s1/200605/
+      More than one additional argument can be provided by
+      using --extra-option several times.
+
+    --mu2egrid-dir specify mu2egrid version inside the container
       to be used.
 
     --container is the Mu2e container to be used for the job
@@ -223,6 +218,7 @@ GetOptions(\%opt,
            'fcllist=s',
            'dsconf=s',
            'dsowner=s',
+           'extra-option=s',
            'topdir=s',
            'mu2egrid-dir=s',
            'container=s',
@@ -318,6 +314,7 @@ close $sbin;
 my $env = ""
     . "MU2EGRID_DIR=$opt{'mu2egrid-dir'} "
     . "MU2EGRID_HPC=1 "
+    . "MU2EGRID_NO_PRESTAGE=0 "
     . "MU2EGRID_DEBUG=$opt{'debug'} "
     . "MU2EGRID_ERRORDELAY=1 "
     . "MU2EGRID_DSOWNER=$opt{'dsowner'} "
@@ -340,6 +337,7 @@ my $jp = JobPars->new(
     procsPerNode=>$tpn,
     threadsPerProcess=>$opt{'nthreads-per-process'},
     timeLimit=>$opt{'time-limit'},
+    extraOptions=>$opt{'extra-option'},
     sldir=>$sldir,
     mu2egridDir=>$opt{'mu2egrid-dir'},
     container=>$container,
