@@ -293,7 +293,13 @@ mu2eprodsys_payload() {
             setup mu2etools
         fi
 
-        setup -B mu2efilename "${MU2EGRID_MU2EFILENAME_VERSION}"
+        if [[ $MU2EGRID_HPC ]]; then
+            # Package version inside container can not be determined at submission time.
+            # We use the container's "current" here, but the container itself is versioned.
+            setup mu2efilename
+        else
+            setup -B mu2efilename "${MU2EGRID_MU2EFILENAME_VERSION}"
+        fi
 
         echo "#================================================================"
         echo "# mu2eprodsys $(date) -- $(date +%s) After package setup, the environment is:"
