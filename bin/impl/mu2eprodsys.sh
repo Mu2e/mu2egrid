@@ -157,17 +157,17 @@ write_corsika_config() {
         fi
 
         # Note: we use the subrun number for corsika
-        local subrun=$(fhicl-getpar --int mu2emetadata.firstSubRun $localFCL)
+        local subrun=$(fhicl-get --atom-as int mu2emetadata.firstSubRun $localFCL)
         set_corsika_parameter $target  RUNNR $subrun
 
         # The actual run number is used by the source module
-        local run=$(fhicl-getpar --int mu2emetadata.firstRun $localFCL)
+        local run=$(fhicl-get --atom-as int mu2emetadata.firstRun $localFCL)
         echo "source.runNumber: $run" >> $localFCL
 
-        local NSHOW=$(fhicl-getpar --int mu2emetadata.maxEvents $localFCL)
+        local NSHOW=$(fhicl-get --atom-as int mu2emetadata.maxEvents $localFCL)
         set_corsika_parameter $target  NSHOW $NSHOW
 
-        local SEED=$(fhicl-getpar --int services.SeedService.baseSeed $localFCL)
+        local SEED=$(fhicl-get --atom-as int services.SeedService.baseSeed $localFCL)
         set_corsika_parameter $target  SEED "$SEED 0 0"
 
     else
@@ -310,8 +310,8 @@ mu2eprodsys_payload() {
         #================================================================
         # Got mu2ebintools.  Check that we did not get an untreated
         # fcl made with --ignore-source
-        if fhicl-getpar --keys mu2emetadata $localFCL | grep -q ignoreSource; then
-            ignoreSource="$(fhicl-getpar --int mu2emetadata.ignoreSource $localFCL)"
+        if fhicl-get --names-in mu2emetadata $localFCL | grep -q ignoreSource; then
+            ignoreSource="$(fhicl-get --atom-as int mu2emetadata.ignoreSource $localFCL)"
             if (( $ignoreSource )); then
                 echo "ERROR: unexpected value ignoreSource=$ignoreSource.  Input fcl needs extra processing before we get here."
                 exit 1
@@ -327,11 +327,11 @@ mu2eprodsys_payload() {
         # to the "parents" file for later use
 
         touch localFileDefs
-        # invoke fhicl-getpar as a separate command outside of for...done so that errors are trapped
-        keys=( $(fhicl-getpar --strlist mu2emetadata.fcl.inkeys $localFCL) )
+        # invoke fhicl-get as a separate command outside of for...done so that errors are trapped
+        keys=( $(fhicl-get --sequence-of string mu2emetadata.fcl.inkeys $localFCL) )
         for key in "${keys[@]}"; do
 
-            rfns=( $(fhicl-getpar --strlist $key $localFCL ) )
+            rfns=( $(fhicl-get --sequence-of string $key $localFCL ) )
             for rfn in "${rfns[@]}"; do
                 # copy it to mu2egridInDir
                 bn="$(basename $rfn)"
@@ -355,18 +355,18 @@ mu2eprodsys_payload() {
         # Most CD3 fcl datasets do not have mu2emetadata.fcl.prologkeys defined.
         # A workaround for backward compatibility: check that the variable is present
         # before trying to query its value.
-        metalist=( $(fhicl-getpar --keys mu2emetadata.fcl $localFCL) )
+        metalist=( $(fhicl-get --names-in mu2emetadata.fcl $localFCL) )
         keys=()
         for i in "${metalist[@]}"; do
             case $i in
-                prologkeys) keys=( $(fhicl-getpar --strlist mu2emetadata.fcl.prologkeys $localFCL) )
+                prologkeys) keys=( $(fhicl-get --sequence-of string mu2emetadata.fcl.prologkeys $localFCL) )
             esac
         done
 
         touch prologFileDefs
         for key in "${keys[@]}"; do
 
-            rfns=( $(fhicl-getpar --strlist "mu2emetadata.fcl.prolog_values.$key" $localFCL ) )
+            rfns=( $(fhicl-get --sequence-of string "mu2emetadata.fcl.prolog_values.$key" $localFCL ) )
             for rfn in "${rfns[@]}"; do
                 # copy it to mu2egridInDir
                 bn="$(basename $rfn)"
@@ -417,9 +417,9 @@ mu2eprodsys_payload() {
 
         #----------------------------------------------------------------
         # set output file names
-        keys=( $(fhicl-getpar --strlist mu2emetadata.fcl.outkeys $localFCL ) )
+        keys=( $(fhicl-get --sequence-of string mu2emetadata.fcl.outkeys $localFCL ) )
         for key in "${keys[@]}"; do
-            oldname=$(fhicl-getpar --string $key $localFCL)
+            oldname=$(fhicl-get --atom-as string $key $localFCL)
             newname=$(echo $oldname| awk -F . '{OFS="."; $2="'${MU2EGRID_DSOWNER:?"Error: MU2EGRID_DSOWNER is not set"}'"; $4="'${MU2EGRID_DSCONF}'"; print $0;}')
             echo "$key : \"$newname\"" >> $localFCL
         done
