@@ -58,8 +58,9 @@ Usage:
               [--wftop=<directory>] \\
               [--wfproject=<name>] \\
               [--clustername=<name>] \\
-              [--mu2ebintools-version=<string>] \\
               [--mu2efilename-version=<string>] \\
+              [--mu2etools-version=<string>] \\
+              [--mu2ebintools-version=<string>] \\
               [--prerun=<name> --prconf=<file>] \\
               [--xrootd] \\
               [--transfer-all-files] \\
@@ -119,20 +120,14 @@ EOF
       --clustername=foo the outstage directory will be named like
       1884300.foo (where 1884300 is the condor cluster number)
 
-    - The --mu2ebintools-version option can be used to specify the
-      version of the corresponding package to be used by the worker
-      node process.  If a version is not specified on the command
-      line, mu2eprodsys will rely on the mu2etools package to find a
-      compatible mu2ebintools version. The version will be fixed at
-      the job submission time, unless the --code options is used.
-      With the --code options the package version resolution is
-      postponed until the process starts on the worker node, which
-      might lead to different jobs from the same submission using
-      different mu2ebintools versions.
+    - The --mu2efilename-version and --mu2etools-version options can
+      be used to override the default version of the corresponding
+      package.  If not specified, the UPS current verson of package
+      at job submission time is used.
 
-    - The --mu2efilename-version option can be used to override
-      the default package version.  The version is fixed at the
-      job submission time.
+    - The --mu2ebintools-version option can be used to override the
+      version of the corresponding package on the worker node.
+      Do not use unless you know what you are doing.
 
     - The --prerun options allows to run additional processing before
       starting the art job, perhaps a non-art event generator.  The
@@ -283,8 +278,9 @@ GetOptions(\%opt,
     'wftop=s',
     'wfproject=s',
     'clustername=s',
-    'mu2ebintools-version=s',
     'mu2efilename-version=s',
+    'mu2etools-version=s',
+    'mu2ebintools-version=s',
     'prerun=s',
     'prconf=s',
     'error-delay=i',
@@ -410,16 +406,15 @@ push @args, ('-e', 'EXPERIMENT='.$ENV{'EXPERIMENT'});
 $ENV{'IFDH_VERSION'} = $opt{'ifdh-version'} // $ENV{'IFDH_VERSION'} // mu2egrid::default_package_version($opt{'mu2e-setup'}, 'ifdhc', '');
 print "Will use ifdh version $ENV{IFDH_VERSION}\n";
 
-if(!defined $opt{'code'}) {
-    $ENV{'MU2EGRID_MU2EBINTOOLS_VERSION'} = $opt{'mu2ebintools-version'} // mu2egrid::default_mu2ebintools_version($opt{'mu2e-setup'}, $opt{'setup'});
-    print "Will use mu2ebintools version $ENV{MU2EGRID_MU2EBINTOOLS_VERSION}\n";
-}
-else {
-    print "WARNING: Can not determine mu2ebintools version at submission time when --code is used.\n";
-}
-
 $ENV{'MU2EGRID_MU2EFILENAME_VERSION'} = $opt{'mu2efilename-version'} // mu2egrid::default_package_version($opt{'mu2e-setup'}, 'mu2efilename', '');
 print "Will use mu2efilename version $ENV{MU2EGRID_MU2EFILENAME_VERSION}\n";
+
+$ENV{'MU2EGRID_MU2ETOOLS_VERSION'} = $opt{'mu2etools-version'} // mu2egrid::default_package_version($opt{'mu2e-setup'}, 'mu2etools', '');
+print "Will use mu2etools version $ENV{MU2EGRID_MU2ETOOLS_VERSION}\n";
+
+if(defined $opt{'mu2ebintools-version'}) {
+    $ENV{'MU2EGRID_MU2EBINTOOLS_VERSION'} = $opt{'mu2ebintools-version'};
+}
 
 $ENV{'MU2EGRID_ERRORDELAY'} = $opt{'error-delay'} // ($njobs > 10 ?  $default_error_delay : 1);
 

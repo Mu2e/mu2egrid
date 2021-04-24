@@ -151,10 +151,8 @@ write_corsika_config() {
         MU2E_SEARCH_PATH=$(pwd):$MU2E_SEARCH_PATH
         if [[ $MU2EGRID_MU2EBINTOOLS_VERSION ]]; then
             setup -B mu2ebintools "${MU2EGRID_MU2EBINTOOLS_VERSION}" -q "${MU2E_UPS_QUALIFIERS}"
-        else
-            echo "MU2EGRID_MU2EBINTOOLS_VERSION not defined - will setup current mu2etools"
-            setup mu2etools
         fi
+        setup -B mu2etools "${MU2EGRID_MU2ETOOLS_VERSION}"
 
         # Note: we use the subrun number for corsika
         local subrun=$(fhicl-get --atom-as int mu2emetadata.firstSubRun $localFCL)
@@ -288,17 +286,16 @@ mu2eprodsys_payload() {
 
         if [[ $MU2EGRID_MU2EBINTOOLS_VERSION ]]; then
             setup -B mu2ebintools "${MU2EGRID_MU2EBINTOOLS_VERSION}" -q "${MU2E_UPS_QUALIFIERS}"
-        else
-            echo "MU2EGRID_MU2EBINTOOLS_VERSION not defined - will setup current mu2etools"
-            setup mu2etools
         fi
 
         if [[ $MU2EGRID_HPC ]]; then
             # Package version inside container can not be determined at submission time.
             # We use the container's "current" here, but the container itself is versioned.
             setup mu2efilename
+            setup mu2etools
         else
             setup -B mu2efilename "${MU2EGRID_MU2EFILENAME_VERSION}"
+            setup -B mu2etools "${MU2EGRID_MU2ETOOLS_VERSION}"
         fi
 
         echo "#================================================================"
