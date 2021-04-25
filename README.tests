@@ -14,7 +14,7 @@ mu2eg4bl -h > /dev/null
 #================================================================
 # G4bl
 
-mu2eg4bl --in=$myG4BL/Mu2E.in --tar=$myG4BL/Geometry.tar --g4bl-version=v2_16a --expected-lifetime=1h --disk=1GB --njobs=2 --events=5 --verbose --jobname=$(date +%Y%m%d%H%M%S).g4bl
+mu2eg4bl --in=$myG4BL/Mu2E.in --tar=$myG4BL/Geometry.tar --g4bl-version=v2_16a --expected-lifetime=1h --disk=1GB  --memory=2500MB --njobs=2 --events=5 --verbose --jobname=$(date +%Y%m%d%H%M%S).g4bl
 
 ## After the jobs complete
 #checkAndMove --dry --verbose --dstarea=/pnfs/mu2e/scratch/outstage/gandr/checked  /pnfs/mu2e/scratch/outstage/gandr/20200729120302.g4bl.35325902
@@ -26,7 +26,7 @@ mu2eg4bl --in=$myG4BL/Mu2E.in --tar=$myG4BL/Geometry.tar --g4bl-version=v2_16a -
 # Offline stage 1
 
 mu2eDatasetFileList cnf.gandr.gridtest-s1.v1.fcl | head -2 > joblist-s1.txt
-mu2eprodsys --wfpro=mu2egridtest --setup=$myOffline --expected-lifetime=1h --disk=2GB  --fcllist=joblist-s1.txt --dsconf=$(date +%Y%m%d%H%M%S)
+mu2eprodsys --wfpro=mu2egridtest --setup=$myOffline --expected-lifetime=1h --disk=2GB --memory=2500MB  --fcllist=joblist-s1.txt --dsconf=$(date +%Y%m%d%H%M%S)
 
 ## after the job completes
 #mu2eClusterCheckAndMove --dry --timecut=10 /pnfs/mu2e/scratch/users/gandr/workflow/mu2egridtest/outstage/10830312
@@ -34,17 +34,17 @@ mu2eprodsys --wfpro=mu2egridtest --setup=$myOffline --expected-lifetime=1h --dis
 #----------------------------------------------------------------
 # --code tarball (andr)
 
-mu2eprodsys --wfpro=mu2egridtest --code=/pnfs/mu2e/resilient/users/gandr/gridexport/tmp.9I7Gv1adwT/Code.tar.bz --expected-lifetime=1h --disk=2GB  --fcllist=joblist-s1.txt --dsconf=$(date +%Y%m%d%H%M%S)
+mu2eprodsys --wfpro=mu2egridtest --code=/pnfs/mu2e/resilient/users/gandr/gridexport/tmp.9I7Gv1adwT/Code.tar.bz --expected-lifetime=1h --disk=2GB --memory=2500MB  --fcllist=joblist-s1.txt --dsconf=$(date +%Y%m%d%H%M%S)
 
 JobsubJobId of first job: 35368544.0@jobsub02.fnal.gov
 
 # code tarball, copy of mmackenz
-mu2eprodsys --wfpro=mu2egridtest --code=/mu2e/app/users/gandr/gridexport/mmackenz/mmackenz.tar.bz --expected-lifetime=1h --disk=2GB  --fcllist=joblist-s1.txt --dsconf=$(date +%Y%m%d%H%M%S)
+mu2eprodsys --wfpro=mu2egridtest --code=/mu2e/app/users/gandr/gridexport/mmackenz/mmackenz.tar.bz --expected-lifetime=1h --disk=2GB --memory=2500MB --fcllist=joblist-s1.txt --dsconf=$(date +%Y%m%d%H%M%S)
 
 JobsubJobId of first job: 35372301.0@jobsub02.fnal.gov
 
 # code tarball, REPACKED copy of mmackenz plus a dummy file to change the checksum
-mu2eprodsys --wfpro=mu2egridtest --code=/mu2e/app/users/gandr/gridexport/mmackenz/repacked-new.tar.bz --expected-lifetime=1h --disk=2GB  --fcllist=joblist-s1.txt --dsconf=$(date +%Y%m%d%H%M%S)
+mu2eprodsys --wfpro=mu2egridtest --code=/mu2e/app/users/gandr/gridexport/mmackenz/repacked-new.tar.bz --expected-lifetime=1h --disk=2GB --memory=2500MB  --fcllist=joblist-s1.txt --dsconf=$(date +%Y%m%d%H%M%S)
 
 JobsubJobId of first job: 35395485.0@jobsub01.fnal.gov
 
@@ -58,12 +58,12 @@ mu2eDatasetFileList cnf.gandr.gridtest-s2.v0.fcl | head -2 > joblist-s2.txt
 # Verify that inputs are pre-staged
 for i in $(cat joblist-s2.txt); do for f in $(grep /pnfs $i|sed -e 's/"//g' -e 's/,//g'); do echo "Testing $f"; file $f; done; done
 
-mu2eprodsys --wfpro=mu2egridtest --setup=$myOffline --expected-lifetime=1h --disk=2GB  --fcllist=joblist-s2.txt --dsconf=$(date +%Y%m%d%H%M%S)
+mu2eprodsys --wfpro=mu2egridtest --setup=$myOffline --expected-lifetime=1h --disk=2GB --memory=2500MB  --fcllist=joblist-s2.txt --dsconf=$(date +%Y%m%d%H%M%S)
 
 #----------------------------------------------------------------
 # Offline s2, xrootd
 
-mu2eprodsys --xrootd --wfpro=mu2egridtest --setup=$myOffline --expected-lifetime=1h --disk=2GB  --fcllist=joblist-s2.txt --dsconf=$(date +%Y%m%d%H%M%S)
+mu2eprodsys --xrootd --wfpro=mu2egridtest --setup=$myOffline --expected-lifetime=1h --disk=2GB --memory=2500MB  --fcllist=joblist-s2.txt --dsconf=$(date +%Y%m%d%H%M%S)
 
 #----------------------------------------------------------------
 # Offline s2, mixing
@@ -83,7 +83,7 @@ mu2eprodsys --wfpro=mu2egridtest --setup=$myOffline --expected-lifetime=1h --dis
 
 mu2eDatasetFileList cnf.gandr.corsikatest.v1.fcl | head -2 > joblist-corsika.txt
 
-mu2eprodsys --prerun=corsika --prconf=/grid/fermiapp/mu2e/users/gandr/mu2egrid-corsika/corsika.in --wfpro=mu2egridtest --setup=$corsikaOffline --expected-lifetime=1h --disk=2GB --fcllist=joblist-corsika.txt --dsconf=$(date +%Y%m%d%H%M%S) --dry
+mu2eprodsys --prerun=corsika --prconf=/grid/fermiapp/mu2e/users/gandr/mu2egrid-corsika/corsika.in --wfpro=mu2egridtest --setup=$corsikaOffline --expected-lifetime=1h --disk=2GB --memory=2500MB --fcllist=joblist-corsika.txt --dsconf=$(date +%Y%m%d%H%M%S) --dry
 
 #================================================================
 
@@ -93,7 +93,7 @@ mu2eprodsys --prerun=corsika --prconf=/grid/fermiapp/mu2e/users/gandr/mu2egrid-c
 #================================================================
 # --code tarball (Michael)
 
-mu2eprodsys --wfpro=mu2egridtest --expected-lifetime=1h --disk=2GB  --fcllist=joblist-s1.txt --dsconf=$(date +%Y%m%d%H%M%S) --code=/pnfs/mu2e/resilient/users/mu2epro/su2020/su2020.code.92ae524e.tbz
+mu2eprodsys --wfpro=mu2egridtest --expected-lifetime=1h --disk=2GB --memory=2500MB  --fcllist=joblist-s1.txt --dsconf=$(date +%Y%m%d%H%M%S) --code=/pnfs/mu2e/resilient/users/mu2epro/su2020/su2020.code.92ae524e.tbz
 
 
 JobsubJobId of first job: 10897012.0@jobsub03.fnal.gov
