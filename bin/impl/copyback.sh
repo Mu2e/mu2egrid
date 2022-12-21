@@ -110,9 +110,7 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
 
     setup ifdhc $IFDH_VERSION
 
-    # Prepare the payload script
-    payload=$CONDOR_DIR_INPUT/"${1:?Error: copyback.sh arg missing}"
-    chmod +x $payload
+    payload=$(dirname $0)/"${1:?Error: copyback.sh arg missing}"
 
     # Run the job
     $payload > mu2e.log 2>&1
