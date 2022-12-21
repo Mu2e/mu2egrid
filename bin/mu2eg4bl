@@ -7,6 +7,7 @@
 use File::Basename;
 use Getopt::Long;
 use POSIX qw(ceil);
+use File::Temp;
 
 use Data::Dumper;
 
@@ -87,7 +88,22 @@ foreach my $k ('in', 'njobs', 'g4bl-version') {
 # All file args are to be passed to the worker node script using full path names.
 my $in = mu2egrid::find_file($opt{'in'});
 my $tar = $opt{'tar'};
-$tar = mu2egrid::find_file($tar) unless $tar eq '';
+if($tar ne '') {
+    $orig_tar = mu2egrid::find_file($tar);
+
+    # jobsub screws up tar files on transfer.
+    # encapsulate the tar inside a differently formatted file
+    open(my $encode_fh, '-|', 'base64', $orig_tar)
+    or die "Error: can not run base64: $!\n";
+
+    my ($tmp_fh, $tmp_fn) = File::Temp::tempfile();
+    print "Got tmp_fn = $tmp_fn\n";
+    while(my $line = <$encode_fh>) {
+        print $tmp_fh $line;
+    }
+
+    $tar = $tmp_fn;
+}
 
 my $mu2esetup = mu2egrid::find_file($opt{'mu2e-setup'});
 my $outstage = mu2egrid::find_directory($opt{'outstage'});
