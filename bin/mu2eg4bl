@@ -195,7 +195,7 @@ foreach my $f (@files_to_transfer) {
 push @args, ('-N', $njobs);
 
 push @args, 'file://' . $mu2egrid::impldir . '/copyback.sh';
-push @args, 'mu2eg4bl.sh';
+push @args, $mu2egrid::impldir . '/mu2eg4bl.sh';
 
 print "Command:  $mu2egrid::jobsub @args\n";
 if(!$opt{'dry-run'}) {
