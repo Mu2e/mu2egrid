@@ -88,6 +88,7 @@ foreach my $k ('in', 'njobs', 'g4bl-version') {
 # All file args are to be passed to the worker node script using full path names.
 my $in = mu2egrid::find_file($opt{'in'});
 my $tar = $opt{'tar'};
+my $encoded_tar = File::Temp->new() if($tar ne '');
 if($tar ne '') {
     $orig_tar = mu2egrid::find_file($tar);
 
@@ -96,13 +97,12 @@ if($tar ne '') {
     open(my $encode_fh, '-|', 'base64', $orig_tar)
     or die "Error: can not run base64: $!\n";
 
-    my ($tmp_fh, $tmp_fn) = File::Temp::tempfile();
-    print "Got tmp_fn = $tmp_fn\n";
+    print "Got encoded_tar = ", $encoded_tar->filename, "\n" if $opt{'verbose'};
     while(my $line = <$encode_fh>) {
-        print $tmp_fh $line;
+        print $encoded_tar $line;
     }
 
-    $tar = $tmp_fn;
+    $tar = $encoded_tar->filename;
 }
 
 my $mu2esetup = mu2egrid::find_file($opt{'mu2e-setup'});
@@ -216,10 +216,11 @@ push @args, $mu2egrid::impldir . '/mu2eg4bl.sh';
 print "Command:  $mu2egrid::jobsub @args\n";
 if(!$opt{'dry-run'}) {
     print "Submitting....\n";
-    exec { $mu2egrid::jobsub } $mu2egrid::jobsub, @args
-        or die "Error executing $mu2egrid::jobsub: $!";
+    0 == system { $mu2egrid::jobsub } $mu2egrid::jobsub, @args
+        or die "Error executing $mu2egrid::jobsub: $?";
 }
 else {
     print "Not submitting because --dry-run was requested.\n";
 }
+
 #================================================================
