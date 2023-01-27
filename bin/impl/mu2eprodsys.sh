@@ -13,6 +13,7 @@ errfile=$TMPDIR/mu2eprodsys_errmsg.$$
 #================================================================
 printinfo() {
     echo ${1:-Starting} on host `uname -a` on `date` -- $(date +%s)
+    echo \$0 is $0
     echo running as user `id`
     echo "current work dir is $(/bin/pwd)"
     echo OS version `cat /etc/redhat-release`
@@ -549,7 +550,13 @@ fi
 # Set up Mu2e environment and make ifdh available
 if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
 
-    [[ $MU2EGRID_HPC ]] || setup -B ifdhc $IFDH_VERSION
+    if [[ ! $MU2EGRID_HPC ]]; then
+        setup -B ifdhc $IFDH_VERSION
+
+        # Can not use -B because we are overriding a package already
+        # setup by ifdhc above
+        setup ifdhc_config "${MU2EGRID_IFDHC_CONFIG_VERSION}"
+    fi
 
     if [[ $MU2EGRID_HPC ]] || ( type ifdh 2> $errfile ); then
 

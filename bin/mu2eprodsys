@@ -61,6 +61,7 @@ Usage:
               [--mu2efilename-version=<string>] \\
               [--mu2etools-version=<string>] \\
               [--mu2ebintools-version=<string>] \\
+              [--ifdhc_config-version=<string>] \\
               [--prerun=<name> --prconf=<file>] \\
               [--xrootd] \\
               [--transfer-all-files] \\
@@ -128,6 +129,13 @@ EOF
     - The --mu2ebintools-version option can be used to override the
       version of the corresponding package on the worker node.
       Do not use unless you know what you are doing.
+
+    - The --ifdhc_config-version overrides the default version of the
+      ifdhc_config package used by ifdh.  If not specified, the UPS
+      current verson of package at job submission time is used.  Note
+      that the jobsub framework also uses ifdh and our override is
+      only effective for a part of the job contained to the user
+      script, but not to any operations done by jobsub itself.
 
     - The --prerun options allows to run additional processing before
       starting the art job, perhaps a non-art event generator.  The
@@ -281,6 +289,7 @@ GetOptions(\%opt,
     'mu2efilename-version=s',
     'mu2etools-version=s',
     'mu2ebintools-version=s',
+    'ifdhc_config-version=s',
     'prerun=s',
     'prconf=s',
     'error-delay=i',
@@ -415,6 +424,9 @@ print "Will use mu2etools version $ENV{MU2EGRID_MU2ETOOLS_VERSION}\n";
 if(defined $opt{'mu2ebintools-version'}) {
     $ENV{'MU2EGRID_MU2EBINTOOLS_VERSION'} = $opt{'mu2ebintools-version'};
 }
+
+$ENV{'MU2EGRID_IFDHC_CONFIG_VERSION'} = $opt{'ifdhc_config-version'} // mu2egrid::default_package_version($opt{'mu2e-setup'}, 'ifdhc_config', '');
+print "Will use ifdhc_config version $ENV{MU2EGRID_IFDHC_CONFIG_VERSION}\n";
 
 $ENV{'MU2EGRID_ERRORDELAY'} = $opt{'error-delay'} // ($njobs > 10 ?  $default_error_delay : 1);
 
