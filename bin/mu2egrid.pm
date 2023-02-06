@@ -91,7 +91,6 @@ our @commonOptList = (
 
     'group=s',
     'role=s',
-    'jobsub-server=s',
     'disk=s',
     'memory=s',
     'expected-lifetime=s',
@@ -116,7 +115,6 @@ our %commonOptDefaultsMu2e = (
 our %commonOptDefaultsJobsub = (
     default_group_helper(),
     default_role_helper(),
-    'jobsub-server' => 'https://fifebatch.fnal.gov:8443',
     'disk' => '30GB',
     'memory' => '2000MB',
     'expected-lifetime' => '24h',
@@ -138,7 +136,6 @@ sub commonOptDoc1 {
     return <<EOF
               [--group=<name>] \\
               [--role=<name>] \\
-              [--jobsub-server=<URL>] \\
               [--disk=<SizeUnits>] \\
               [--memory=<SizeUnits>] \\
               [--expected-lifetime=<spec>] \\
@@ -190,7 +187,7 @@ EOF
     }
 
     my $res= <<EOF
-    - The --group, --role, --jobsub-server, --disk, --memory, --expected-lifetime,
+    - The --group, --role, --disk, --memory, --expected-lifetime,
       --resource-provides, and --site options are passed to jobsub_submit.
       Run \"jobsub_submit -h\" for details. Arbitrary jobsub_submit options
       can be passed using --jobsub-arg.
@@ -198,7 +195,6 @@ EOF
 
           --group              $commonOptDefaultsJobsub{'group'}
           --role               Production for the mu2epro user, none otherwise
-          --jobsub-server      $commonOptDefaultsJobsub{'jobsub-server'}
           --disk               $commonOptDefaultsJobsub{'disk'}
           --memory             $commonOptDefaultsJobsub{'memory'}
           --expected-lifetime  $commonOptDefaultsJobsub{'expected-lifetime'}
