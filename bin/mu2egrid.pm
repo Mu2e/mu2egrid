@@ -35,7 +35,7 @@ my %predefinedArgChoices = (
     ]
 );
 
-my $predefinedArgChoiceDefault = 'singularity';
+my $predefinedArgChoiceDefault = 'none';
 
 sub addPredefinedArgs($$) {
     my ($args, $choice) = @_;
