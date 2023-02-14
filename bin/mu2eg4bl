@@ -103,6 +103,9 @@ if($tar ne '') {
     }
 
     $tar = $encoded_tar->filename;
+
+    # jobsub does not work well with 0600 mode files in the dropbox
+    chmod(0644, $tar);
 }
 
 my $mu2esetup = mu2egrid::find_file($opt{'mu2e-setup'});
