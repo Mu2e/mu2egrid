@@ -68,10 +68,6 @@ transferOutFiles() {
 
     MANIFEST=$(createManifest "$@")
 
-    if [[ "$EXPERIMENT" == "marsmu2e" ]]; then
-        voms-proxy-init -rfc -noregen -limited -bits 1024 -valid 24:00 -voms fermilab:/fermilab/mars/mu2e/Role=Analysis
-    fi
-
     t1=$(date +%s)
 
     # the -cd option causes gridftp to create all required directories in the output  path
