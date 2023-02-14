@@ -181,9 +181,6 @@ print "Will use ifdh version $ENV{IFDH_VERSION}\n";
 # Export the EXPERIMENT variable for ifdh
 push @args, ('-e', 'EXPERIMENT='.$ENV{'EXPERIMENT'});
 
-if($tar) {
-    push @args, ('-f', 'dropbox://' . $tar);
-}
 if($test_queue) {
     push @args, '--test_queue';
 }
