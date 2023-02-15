@@ -511,6 +511,8 @@ export mu2eprodsys_payload
 # Print this into the condor .out file; unlike the printinfo() output that goes into mu2e logs.
 echo "Starting on host $(hostname) on $(date) -- $(date +%s) seconds since epoch"
 
+[[ $MU2EGRID_DEBUG > 0 ]] && export IFDH_CP_MAXRETRIES=0
+
 [[ $MU2EGRID_DEBUG > 0 ]] && echo "We are in directory $(/bin/pwd)"
 [[ $MU2EGRID_DEBUG > 0 ]] && /usr/bin/printenv
 

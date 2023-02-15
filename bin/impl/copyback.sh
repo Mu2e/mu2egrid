@@ -80,6 +80,8 @@ transferOutFiles() {
 
 umask 002
 
+[[ $MU2EGRID_DEBUG > 0 ]] && export IFDH_CP_MAXRETRIES=0
+
 # TMPDIR is defined and created by Condor.
 WORKDIR="$TMPDIR"
 { [[ -n "$WORKDIR" ]] && mkdir -p "$WORKDIR"; } || \

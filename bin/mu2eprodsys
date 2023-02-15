@@ -432,6 +432,8 @@ $ENV{'MU2EGRID_ERRORDELAY'} = $opt{'error-delay'} // ($njobs > 10 ?  $default_er
 
 $ENV{'MU2EGRID_IFDHEXTRAOPTS'} = $opt{'ifdh-options'} // '';
 
+$ENV{'MU2EGRID_DEBUG'} = $opt{'debug'} ;
+
 #----------------------------------------------------------------
 while( (my $key, my $value) = each(%ENV) ) {
     if(($key =~ m/^MU2EGRID_\w+$/) or ($key eq 'IFDH_VERSION')) {

@@ -133,6 +133,7 @@ $ENV{'MU2EGRID_OUTSTAGE'} = $outstage;
 $ENV{'MU2EGRID_NCLUSTERJOBS'} = $njobs;
 $ENV{'MU2EGRID_G4BLVERSION'} = $opt{'g4bl-version'};
 $ENV{'MU2EGRID_G4BL_ADD_ARGS'} = $opt{'g4bl-add-args'};
+$ENV{'MU2EGRID_DEBUG'} = $opt{'debug'} ;
 
 $ENV{'MU2EGRID_MASTERIN'} = basename($in);
 push @files_to_transfer, $in;

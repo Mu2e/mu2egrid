@@ -85,6 +85,7 @@ our @commonOptList = (
     'priority=i',
     'dry-run',
     'verbose',
+    'debug',
     'help',
 
 #  Some frequently used jobsub_submit settings
@@ -106,6 +107,7 @@ our %commonOptDefaultsMu2e = (
     'priority' => 0,
     'dry-run' => 0,
     'verbose' => 0,
+    'debug' => 0,
     'help' => 0,
     );
 
@@ -155,6 +157,7 @@ EOF
               [--priority=<int>] \\
               [--dry-run] \\
               [--verbose] \\
+              [--debug] \\
               [--help]
 EOF
 ;
@@ -256,6 +259,10 @@ EOF
       sending the jobs.  Usually used in conjunction with --verbose.
 
     - Add --verbose if you want to see the details of what is going on.
+
+    - The --debug options is used during mu2egrid scripts development,
+      it tried to avoid things like ifdh retries that are helpful
+      in production but slow down the debug cycle.
 
     - The --help option prints this message.
 
