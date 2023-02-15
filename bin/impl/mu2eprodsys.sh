@@ -611,12 +611,12 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
 
             t1=$(date +%s)
 
-            ifdh mkdir_p ${MU2EGRID_IFDHEXTRAOPTS} ${OUTDIR}
+            ifdh mkdir_p ${MU2EGRID_IFDHEXTRAOPTS} ${tmpOutDir}
             ifdhret=$?
             if [[ $ifdhret -ne 0 ]]; then
-                echo "The command: ifdh mkdir_p ${MU2EGRID_IFDHEXTRAOPTS} ${OUTDIR}" >&2
+                echo "The command: ifdh mkdir_p ${MU2EGRID_IFDHEXTRAOPTS} ${tmpOutDir}" >&2
                 echo "has failed on $(date) with status code $ifdhret.  Re-running with IFDH_DEBUG=10." >&2
-                IFDH_DEBUG=10 ifdh mkdir_p ${MU2EGRID_IFDHEXTRAOPTS} ${OUTDIR} >&2
+                IFDH_DEBUG=10 ifdh mkdir_p ${MU2EGRID_IFDHEXTRAOPTS} ${tmpOutDir} >&2
                 ifdhret=$?
             fi
 
