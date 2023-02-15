@@ -23,7 +23,7 @@ mu2eg4bl --in=$myG4BL/Mu2E.in --tar=$myG4BL/Geometry.tar --g4bl-version=v2_16a -
 # Offline
 
 #----------------------------------------------------------------
-# Offline stage 1
+# Offline stage 1: less than 5 minutes to run a job interactively on a mu2egpvm node
 
 mu2eDatasetFileList cnf.gandr.gridtest-s1.v1.fcl | head -2 > joblist-s1.txt
 mu2eprodsys --error-delay=1 --wfpro=mu2egridtest --setup=$myOffline --expected-lifetime=1h --disk=2GB --memory=2500MB  --fcllist=joblist-s1.txt --dsconf=$(date +%Y%m%d%H%M%S)

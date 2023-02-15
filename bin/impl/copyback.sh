@@ -70,8 +70,8 @@ transferOutFiles() {
 
     t1=$(date +%s)
 
-    # the -cd option causes gridftp to create all required directories in the output  path
-    IFDH_GRIDFTP_EXTRA='-cd' ifdh cp -D  "$MANIFEST" "$@" ${OUTDIR}
+    ifdh mkdir_p ${OUTDIR}
+    ifdh cp -D  "$MANIFEST" "$@" ${OUTDIR}
 
     t2=$(date +%s)
     echo "$(date) # Total outstage lock and copy time: $((t2-t1)) seconds"
