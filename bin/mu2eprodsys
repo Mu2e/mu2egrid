@@ -451,8 +451,7 @@ push @args, ( '-f', "dropbox://$fcllist" );
 
 push @args, ( '-f', "dropbox://$prconf_fullpathname" ) if $prconf_fullpathname;
 
-push @args, ( '--use-cvmfs-dropbox',
-              '--tar_file_name',
+push @args, ( '--tar_file_name',
               'dropbox://' . $ENV{MU2EGRID_CODE}
     ) if $ENV{MU2EGRID_CODE};
 
