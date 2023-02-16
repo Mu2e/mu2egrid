@@ -77,10 +77,7 @@ if setup G4beamline "${MU2EGRID_G4BLVERSION:?Error: MU2EGRID_G4BLVERSION not set
 
     # Make the input files visible
     if [[ -n "$MU2EGRID_TAR" ]]; then
-        # 2022-12-21 jobsub screws up tar files on transer.
-        # One has to hide tar file content from jobsub to get it safely transferred.
-        # mu2eg4bl uses base64 encoding to achieve this.
-        ( cd $CONDOR_DIR_INPUT && base64 -d  $MU2EGRID_TAR | tar xf - )
+        ( cd $CONDOR_DIR_INPUT && tar xf $MU2EGRID_TAR )
     fi
     ln -s $CONDOR_DIR_INPUT/* .
 
