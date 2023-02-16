@@ -109,9 +109,6 @@ if($tar ne '') {
 }
 
 my $mu2esetup = mu2egrid::find_file($opt{'mu2e-setup'});
-my $outstage = mu2egrid::find_directory($opt{'outstage'});
-
-mu2egrid::assert_known_outstage($outstage);
 
 my $njobs = $opt{'njobs'};
 my $test_queue = $opt{'test-queue'};
@@ -129,7 +126,6 @@ else {
 
 $ENV{'MU2EGRID_MU2ESETUP'} = $mu2esetup;
 $ENV{'MU2EGRID_OUTDIRFMT'} = "$jobname.%d/%05d";
-$ENV{'MU2EGRID_OUTSTAGE'} = $outstage;
 $ENV{'MU2EGRID_NCLUSTERJOBS'} = $njobs;
 $ENV{'MU2EGRID_G4BLVERSION'} = $opt{'g4bl-version'};
 $ENV{'MU2EGRID_G4BL_ADD_ARGS'} = $opt{'g4bl-add-args'};

@@ -16,13 +16,6 @@ use English qw( -no_match_vars ) ; # Avoids regex performance penalty
 our $impldir;
 $impldir = abs_path(dirname($0) . '/impl');
 
-our @knownOutstage = ('/pnfs/mu2e/scratch/outstage',
-                      '/pnfs/mu2e/persistent/outstage'
-                      );
-
-our $mu2eDefaultOutstage = $knownOutstage[0];
-
-
 #================================================================
 my %predefinedArgChoices = (
     'none' => ['Use jobsub defaults.', []],
@@ -80,7 +73,6 @@ our @commonOptList = (
     'ifdh-version=s',
     'ifdh-options=s',
     'jobsub-arg=s@',
-    'outstage=s',
     "prestage-spec=s",
     'priority=i',
     'dry-run',
@@ -103,7 +95,6 @@ our @commonOptList = (
 our %commonOptDefaultsMu2e = (
     'predefined-args' => $predefinedArgChoiceDefault,
     'mu2e-setup' => '/cvmfs/mu2e.opensciencegrid.org/setupmu2e-art.sh',
-    'outstage' => $mu2egrid::mu2eDefaultOutstage,
     'priority' => 0,
     'dry-run' => 0,
     'verbose' => 0,
@@ -130,9 +121,6 @@ sub commonOptDoc1 {
     my $prestageIsSupported = $features{'prestageIsSupported'} // 1;
     my $prestagestr = $prestageIsSupported ? "              [--prestage-spec=<file>] \\\n" : "";
 
-    my $outstageIsSupported = $features{'outstageIsSupported'} // 1;
-    my $outstagestr = $outstageIsSupported ? "              [--outstage=<dir>] \\\n" : "";
-
     my $predef = join('|', keys %predefinedArgChoices);
 
     return <<EOF
@@ -149,8 +137,6 @@ sub commonOptDoc1 {
               [--ifdh-version=<version>] \\
               [--ifdh-opts=<string>] \\
 EOF
-.
-    $outstagestr
 .
     $prestagestr
 .    <<EOF
@@ -169,17 +155,6 @@ sub commonOptDoc2 {
     # legacy default
 
     my $prestageIsSupported = $features{'prestageIsSupported'} // 1;
-    my $outstageIsSupported = $features{'outstageIsSupported'} // 1;
-
-    my $formattedOutstage = join("\n\t\t", ('', @mu2egrid::knownOutstage));
-    my $outstageDocString = $outstageIsSupported ? <<EOF
-
-    - Outstage should be one of the following registered locations:
-           $formattedOutstage
-
-      by default $mu2eDefaultOutstage is used.
-EOF
-: '';
 
     my $keyFieldWidth = 15;
     my $preDoc='';
@@ -226,8 +201,6 @@ EOF
 
 EOF
 ;
-    $res .= $outstageDocString;
-
     if($prestageIsSupported) {
         $res .= <<EOF
 
@@ -278,15 +251,6 @@ thing.)
 EOF
     ;
 return $res;
-}
-
-#================================================================
-sub assert_known_outstage($) {
-    my $d = shift;
-    foreach my $o (@knownOutstage) {
-        $o eq $d and return 1;
-    }
-    die "The specified outstage \"$d\" is not recognized - is this a typo?  Known location: @knownOutstage\n";
 }
 
 #================================================================
@@ -366,18 +330,17 @@ BEGIN {
 
     @ISA         = qw(Exporter);
     @EXPORT      = qw();
-    ## %EXPORT_TAGS = ( all => [qw( &find_file $impldir @knownOutstage $mu2eDefaultOutstage )] );
+    ## %EXPORT_TAGS = ( all => [qw( &find_file $impldir )] );
 
     # your exported package globals go here,
     # as well as any optionally exported functions
     @EXPORT_OK   = qw(
                       $impldir
-                      @knownOutstage $mu2eDefaultOutstage
                       &addPredefinedArgs
                       @commonOptList
                       $jobsub %commonOptDefaultsMu2e %commonOptDefaultsJobsub
                       &commonOptDoc1 &commonOptDoc2
-                      &assert_known_outstage &find_file &validate_file_list
+                      &find_file &validate_file_list
                       &validate_prestage_spec
                       );
 }

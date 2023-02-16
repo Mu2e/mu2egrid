@@ -100,8 +100,8 @@ test -x $CVMFSHACK && $CVMFSHACK /cvmfs/mu2e.opensciencegrid.org
 printinfo > sysinfo.log 2>&1
 
 user=${MU2EGRID_SUBMITTER:?"Error: MU2EGRID_SUBMITTER is not set"}
+outstagebase="/pnfs/mu2e/scratch/users/$user/outstage";
 outfmt=${MU2EGRID_OUTDIRFMT:?"Error: MU2EGRID_OUTDIRFMT is not set"}
-outstagebase=${MU2EGRID_OUTSTAGE:?"Error: MU2EGRID_OUTSTAGE is not set"}
 
 # Set up Mu2e environment and make ifdh available
 if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
@@ -121,12 +121,12 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
     # and transferred files back.  To prevent data corruption we write to
     # a unique tmp dir, than rename it to the final name.
 
-    finalOutDir="${outstagebase}/$user/$(printf $outfmt  ${CLUSTER:-1} ${PROCESS:-0})"
+    finalOutDir="${outstagebase}/$(printf $outfmt  ${CLUSTER:-1} ${PROCESS:-0})"
     tmpOutDir="${finalOutDir}.$(od -A n -N 4 -t x4 /dev/urandom|sed -e 's/ //g')"
 
     transferOutFiles "${tmpOutDir}" $(filterOutProxy $(selectFiles *) )
-    ifdh chmod 0755 "${tmpOutDir}"
     ifdh rename "${tmpOutDir}" "${finalOutDir}"
+    ifdh chmod 0755 "${finalOutDir}"
 
 else
     echo "Error sourcing setup script ${MU2EGRID_MU2ESETUP}: status code $?"

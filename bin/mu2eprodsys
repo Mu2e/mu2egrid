@@ -25,7 +25,7 @@ my $default_error_delay = 30*60; # grid black hole node protection
 my $defaultProductionWFTop = '/pnfs/mu2e/persistent/users';
 my $defaultUserWFTop = '/pnfs/mu2e/scratch/users';
 
-my %features = ( prestageIsSupported => 0, outstageIsSupported => 0);
+my %features = ( prestageIsSupported => 0);
 
 my @extra_jobsub_args;
 
@@ -295,7 +295,7 @@ GetOptions(\%opt,
     'error-delay=i',
     'xrootd',
     'transfer-all-files',
-    grep {!/prestage-spec/ and !/outstage/} @mu2egrid::commonOptList)
+    grep {!/prestage-spec/} @mu2egrid::commonOptList)
     or die "\nError processing command line options.\n";
 
 if($opt{'help'}) {
