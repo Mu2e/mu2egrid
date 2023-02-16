@@ -131,6 +131,8 @@ $ENV{'MU2EGRID_G4BLVERSION'} = $opt{'g4bl-version'};
 $ENV{'MU2EGRID_G4BL_ADD_ARGS'} = $opt{'g4bl-add-args'};
 $ENV{'MU2EGRID_DEBUG'} = $opt{'debug'} ;
 
+push @files_to_transfer, $mu2egrid::impldir . '/mu2eg4bl.sh';
+
 $ENV{'MU2EGRID_MASTERIN'} = basename($in);
 push @files_to_transfer, $in;
 
@@ -208,7 +210,7 @@ foreach my $f (@files_to_transfer) {
 push @args, ('-N', $njobs);
 
 push @args, 'file://' . $mu2egrid::impldir . '/copyback.sh';
-push @args, $mu2egrid::impldir . '/mu2eg4bl.sh';
+push @args, 'mu2eg4bl.sh';
 
 print "Command:  $mu2egrid::jobsub @args\n";
 if(!$opt{'dry-run'}) {
