@@ -264,7 +264,7 @@ mu2eprodsys_payload() {
     #================================================================
     # Handle the code-in-the-user-tarball case.
     if [ -n "$MU2EGRID_CODE" ]; then
-        MU2EGRID_USERSETUP="${INPUT_TAR_DIR}/${MU2EGRID_USERSETUP}";
+        MU2EGRID_USERSETUP="${INPUT_TAR_DIR_LOCAL}/${MU2EGRID_USERSETUP}";
         echo "mu2eprodsys $(date) -- $(date +%s) pointing MU2EGRID_USERSETUP to the tarball extract: $MU2EGRID_USERSETUP"
     fi
 
