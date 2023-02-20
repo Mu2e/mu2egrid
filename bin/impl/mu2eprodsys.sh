@@ -512,6 +512,8 @@ export mu2eprodsys_payload
 echo "Starting on host $(hostname) on $(date) -- $(date +%s) seconds since epoch"
 
 [[ $MU2EGRID_DEBUG > 0 ]] && export IFDH_CP_MAXRETRIES=0
+# Workaround for ifdh breakage on transfer timeout per INC000001147234
+export IFDH_CP_UNLINK_ON_ERROR=1
 
 [[ $MU2EGRID_DEBUG > 0 ]] && echo "We are in directory $(/bin/pwd)"
 [[ $MU2EGRID_DEBUG > 0 ]] && /usr/bin/printenv

@@ -81,6 +81,8 @@ transferOutFiles() {
 umask 002
 
 [[ $MU2EGRID_DEBUG > 0 ]] && export IFDH_CP_MAXRETRIES=0
+# Workaround for ifdh breakage on transfer timeout per INC000001147234
+export IFDH_CP_UNLINK_ON_ERROR=1
 
 # TMPDIR is defined and created by Condor.
 WORKDIR="$TMPDIR"
