@@ -32,6 +32,14 @@ mu2eprodsys --debug --error-delay=1 --wfpro=mu2egridtest --setup=$myOffline --ex
 #mu2eClusterCheckAndMove --dry --timecut=10 /pnfs/mu2e/scratch/users/gandr/workflow/mu2egridtest/outstage/10830312
 
 #----------------------------------------------------------------
+# FCL tarball instead of list
+
+mu2eDatasetFileList cnf.gandr.gridtest-s1.v1.fcl | head -2 > joblist-s1.txt
+mkdir inputs && cp `cat ../joblist-s1.txt ` inputs;  tar cvf fcllist.tar inputs ; cp  fcllist.tar /pnfs/mu2e/scratch/users/gandr/test/
+
+mu2eprodsys --debug --error-delay=1 --wfpro=mu2egridtest --setup=$myOffline --expected-lifetime=1h --disk=2GB --memory=2500MB  --fcllist=/pnfs/mu2e/scratch/users/gandr/test/fcllist.tar --dsconf=$(date +%Y%m%d%H%M%S); date
+
+#----------------------------------------------------------------
 # --code tarball (andr)
 
 mu2eprodsys --debug --error-delay=1 --wfpro=mu2egridtest --code=/pnfs/mu2e/resilient/users/gandr/gridexport/tmp.9I7Gv1adwT/Code.tar.bz --expected-lifetime=1h --disk=2GB --memory=2500MB  --fcllist=joblist-s1.txt --dsconf=$(date +%Y%m%d%H%M%S)

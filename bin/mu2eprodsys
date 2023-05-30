@@ -460,8 +460,8 @@ push @args, 'file://' . $mu2egrid::impldir . '/mu2eprodsys.sh';
 print "Command:  $mu2egrid::jobsub @args\n";
 if(!$opt{'dry-run'}) {
     print "Submitting....\n";
-exec { $mu2egrid::jobsub } $mu2egrid::jobsub, @args
-    or die "Error executing $mu2egrid::jobsub: $!";
+    0 == system { $mu2egrid::jobsub } $mu2egrid::jobsub, @args
+        or die "Error executing $mu2egrid::jobsub: $?";
 }
 else {
     print "Not submitting because --dry-run was requested.\n";
