@@ -38,6 +38,7 @@ my %opt =
      'dsowner' => $dsowner,
      'xrootd' => 0,
      'transfer-all-files' => 0,
+     'delete-proxy' => 0,
     );
 
 @opt{keys %mu2egrid::commonOptDefaultsMu2e}  =  values %mu2egrid::commonOptDefaultsMu2e;
@@ -65,6 +66,7 @@ Usage:
               [--prerun=<name> --prconf=<file>] \\
               [--xrootd] \\
               [--transfer-all-files] \\
+              [--delete-proxy] \\
               [--error-delay=<int>] \\
 EOF
         . mu2egrid::commonOptDoc1(%features) . <<EOF
@@ -159,6 +161,10 @@ EOF
     - The --transfer-all-files option requests to "ifdh cp" back
       all files left in the working directory after the job is complete.
       By default only *.art *.root *.json and the log file transferred.
+
+    - The --delete-proxy option is for testing the proxy-token transition.
+      This will delete the \$X509_USER_PROXY file on the worker node
+      and unset the environment variable.
 
     - The --error-delay options sets the delay, in seconds, before
       the worker node script will exit after a payload failure.
@@ -295,6 +301,7 @@ GetOptions(\%opt,
     'error-delay=i',
     'xrootd',
     'transfer-all-files',
+    'delete-proxy',
     grep {!/prestage-spec/} @mu2egrid::commonOptList)
     or die "\nError processing command line options.\n";
 
@@ -387,6 +394,7 @@ $ENV{'MU2EGRID_CLUSTERNAME'} = $opt{'clustername'} // '';
 $ENV{'MU2EGRID_DSCONF'} = $opt{'dsconf'};
 
 $ENV{'MU2EGRID_TRANSFER_ALL'} = $opt{'transfer-all-files'};
+$ENV{'MU2EGRID_DELETE_PROXY'} = $opt{'delete-proxy'};
 $ENV{'MU2EGRID_XROOTD'} = $opt{'xrootd'};
 
 #----------------------------------------------------------------

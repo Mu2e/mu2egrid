@@ -551,6 +551,16 @@ else
 fi
 
 #================================================================
+# Test for using tokens during the proxy-token transition period
+
+if [[ $MU2EGRID_DELETE_PROXY ]]; then
+    # This printout goes to jobsub logs, not the mu2e job log
+    echo "Deleting X509 proxy $X509_USER_PROXY"
+    rm -f $X509_USER_PROXY
+    unset X509_USER_PROXY
+fi
+
+#================================================================
 # Set up Mu2e environment and make ifdh available
 if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
 
