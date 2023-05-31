@@ -38,7 +38,7 @@ my %opt =
      'dsowner' => $dsowner,
      'xrootd' => 0,
      'transfer-all-files' => 0,
-     'delete-proxy' => 0,
+     'delete-proxy' => 1,
     );
 
 @opt{keys %mu2egrid::commonOptDefaultsMu2e}  =  values %mu2egrid::commonOptDefaultsMu2e;
