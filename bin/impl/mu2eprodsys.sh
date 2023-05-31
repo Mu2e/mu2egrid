@@ -558,6 +558,10 @@ if [[ $MU2EGRID_DELETE_PROXY ]]; then
     echo "Deleting X509 proxy $X509_USER_PROXY"
     rm -f $X509_USER_PROXY
     unset X509_USER_PROXY
+
+    echo "# Running httokendecode ================"
+    httokendecode
+    echo "# After httokendecode ================"
 fi
 
 #================================================================

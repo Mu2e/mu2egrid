@@ -277,6 +277,15 @@ sub corsika_prerun_handler {
 }
 
 #================================================================
+sub token_request_dirname {
+    my ($str) = @_;
+    # tokens use dir names like /mu2e/scratch for things mounted at
+    # /pnfs/mu2e/scratch
+    $str =~ s|^/pnfs/mu2e|/mu2e|;
+    return $str;
+}
+
+#================================================================
 # Protect against potential conflicing stuff from the user environment
 foreach my $k (grep {/^MU2EGRID_/} keys %ENV) {
     delete $ENV{$k};
@@ -452,6 +461,8 @@ while( (my $key, my $value) = each(%ENV) ) {
         }
     }
 }
+
+push @args, ('--need-storage-modify', token_request_dirname($wfoutstage));
 
 push @args, ('-N', $njobs);
 
