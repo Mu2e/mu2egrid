@@ -18,17 +18,14 @@ $impldir = abs_path(dirname($0) . '/impl');
 
 #================================================================
 my %predefinedArgChoices = (
-    'none' => ['Use jobsub defaults.', []],
-    'sl7' =>  ["Request SL7 nodes:\n", ['--OS=SL7']],
-    'singularity' => ["Request to use singularity:\n",
-                      [
-                       "--append_condor_requirements='(TARGET.HAS_SINGULARITY=?=true)'",
-                       "-l", "'+SingularityImage=\"/cvmfs/singularity.opensciencegrid.org/fermilab/fnal-wn-sl7:latest\"'"
-                      ]
-    ]
+    'none' => ['Do not add any extra command line options.', []],
+    'sl7' =>  ["Request SL7 singularity image:\n",
+               ['--singularity-image',
+                '/cvmfs/singularity.opensciencegrid.org/fermilab/fnal-wn-sl7:latest']
+    ],
 );
 
-my $predefinedArgChoiceDefault = 'none';
+my $predefinedArgChoiceDefault = 'sl7';
 
 sub addPredefinedArgs($$) {
     my ($args, $choice) = @_;
