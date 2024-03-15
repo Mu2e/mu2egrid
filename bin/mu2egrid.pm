@@ -181,9 +181,8 @@ sub commonOptDoc2 {
       The choices are:\n\n$preDoc
       The default setting is '$predefinedArgChoiceDefault'.
 
-    --mu2e-setup arg is optional, by default the current official mu2e
-      release is used.  The ifdhc package must be available in the
-      UPS area set up by the script.
+    --mu2e-setup setting is optional, the default is
+      $commonOptDefaultsMu2e{'mu2e-setup'}
 
     --ifdh-version=<version> exports the requested IFDH_VERSION to the
       worker node.  It is used by both jobsub package scripts and
