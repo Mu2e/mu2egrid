@@ -1,0 +1,379 @@
+#!/usr/bin/perl -w
+#
+# A frontend script to submit mu2e framework jobs
+#
+# A.Gaponenko, 2024
+#
+
+use File::Basename;
+use File::Path;
+use File::Temp;
+use Getopt::Long;
+use POSIX qw(ceil);
+
+use Data::Dumper; # for debugging
+
+use mu2ejobtools;
+use Mu2eJobPars;
+use Mu2eInSpecs;
+
+use lib dirname($0);
+use mu2egrid;
+
+my $submitter = `whoami`;
+chomp($submitter);
+
+my $sp = Mu2eInSpecs->new;
+$sp->disable_protocol(proto_file);
+
+my $default_error_delay = 30*60; # grid black hole node protection
+
+my $defaultProductionWFTop = '/pnfs/mu2e/persistent/users';
+my $defaultUserWFTop = '/pnfs/mu2e/scratch/users';
+
+my %features = ( prestageIsSupported => 0);
+
+my @extra_jobsub_args;
+
+my %opt =
+    (
+     'jobsub-arg' => \@extra_jobsub_args,
+     'transfer-all-files' => 0,
+    );
+
+@opt{keys %mu2egrid::commonOptDefaultsMu2e}  =  values %mu2egrid::commonOptDefaultsMu2e;
+@opt{keys %mu2egrid::commonOptDefaultsJobsub}  =  values %mu2egrid::commonOptDefaultsJobsub;
+$opt{'wftop'} = '';
+$opt{'wfproject'} = 'default';
+
+
+#================================================================
+sub usage() {
+    my $self = basename($0);
+
+    my $inspec_opts = $sp->help_opts(' 'x14);
+    chomp $inspec_opts;
+
+    my $inspec_help = $sp->help_explanation(' 'x4);
+    chomp $inspec_help;
+
+    return <<EOF
+Usage:
+        $self --jobdef jobdef.tar \\
+              JOB_SET_SPECIFICATION \\
+$inspec_opts
+              [--wftop=<directory>] \\
+              [--wfproject=<name>] \\
+              [--clustername=<name>] \\
+              [--mu2efilename-version=<string>] \\
+              [--mu2ejobtools-version=<string>] \\
+              [--transfer-all-files] \\
+              [--error-delay=<int>] \\
+EOF
+        . mu2egrid::commonOptDoc1(%features) . <<EOF
+
+    - The --jobdef should point to a job definition file produced by
+      the mu2ejobdef script from the mu2ejobtools package
+
+    - JOB_SET_SPECIFICATION can take one of the following forms
+
+        --all
+          Submits grid processes for all jobs defined in the jobdef
+          file which must define a finite set of jobs.
+
+        --firstjob=uint --njobs=uint
+          Defines the index of the first job and requests to submit
+          njobs processes for jobs with sequential indexes
+
+        --jobs=i1,i2,...
+          A comma separated list of job indexes.
+
+        --jobset=file.json
+          The JSON must contain, at the top level, a key "jobset" that
+          points to an array of job indexes.
+
+$inspec_help
+    - The --wftop and --wfproject options determine the location of
+      output files in the "workflow" directory structure.
+      Grid jobs will write their outputs under
+
+      \$wftop/\$USER/workflow/\$wfproject/outstage
+
+      where \$USER is the name of the submitter (here: "$submitter").
+      By default \$wftop=$defaultProductionWFTop
+      for --role=Production and $defaultUserWFTop otherwise.
+      The default \$wfproject is "default".
+
+    - The --clustername option can be used to alter the name of
+      the cluster level outstage directory.  For example, with
+      --clustername=foo the outstage directory will be named like
+      1884300.foo (where 1884300 is the condor cluster number)
+
+    - The --mu2efilename-version and --mu2ejobtools-version options can
+      be used to override the default version of the corresponding
+      package.  If not specified, the UPS current verson of package
+      at the job submission time is used.
+
+    - The --transfer-all-files option requests to "ifdh cp" back
+      all files left in the working directory after the job is complete.
+      By default only *.art *.root *.json and the log file transferred.
+
+    - The --error-delay options sets the delay, in seconds, before
+      the worker node script will exit after a payload failure.
+      This helps to reduce batch queue drain by broken grid nodes.
+      The default value is $default_error_delay.
+
+EOF
+. mu2egrid::commonOptDoc2(%features)
+    ;
+}
+
+#================================================================
+# Returns the name of a key from the list if present in %opt
+sub forbidden_keys {
+    my $opt = shift;
+    foreach my $k (@_) {
+        return $k if defined $opt{$k};
+    }
+    return undef;
+}
+
+sub token_request_dirname {
+    my ($str) = @_;
+    # tokens use dir names like /mu2e/scratch for things mounted at
+    # /pnfs/mu2e/scratch
+    $str =~ s|^/pnfs/mu2e|/mu2e|;
+    return $str;
+}
+
+#================================================================
+# Protect against potential conflicing stuff from the user environment
+foreach my $k (grep {/^MU2EGRID_/} keys %ENV) {
+    delete $ENV{$k};
+}
+
+# Process command line opts.
+GetOptions(\%opt,
+           'jobdef=s',
+           'all', 'firstjob=i', 'njobs=i', "jobs=s", 'jobset=s',
+           'wftop=s',
+           'wfproject=s',
+           'mu2efilename-version=s',
+           'mu2ejobtools-version=s',
+           'clustername=s',
+           'error-delay=i',
+           'transfer-all-files',
+           $sp->option_defs(),
+           grep {!/prestage-spec/} @mu2egrid::commonOptList)
+    or die "\nError processing command line options.\n";
+
+if($opt{'help'}) {
+    print usage();
+exit 0;
+}
+
+print "Final set of options:\n", Dumper( \%opt ), "\n"
+    if($opt{'verbose'});
+
+# A structure to prepare "operational options" that need to
+# be passed to the worker node
+my %ops;
+
+#----------------
+die "Error: --jobdef must be specified\n" unless defined $opt{'jobdef'};
+my $jobdeffn = mu2egrid::find_file($opt{'jobdef'});
+my $jobdef = Mu2eJobPars->new($jobdeffn);
+
+#----------------------------------------------------------------
+# Figure out what jobs to run
+my @jobset;
+
+if($opt{'all'}) {
+    if(my $check = forbidden_keys(\%opt, 'firstjob', 'njobs', 'jobs', 'jobset')) {
+        die "Error: option $check conflicts with --all\n";
+    }
+    if($jobdef->njobs()) {
+        @jobset = (0 .. $jobdef->njobs()-1);
+    }
+    else {
+        die "Error: file $jobdeffn defines an infinite set of jobs, --all is not allowed.\n";
+    }
+}
+elsif($opt{'firstjob'}) {
+    if(my $check = forbidden_keys(\%opt, 'all', 'jobs', 'jobset')) {
+        die "Error: option $check conflicts with --firstjob\n";
+    }
+    my $firstjob = $opt{'firstjob'};
+    die "Error: --firstjob must be non-negative\n" if $firstjob < 0;
+    my $njobs = $opt{'njobs'};
+    die "Error: --firstjob requires --njobs\n" unless defined $njobs;
+    die "Error: --njobs must be positive\n" unless $njobs > 0;
+    @jobset = ($firstjob .. $firstjob+$njobs-1);
+}
+elsif($opt{'jobs'}) {
+    if(my $check = forbidden_keys(\%opt, 'all', 'firstjob', 'njobs', 'jobset')) {
+        die "Error: option $check conflicts with --jobs\n";
+    }
+    my @toks = split(',', $opt{'jobs'});
+    foreach my $k (@toks) {
+        chomp $k;
+        $k =~ /^\d+$/ or die "Error: the --jobs option must contain a comma-separated list of uints, got ".$opt{'jobs'}."\n";
+        push @jobset,$k;
+    }
+}
+elsif($opt{'jobset'}) {
+    if(my $check = forbidden_keys(\%opt, 'all', 'firstjob', 'njobs', 'jobs')) {
+        die "Error: option $check conflicts with --jobset\n";
+    }
+
+    my $filename = find_file($opt{'jobset'});
+    my $jsstr = do{local(@ARGV,$/)=$filename; <> };
+    my $jstop = from_json($jsstr);
+    my $jobs = $jstop->{json_key_jobset()};
+    die "Error: file $filename does not contain the required key \"",json_key_jobset(),"\"\n"
+        unless defined $jobs;
+
+    # FIXME: check that $jobs points to an array of units
+    # and copy them to @jobset
+
+    die "FIXME: --jobset is not implemented";
+}
+else {
+    die "Error: none of JOB_SET_SPECIFICATION options are provided\n";
+}
+
+indexcheck: {
+    my $maxjobs = $jobdef->njobs();
+    my %seen;
+    foreach my $i (@jobset) {
+        die "Error: job index $i is outide of the allowed range, maxjobs = $maxjobs\n"
+            unless !$maxjobs or $i < $maxjobs;
+        die "Error: job indexes must be non-negative, got $i\n" if $i < 0;
+        die "Error: found duplicate job index $i\n" if $seen{$i};
+        $seen{$i} = 1;
+    }
+}
+
+$ops{json_key_jobset()} = \@jobset;
+my $njobs = scalar(@jobset);
+
+#----------------------------------------------------------------
+# Handle input file specs
+$sp->initialize([$jobdef->input_datasets()], \%opt);
+
+my %inspec;
+foreach my $ds ($jobdef->input_datasets()) {
+    $inspec{$ds} = [
+        $sp->protocol($ds),
+        $sp->location($ds)
+        ];
+}
+
+$ops{json_key_inspec()} = \%inspec;
+
+#----------------------------------------------------------------
+# write the "ops" json file
+
+my $opsjson = File::Temp->new(TEMPLATE=> 'gcpXXXXX', SUFFIX => '.json',
+                              TMPDIR => 1, UNLINK => !$opt{'debug'});
+
+my $js = JSON->new->pretty;
+print $opsjson $js->encode(\%ops);
+
+print "ops json file is " . $opsjson . "\n" if $opt{'verbose'};
+
+#----------------
+# Decide what outstage to use, unless one is specified by user
+if($opt{'wftop'} eq '') {
+    if(defined($opt{'role'}) and ($opt{'role'} eq 'Production')) {
+        $opt{'wftop'} = $defaultProductionWFTop;
+    }
+    else {
+        $opt{'wftop'} = $defaultUserWFTop;
+    }
+}
+
+my $wfoutstage = $opt{'wftop'} . '/' . $submitter . '/workflow/' . $opt{'wfproject'} . '/outstage';
+
+File::Path::make_path( $wfoutstage, { verbose=>1 } ) # this Carps on errors
+    unless $opt{'dry-run'};
+
+print "Will use the outstage directory = $wfoutstage\n";
+
+#----------------------------------------------------------------
+$ENV{'MU2EGRID_MU2ESETUP'} = mu2egrid::find_file($opt{'mu2e-setup'});
+$ENV{'MU2EGRID_JOBDEF'} = basename($jobdeffn);
+$ENV{'MU2EGRID_OPSJSON'} = basename($opsjson);
+$ENV{'MU2EGRID_WFOUTSTAGE'} = $wfoutstage;
+$ENV{'MU2EGRID_CLUSTERNAME'} = $opt{'clustername'} // '';
+$ENV{'MU2EGRID_TRANSFER_ALL'} = $opt{'transfer-all-files'};
+$ENV{'MU2EGRID_ERRORDELAY'} = $opt{'error-delay'} // ($njobs > 10 ?  $default_error_delay : 1);
+$ENV{'MU2EGRID_DEBUG'} = $opt{'debug'} ;
+
+#----------------------------------------------------------------
+# command line args for the jobsub command
+my @args;
+for my $key (keys %mu2egrid::commonOptDefaultsJobsub) {
+    if(defined $opt{$key}) {
+        print "Adding jobsub_submit option: --$key $opt{$key}\n" if $opt{'verbose'};
+        push @args, ("--$key", $opt{$key});
+    }
+}
+
+push @args, ('-l', "priority=$opt{priority}");
+
+mu2egrid::addPredefinedArgs(\@args, $opt{'predefined-args'});
+
+push @args, @extra_jobsub_args;
+
+# Export the EXPERIMENT variable for ifdh
+push @args, ('-e', 'EXPERIMENT='.$ENV{'EXPERIMENT'});
+
+#----------------------------------------------------------------
+# Figure out package versions to use on the worker node
+
+# IFDH_VERSION in the environment is used by both jobsub and our worker node scripts.
+# This is why we don't use the MU2EGRID_ prefix for this var.
+$ENV{'IFDH_VERSION'} = $opt{'ifdh-version'} // $ENV{'IFDH_VERSION'} // mu2egrid::default_package_version($opt{'mu2e-setup'}, 'ifdhc', '');
+print "Will use ifdh version $ENV{IFDH_VERSION}\n";
+
+$ENV{'MU2EGRID_IFDHEXTRAOPTS'} = $opt{'ifdh-options'} // '';
+
+$ENV{'MU2EGRID_MU2EFILENAME_VERSION'} = $opt{'mu2efilename-version'} // mu2egrid::default_package_version($opt{'mu2e-setup'}, 'mu2efilename', '');
+print "Will use mu2efilename version $ENV{MU2EGRID_MU2EFILENAME_VERSION}\n";
+
+$ENV{'MU2EGRID_MU2EJOBTOOLS_VERSION'} = $opt{'mu2ejobtools-version'} // mu2egrid::default_package_version($opt{'mu2e-setup'}, 'mu2ejobtools', '');
+print "Will use mu2ejobtools version $ENV{MU2EGRID_MU2EJOBTOOLS_VERSION}\n";
+
+#----------------------------------------------------------------
+while( (my $key, my $value) = each(%ENV) ) {
+    if(($key =~ m/^MU2EGRID_\w+$/) or ($key eq 'IFDH_VERSION')) {
+        # jobsub_client does not allow empty string as environment values
+        if($value ne '') {
+            push @args,  ('-e', $key . '=' . $ENV{$key});
+            print "Using: $key => $ENV{$key}\n" if $opt{'verbose'};
+        }
+    }
+}
+
+push @args, ('--need-storage-modify', token_request_dirname($wfoutstage));
+
+push @args, ('-N', $njobs );
+
+push @args, ( '-f', "dropbox://$opsjson" );
+
+push @args, ( '-f', "dropbox://$jobdeffn" );
+
+push @args, 'file://' . $mu2egrid::impldir . '/mu2ejobsub.sh';
+
+print "Command:  $mu2egrid::jobsub @args\n";
+if(!$opt{'dry-run'}) {
+    print "Submitting....\n";
+    0 == system { $mu2egrid::jobsub } $mu2egrid::jobsub, @args
+        or die "Error executing $mu2egrid::jobsub: $?";
+}
+else {
+    print "Not submitting because --dry-run was requested.\n";
+}
+
+#================================================================
