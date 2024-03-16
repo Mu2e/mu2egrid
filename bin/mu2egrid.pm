@@ -229,9 +229,12 @@ EOF
 
     - Add --verbose if you want to see the details of what is going on.
 
-    - The --debug options is used during mu2egrid scripts development,
-      it tried to avoid things like ifdh retries that are helpful
-      in production but slow down the debug cycle.
+    - The --debug options is used during mu2egrid scripts development.
+      It increases the verbosity of the worker node script, and it
+      tries to avoid things like ifdh retries that are helpful in
+      production but slow down the debug cycle.  It also causes some
+      temporary files created by the submission script to be not
+      deleted.
 
     - The --help option prints this message.
 
