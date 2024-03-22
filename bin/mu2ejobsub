@@ -188,7 +188,7 @@ my $jobdef = Mu2eJobPars->new($jobdeffn);
 # Figure out what jobs to run
 my @jobset;
 
-if($opt{'all'}) {
+if(defined $opt{'all'}) {
     if(my $check = forbidden_keys(\%opt, 'firstjob', 'njobs', 'jobs', 'jobset')) {
         die "Error: option $check conflicts with --all\n";
     }
@@ -199,7 +199,7 @@ if($opt{'all'}) {
         die "Error: file $jobdeffn defines an infinite set of jobs, --all is not allowed.\n";
     }
 }
-elsif($opt{'firstjob'}) {
+elsif(defined $opt{'firstjob'}) {
     if(my $check = forbidden_keys(\%opt, 'all', 'jobs', 'jobset')) {
         die "Error: option $check conflicts with --firstjob\n";
     }
@@ -210,7 +210,7 @@ elsif($opt{'firstjob'}) {
     die "Error: --njobs must be positive\n" unless $njobs > 0;
     @jobset = ($firstjob .. $firstjob+$njobs-1);
 }
-elsif($opt{'jobs'}) {
+elsif(defined $opt{'jobs'}) {
     if(my $check = forbidden_keys(\%opt, 'all', 'firstjob', 'njobs', 'jobset')) {
         die "Error: option $check conflicts with --jobs\n";
     }
@@ -221,7 +221,7 @@ elsif($opt{'jobs'}) {
         push @jobset,$k;
     }
 }
-elsif($opt{'jobset'}) {
+elsif(defined $opt{'jobset'}) {
     if(my $check = forbidden_keys(\%opt, 'all', 'firstjob', 'njobs', 'jobs')) {
         die "Error: option $check conflicts with --jobset\n";
     }
@@ -238,7 +238,7 @@ elsif($opt{'jobset'}) {
 
     die "FIXME: --jobset is not implemented";
 }
-elsif($opt{'njobs'}) {
+elsif(defined $opt{'njobs'}) {
     die "Error: --njobs requires that --firstjob is also specified\n";
 
 }
