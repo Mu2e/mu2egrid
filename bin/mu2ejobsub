@@ -238,6 +238,10 @@ elsif($opt{'jobset'}) {
 
     die "FIXME: --jobset is not implemented";
 }
+elsif($opt{'njobs'}) {
+    die "Error: --njobs requires that --firstjob is also specified\n";
+
+}
 else {
     die "Error: none of JOB_SET_SPECIFICATION options are provided\n";
 }
