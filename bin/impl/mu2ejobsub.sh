@@ -122,7 +122,7 @@ mu2ejobsub_payload() {
     mkdir $stagedir
 
     mu2ejobiodetail --prestage-spec \
-        --jobpar $jobdef --index $jobindex \
+        --jobdef $jobdef --index $jobindex \
         --inspec $opsjson --stagedir $stagedir \
         > prestage_spec
 
@@ -145,8 +145,8 @@ mu2ejobsub_payload() {
     rm -f prestage_spec
 
     localFCL=mu2e.fcl
-    mu2ejobfcl --parfile $jobdef --index $jobindex \
-        $(mu2ejobiodetail --cmdline --jobpar $jobdef --index $jobindex \
+    mu2ejobfcl --jobdef $jobdef --index $jobindex \
+        $(mu2ejobiodetail --cmdline --jobdef $jobdef --index $jobindex \
         --inspec $opsjson --stagedir $stagedir \
         ) > $localFCL
 
@@ -189,10 +189,10 @@ mu2ejobsub_payload() {
 
     rm -f parents
     mu2ejobquery --jobname $jobdef >> parents
-    mu2ejobiodetail --inputs --jobpar $jobdef --index $jobindex >> parents
+    mu2ejobiodetail --inputs --jobdef $jobdef --index $jobindex >> parents
 
     declare -a manifestfiles=( )
-    for i in $(mu2ejobiodetail --outputs --jobpar $jobdef --index $jobindex); do
+    for i in $(mu2ejobiodetail --outputs --jobdef $jobdef --index $jobindex); do
         printJson.sh --parents parents $i > $i.json
         manifestfiles=(${manifestfiles[@]} $i $i.json)
     done
@@ -296,7 +296,7 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
             jobindex=$(mu2ejobmap --clusterpars $opsjson --process $PROCESS)
             echo "mu2ejobsub jobindex = $jobindex" >> $logFileName 2>&1
 
-            newLogFileName=$(mu2ejobiodetail --logfile --jobpar $jobdef --index $jobindex)
+            newLogFileName=$(mu2ejobiodetail --logfile --jobdef $jobdef --index $jobindex)
             /bin/mv -f "$logFileName" "$newLogFileName"
             export logFileName=$newLogFileName
 
@@ -308,7 +308,7 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
             echo "mu2ejobsub $(date) -- $(date +%s) after the payload"
 
             outfiles=( $logFileName )
-            for i in $(mu2ejobiodetail --outputs --jobpar $jobdef --index $jobindex ); do
+            for i in $(mu2ejobiodetail --outputs --jobdef $jobdef --index $jobindex ); do
                 outfiles=( ${outfiles[@]} $i $i.json )
             done
 
