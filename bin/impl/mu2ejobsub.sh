@@ -44,7 +44,7 @@ printinfo() {
 addManifest() {
     manifest=${1:?addManifest: logFileName is missing}
     shift
-    echo "mu2ejobsub diskUse = $(du -ks)" >> $manifest
+    echo "mu2egrid diskUse = $(du -ks)" >> $manifest
     echo '#================================================================' >> $manifest
     echo '# mu2egrid manifest' >> $manifest
     ls -al |awk '{print "# "$0}' >> $manifest
@@ -288,6 +288,7 @@ if source "${MU2EGRID_MU2ESETUP:?Error: MU2EGRID_MU2ESETUP: not defined}"; then
             jobdef="$CONDOR_DIR_INPUT/${MU2EGRID_JOBDEF:?MU2EGRID_JOBDEF: environment variable is not set}";
             export jobdef
             echo "mu2ejobsub jobdef = $jobdef" >> $logFileName 2>&1
+            echo "mu2ejobsub jobname = $(mu2ejobquery --jobname $jobdef)" >> $logFileName 2>&1
 
             opsjson="$CONDOR_DIR_INPUT/${MU2EGRID_OPSJSON:?MU2EGRID_OPSJSON: environment variable is not set}";
             export opsjson
