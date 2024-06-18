@@ -23,9 +23,13 @@ my %predefinedArgChoices = (
                ['--singularity-image',
                 '/cvmfs/singularity.opensciencegrid.org/fermilab/fnal-wn-sl7:latest']
     ],
+    'al9' =>  ["Request Alma9 singularity image:\n",
+               ['--singularity-image',
+                '/cvmfs/singularity.opensciencegrid.org/fermilab/fnal-wn-el9:latest']
+    ],
 );
 
-my $predefinedArgChoiceDefault = 'sl7';
+my $predefinedArgChoiceDefault = 'al9';
 
 sub addPredefinedArgs($$) {
     my ($args, $choice) = @_;
@@ -154,8 +158,11 @@ sub commonOptDoc2 {
     my $prestageIsSupported = $features{'prestageIsSupported'} // 1;
 
     my $keyFieldWidth = 15;
+
+    my @orderedKeys = (grep(/none/, keys %predefinedArgChoices), grep(!/none/, keys %predefinedArgChoices) );
+
     my $preDoc='';
-    foreach my $k (keys %predefinedArgChoices) {
+    foreach my $k (@orderedKeys) {
         $preDoc .= ' 'x10 . $k. " "x($keyFieldWidth-length($k)) . $predefinedArgChoices{$k}[0] . "\n";
         $preDoc .= ' 'x14
             . join("\n".' 'x14, @{$predefinedArgChoices{$k}[1]}) . "\n\n";
