@@ -304,8 +304,8 @@ mu2eprodsys_payload() {
             setup mu2efilename
             setup mu2etools
         else
-            setup -B mu2efilename "${MU2EGRID_MU2EFILENAME_VERSION}"
             setup -B mu2etools "${MU2EGRID_MU2ETOOLS_VERSION}"
+            setup mu2efilename "${MU2EGRID_MU2EFILENAME_VERSION}"
         fi
 
         echo "#================================================================"
