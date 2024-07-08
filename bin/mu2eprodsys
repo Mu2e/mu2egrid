@@ -66,7 +66,7 @@ Usage:
               [--prerun=<name> --prconf=<file>] \\
               [--xrootd] \\
               [--transfer-all-files] \\
-              [--delete-proxy] \\
+              [--[no-]delete-proxy] \\
               [--error-delay=<int>] \\
 EOF
         . mu2egrid::commonOptDoc1(%features) . <<EOF
@@ -310,7 +310,7 @@ GetOptions(\%opt,
     'error-delay=i',
     'xrootd',
     'transfer-all-files',
-    'delete-proxy',
+    'delete-proxy!',
     grep {!/prestage-spec/} @mu2egrid::commonOptList)
     or die "\nError processing command line options.\n";
 
